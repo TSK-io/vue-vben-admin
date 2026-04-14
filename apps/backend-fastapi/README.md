@@ -87,12 +87,21 @@ docker compose down -v
 
 - 认证：`/api/v1/auth/login`、`/logout`、`/refresh`、`/me`、`/roles`
 - 绑定关系：`/api/v1/bindings`
+- 风险识别：`/api/v1/risk-recognition/sms`、`/api/v1/risk-recognition/call`
 - 风险告警：`/api/v1/risk-alerts`
 - 通知记录：`/api/v1/notifications`
 - 社区重点老人和工单：`/api/v1/community/elders`、`/community/workorders`
 - 管理端：`/api/v1/admin/users`、`/roles`、`/rules`、`/contents`、`/system-config`
 
-这些接口当前使用内置演示数据服务返回稳定结构，适合前端联调、OpenAPI 演示和后续替换为数据库实现。
+其中风险识别接口已落地 V1 规则版闭环能力：
+
+- 内置短信诈骗关键词词库与通话风险话术词库
+- 支持规则匹配、风险等级判定、命中优先级排序
+- 统一输出 `risk_level / hit_rule_codes / reason_detail / suggestion_action`
+- 自动写入短信或通话识别记录
+- 中高风险自动生成风险告警，高风险自动触发子女通知与社区工单
+
+其余接口当前使用数据库演示数据与稳定结构，适合前端联调、OpenAPI 演示和后续继续扩展为更完整业务实现。
 
 这意味着当前项目已经具备“真实数据库 + 迁移”的基础设施，但不是所有业务接口都已经改成数据库查询。
 

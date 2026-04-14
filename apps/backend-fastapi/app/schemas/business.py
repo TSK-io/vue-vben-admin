@@ -84,6 +84,35 @@ class RiskAlertDetail(RiskAlertItem):
     related_workorder_ids: list[str]
 
 
+class SmsRecognitionRequest(BaseModel):
+    elder_user_id: str
+    sender: str | None = None
+    message_text: str = Field(min_length=1, max_length=5000)
+    occurred_at: str | None = None
+
+
+class CallRecognitionRequest(BaseModel):
+    elder_user_id: str
+    caller_number: str | None = None
+    transcript_text: str = Field(min_length=1, max_length=10000)
+    duration_seconds: int | None = Field(default=None, ge=0)
+    occurred_at: str | None = None
+
+
+class RiskRecognitionResult(BaseModel):
+    scene: str
+    record_id: str
+    risk_level: str
+    risk_score: int
+    hit_rule_codes: list[str]
+    hit_terms: list[str]
+    reason_detail: str
+    suggestion_action: str
+    alert_id: str | None
+    notification_ids: list[str]
+    workorder_id: str | None
+
+
 class NotificationItem(BaseModel):
     id: str
     receiver_user_id: str

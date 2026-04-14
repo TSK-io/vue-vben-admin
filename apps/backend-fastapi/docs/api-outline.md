@@ -20,6 +20,8 @@
 
 ### 2.2 风险告警与通知
 
+- `POST /api/v1/risk-recognition/sms`：短信文本风险识别，写入识别记录并按风险等级触发告警
+- `POST /api/v1/risk-recognition/call`：通话文本风险识别，写入识别记录并按风险等级触发告警
 - `GET /api/v1/risk-alerts`：风险告警分页列表，支持 `risk_level/page/page_size`
 - `GET /api/v1/risk-alerts/{alert_id}`：风险告警详情
 - `GET /api/v1/notifications`：通知记录分页列表，支持 `is_read/page/page_size`
@@ -61,6 +63,6 @@
 
 ## 5. 当前实现说明
 
-- 当前 3.4 接口采用内置演示数据服务，便于前端联调和 OpenAPI 演示
-- 数据结构已与 `docs/database-design.md` 的核心实体保持一致，后续可平滑替换为数据库查询
-- 已覆盖登录、角色、绑定、告警、通知、重点老人、工单、用户、角色、规则、内容、系统配置等 V1 真实业务 API 骨架
+- 风险识别 V1 已支持短信与通话文本规则识别、风险分级、统一结果结构、识别记录落库，以及高风险自动触发通知和工单
+- 其余 3.4 接口采用数据库演示数据服务，便于前端联调和 OpenAPI 演示
+- 数据结构已与 `docs/database-design.md` 的核心实体保持一致，后续可继续平滑扩展

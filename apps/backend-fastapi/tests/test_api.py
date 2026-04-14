@@ -97,3 +97,45 @@ def test_admin_management_endpoints(client: TestClient) -> None:
     assert contents_response.status_code == 200
     assert configs_response.status_code == 200
     assert users_response.json()["data"][0]["user_id"].startswith("u-")
+
+
+def test_risk_recognition_sms_creates_alert_notifications_and_workorder(client: TestClient) -> None:
+    headers = auth_headers(client, "admin_demo", "Admin123!")
+
+    response = client.post(
+        "/api/v1/risk-recognition/sms",
+        headers=headers,
+        json={
+            "elder_user_id": "u-elder-001",
+            "sender": "10690000",
+            "message_text": "您好，您的退款已到账，请立即点击链接并提供验证码完成补偿。",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["risk_level"] == "high"
+    assert "SMS_VERIFY_CODE" in data["hit_rule_codes"]
+    assert data["alert_id"] is not None
+    assert len(data["notification_ids"]) >= 2
+    assert data["workorder_id"] is not None
+
+
+def test_risk_recognition_call_creates_structured_result(client: TestClient) -> None:
+    headers = auth_headers(client, "community_demo", "Community123!")
+
+    response = client.post(
+        "/api/v1/risk-recognition/call",
+        headers=headers,
+        json={
+            "elder_user_id": "u-elder-002",
+            "caller_number": "01012345678",
+            "duration_seconds": 180,
+            "transcript_text": "这里是警方专线，你涉嫌案件，请配合调查，把资金转到指定账户，不要告诉家人。",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["scene"] == "call"
+    assert data["risk_level"] == "high"
+    assert "CALL_ISOLATION_PRESSURE" in data["hit_rule_codes"]
+    assert data["reason_detail"]

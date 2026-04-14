@@ -9,6 +9,7 @@ from sqlalchemy.orm import aliased, selectinload
 from app.constants.roles import UserRole
 from app.db.session import session_scope
 from app.models import (
+    CallRecognitionRecord,
     EducationContent,
     ElderFamilyBinding,
     NotificationRecord,
@@ -20,6 +21,7 @@ from app.models import (
     UserRoleLink,
     Workorder,
     WorkorderAction,
+    SmsRecognitionRecord,
 )
 from app.schemas.business import (
     AdminUserItem,
@@ -284,6 +286,15 @@ def get_risk_alert_detail(alert_id: str) -> RiskAlertDetail:
             select(NotificationRecord.id).where(NotificationRecord.alert_id == alert.id)
         ).all()
         workorder_ids = session.scalars(select(Workorder.id).where(Workorder.alert_id == alert.id)).all()
+        hit_rule_codes: list[str] = []
+        if alert.source_type == "sms" and alert.source_record_id:
+            record = session.get(SmsRecognitionRecord, alert.source_record_id)
+            if record and record.hit_rule_codes:
+                hit_rule_codes = [item for item in record.hit_rule_codes.split(",") if item]
+        if alert.source_type == "call" and alert.source_record_id:
+            record = session.get(CallRecognitionRecord, alert.source_record_id)
+            if record and record.hit_rule_codes:
+                hit_rule_codes = [item for item in record.hit_rule_codes.split(",") if item]
         return RiskAlertDetail(
             id=alert.id,
             elder_user_id=alert.elder_user_id,
@@ -297,7 +308,7 @@ def get_risk_alert_detail(alert_id: str) -> RiskAlertDetail:
             occurred_at=alert.occurred_at,
             reason_detail=alert.reason_detail or "",
             suggestion_action=alert.suggestion_action or "",
-            hit_rule_codes=[],
+            hit_rule_codes=hit_rule_codes,
             related_notification_ids=list(notification_ids),
             related_workorder_ids=list(workorder_ids),
         )
