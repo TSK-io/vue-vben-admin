@@ -1,5 +1,42 @@
 import { requestClient } from '#/api/request';
 
+export interface FamilyOverviewStat {
+  description: string;
+  key: string;
+  trend: string;
+  value: string;
+}
+
+export interface FamilyOverviewAlertTrendItem {
+  date: string;
+  total: number;
+}
+
+export interface FamilyOverviewRiskDistributionItem {
+  count: number;
+  label: string;
+}
+
+export interface FamilyOverviewFocusItem {
+  currentStatus: string;
+  elderName: string;
+  id: string;
+  lastAlertAt: string;
+  riskLevel: 'high' | 'low' | 'medium';
+  riskSummary: string;
+}
+
+export interface FamilyOverviewData {
+  alertTrend: FamilyOverviewAlertTrendItem[];
+  focusList: FamilyOverviewFocusItem[];
+  riskDistribution: FamilyOverviewRiskDistributionItem[];
+  stats: FamilyOverviewStat[];
+}
+
+export async function getFamilyOverviewApi() {
+  return requestClient.get<FamilyOverviewData>('/family/overview');
+}
+
 export interface FamilyAlertListParams {
   page?: number;
   pageSize?: number;

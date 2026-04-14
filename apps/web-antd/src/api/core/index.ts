@@ -1,5 +1,6 @@
 export * from './admin';
 export * from './auth';
+export * from './community';
 export * from './family';
 export * from './menu';
 export * from './risk';
