@@ -24,8 +24,11 @@ package-lock.json
 **/backend-mock/data
 .omx
 # local env files
+.env
+**/.env
 .env.local
 .env.*.local
+!.env.example
 .eslintcache
 
 logs
@@ -57,3 +60,34 @@ vite.config.ts.*
 .claude
 .codex
 skills-lock.json
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+**/.pytest_cache/
+.mypy_cache/
+**/.mypy_cache/
+.ruff_cache/
+**/.ruff_cache/
+.pyre/
+**/.pyre/
+.tox/
+**/.tox/
+.nox/
+**/.nox/
+.coverage
+.coverage.*
+htmlcov/
+.python-version
+.venv/
+**/.venv/
+venv/
+**/venv/
+
+# Backend runtime artifacts
+*.pid
+*.seed
