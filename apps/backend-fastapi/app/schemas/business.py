@@ -128,6 +128,54 @@ class NotificationItem(BaseModel):
     sent_at: str
 
 
+class NotificationReadResult(BaseModel):
+    id: str
+    is_read: bool
+    read_at: str | None
+
+
+class HelpRequestCreate(BaseModel):
+    action_type: str = Field(min_length=1, max_length=30)
+    note: str | None = Field(default=None, max_length=500)
+    notify_family: bool = True
+    notify_community: bool = True
+
+
+class HelpRequestResult(BaseModel):
+    help_id: str
+    action_type: str
+    created_at: str
+    notification_ids: list[str]
+    summary: str
+
+
+class FamilyReminderCreateRequest(BaseModel):
+    elder_user_id: str
+    content: str = Field(min_length=1, max_length=500)
+    channel: str = Field(default="app", min_length=1, max_length=20)
+
+
+class FamilyReminderResult(BaseModel):
+    notification_id: str
+    sent_at: str
+    receiver_name: str
+    content: str
+
+
+class AccessibilitySettings(BaseModel):
+    font_scale: str
+    high_contrast: bool
+    voice_assistant: bool
+    voice_speed: str
+
+
+class AccessibilitySettingsUpdateRequest(BaseModel):
+    font_scale: str = Field(min_length=1, max_length=20)
+    high_contrast: bool
+    voice_assistant: bool
+    voice_speed: str = Field(min_length=1, max_length=20)
+
+
 class CommunityElderItem(BaseModel):
     elder_user_id: str
     elder_name: str
@@ -208,6 +256,18 @@ class RiskRuleItem(BaseModel):
     suggestion_template: str
 
 
+class RiskRuleUpsertRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=50)
+    name: str = Field(min_length=1, max_length=100)
+    scene: str = Field(min_length=1, max_length=20)
+    risk_level: str = Field(min_length=1, max_length=20)
+    priority: int = Field(default=100, ge=1, le=999)
+    status: str = Field(default="enabled", min_length=1, max_length=20)
+    trigger_expression: str = Field(min_length=1, max_length=2000)
+    reason_template: str = Field(default="", max_length=2000)
+    suggestion_template: str = Field(default="", max_length=2000)
+
+
 class ContentItem(BaseModel):
     id: str
     content_type: str
@@ -221,9 +281,43 @@ class ContentItem(BaseModel):
     updated_at: str
 
 
+class ContentUpsertRequest(BaseModel):
+    content_type: str = Field(min_length=1, max_length=30)
+    code: str | None = Field(default=None, max_length=50)
+    title: str = Field(min_length=1, max_length=150)
+    category: str = Field(min_length=1, max_length=30)
+    audience: str | None = Field(default=None, max_length=30)
+    channel: str | None = Field(default=None, max_length=20)
+    status: str = Field(default="draft", min_length=1, max_length=20)
+    summary: str | None = Field(default=None, max_length=255)
+    content_body: str = Field(min_length=1, max_length=5000)
+
+
 class SystemConfigItem(BaseModel):
     key: str
     name: str
     value: str
     group: str
     description: str
+
+
+class SystemConfigUpdateRequest(BaseModel):
+    value: str = Field(min_length=1, max_length=2000)
+
+
+class EducationContentItem(BaseModel):
+    id: str
+    title: str
+    category: str
+    audience: str
+    summary: str | None
+    content_body: str
+    publish_status: str
+    published_at: str | None
+
+
+class CommunityReportData(BaseModel):
+    risk_by_level: list[dict[str, int | str]]
+    workorder_status: list[dict[str, int | str]]
+    education_summary: list[dict[str, int | str]]
+    disposal_avg_minutes: int

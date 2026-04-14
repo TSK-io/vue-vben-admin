@@ -1,22 +1,71 @@
 <script lang="ts" setup>
-import PortalPage from '../../shared/portal-page.vue';
+import { computed, onMounted, ref } from 'vue';
+
+import { Card, Empty, List, Select, Space, Tag } from 'ant-design-vue';
+
+import { getElderKnowledgeListApi } from '#/api';
+
+defineOptions({ name: 'ElderKnowledge' });
+
+const loading = ref(false);
+const category = ref<string>();
+const rows = ref<any[]>([]);
+
+const categories = computed(() =>
+  Array.from(new Set(rows.value.map((item) => item.category))).map((item) => ({
+    label: item,
+    value: item,
+  })),
+);
+
+async function loadRows() {
+  loading.value = true;
+  try {
+    rows.value = await getElderKnowledgeListApi(category.value);
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => {
+  void loadRows();
+});
 </script>
 
 <template>
-  <PortalPage
-    accent="#65a30d"
-    description="防骗知识页承接图文案例、语音播报和常见骗局说明，当前阶段先完成信息结构和页面入口。"
-    role="老年端"
-    title="防骗知识"
-    :hero-stats="[
-      { title: '常见骗局', description: '冒充公检法、中奖返利、熟人借钱等。' },
-      { title: '适老阅读', description: '后续支持大字模式和朗读播放。' },
-      { title: '重点提示', description: '突出“不轻信、不转账、不点链接”。' },
-    ]"
-    :sections="[
-      { title: '案例库', description: '预留诈骗案例和社区宣教内容入口。' },
-      { title: '提示模板', description: '接入后台可配置的防骗提示文案。' },
-      { title: '操作指引', description: '帮助老人快速核实、求助和反馈。' },
-    ]"
-  />
+  <div class="elder-knowledge-page">
+    <Card class="page-card" :bordered="false">
+      <p class="eyebrow">老年端 / 防骗知识</p>
+      <h1>防骗知识</h1>
+      <p class="description">知识库已接后台内容，可按分类查看图文案例和提示内容。</p>
+      <Space style="margin-bottom: 16px">
+        <Select v-model:value="category" allow-clear placeholder="选择分类" :options="categories" style="width: 180px" @change="loadRows" />
+      </Space>
+      <List v-if="rows.length" :data-source="rows" :loading="loading">
+        <template #renderItem="{ item }">
+          <List.Item class="knowledge-item">
+            <div>
+              <Space wrap>
+                <Tag color="blue">{{ item.category }}</Tag>
+                <Tag>{{ item.publishStatus }}</Tag>
+              </Space>
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.summary || item.contentBody }}</p>
+            </div>
+          </List.Item>
+        </template>
+      </List>
+      <Empty v-else description="暂无知识内容" />
+    </Card>
+  </div>
 </template>
+
+<style scoped>
+.elder-knowledge-page { min-height: 100%; padding: 24px; background: linear-gradient(180deg, #f7fff8 0%, #eefcf2 100%); }
+.page-card { border: 1px solid rgba(101,163,13,.14); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: 0 16px 36px rgba(77,124,15,.08); }
+.eyebrow { margin: 0 0 12px; color: #65a30d; font-size: 13px; font-weight: 700; letter-spacing: .08em; }
+h1 { margin: 0; color: #3f6212; font-size: 34px; }
+.description,.knowledge-item p { color: #4d7c0f; line-height: 1.8; }
+.knowledge-item h3 { margin: 10px 0 0; color: #365314; }
+@media (max-width: 768px) { .elder-knowledge-page { padding: 16px; } h1 { font-size: 28px; } }
+</style>

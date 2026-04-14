@@ -1,68 +1,70 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, List, Modal, Row, Space, Steps, Tag } from 'ant-design-vue';
+import { Button, Card, Col, Form, Input, List, Modal, Row, Select, Space, Tag, message } from 'ant-design-vue';
+
+import { createBindingApi, deleteBindingApi, getBindingListApi, updateBindingApi } from '#/api';
+import { useUserStore } from '@vben/stores';
 
 defineOptions({ name: 'ElderFamilyBinding' });
 
-interface FamilyBindingItem {
-  id: string;
-  isPrimary: boolean;
-  lastAuthorizedAt: string;
-  name: string;
-  note: string;
-  phone: string;
-  relation: string;
-  status: 'active' | 'expired';
-}
-
-const bindings = ref<FamilyBindingItem[]>([
-  {
-    id: 'FB-1',
-    isPrimary: true,
-    lastAuthorizedAt: '2026-04-12 10:20',
-    name: '李静',
-    note: '接收高风险通知和一键求助信息。',
-    phone: '138****1024',
-    relation: '女儿',
-    status: 'active',
-  },
-  {
-    id: 'FB-2',
-    isPrimary: false,
-    lastAuthorizedAt: '2026-03-28 18:10',
-    name: '王磊',
-    note: '作为备用联系人，夜间优先提醒。',
-    phone: '139****5518',
-    relation: '儿子',
-    status: 'active',
-  },
-  {
-    id: 'FB-3',
-    isPrimary: false,
-    lastAuthorizedAt: '2026-02-16 09:00',
-    name: '周敏',
-    note: '授权已到期，需重新确认后恢复通知。',
-    phone: '137****2206',
-    relation: '外甥女',
-    status: 'expired',
-  },
-]);
-
+const userStore = useUserStore();
+const bindings = ref<any[]>([]);
 const modalVisible = ref(false);
-const modalTitle = ref('');
+const editingId = ref<string>();
+const formState = reactive({
+  familyUserId: 'u-family-001',
+  isEmergencyContact: false,
+  relationshipType: 'daughter',
+});
 
 const availableSlots = computed(() => Math.max(0, 3 - bindings.value.length));
 
-function openAction(title: string) {
-  modalTitle.value = title;
+async function loadBindings() {
+  bindings.value = await getBindingListApi();
+}
+
+function openCreate() {
+  editingId.value = undefined;
+  formState.familyUserId = 'u-family-001';
+  formState.isEmergencyContact = false;
+  formState.relationshipType = 'daughter';
   modalVisible.value = true;
 }
 
-function getStatusMeta(status: FamilyBindingItem['status']) {
-  return status === 'active'
-    ? { color: 'success', text: '已授权' }
-    : { color: 'warning', text: '待重新授权' };
+function openEdit(item: any) {
+  editingId.value = item.id;
+  formState.familyUserId = item.familyUserId;
+  formState.isEmergencyContact = item.isEmergencyContact;
+  formState.relationshipType = item.relationshipType;
+  modalVisible.value = true;
+}
+
+async function submitBinding() {
+  if (editingId.value) {
+    await updateBindingApi(editingId.value, {
+      isEmergencyContact: formState.isEmergencyContact,
+      relationshipType: formState.relationshipType,
+      status: 'active',
+    });
+    message.success('绑定关系已更新');
+  } else {
+    await createBindingApi({
+      elderUserId: userStore.userInfo?.userId || 'u-elder-001',
+      familyUserId: formState.familyUserId,
+      isEmergencyContact: formState.isEmergencyContact,
+      relationshipType: formState.relationshipType,
+    });
+    message.success('绑定成功');
+  }
+  modalVisible.value = false;
+  await loadBindings();
+}
+
+async function removeBinding(id: string) {
+  await deleteBindingApi(id);
+  message.success('已解绑');
+  await loadBindings();
 }
 </script>
 
@@ -72,9 +74,7 @@ function getStatusMeta(status: FamilyBindingItem['status']) {
       <div>
         <p class="eyebrow">老年端 / 亲属绑定</p>
         <h1>亲属绑定</h1>
-        <p class="description">
-          您最多可以绑定 3 位家人。绑定后，系统可以在高风险场景提醒家人帮助您核实情况。
-        </p>
+        <p class="description">页面已接真实 `bindings` 接口，支持新增、修改和解绑，并保留紧急联系人标记。</p>
       </div>
       <div class="hero-note">
         <strong>当前状态</strong>
@@ -91,20 +91,16 @@ function getStatusMeta(status: FamilyBindingItem['status']) {
                 <div class="binding-main">
                   <div>
                     <div class="binding-head">
-                      <h3>{{ item.name }}</h3>
-                      <Tag color="gold">{{ item.relation }}</Tag>
-                      <Tag v-if="item.isPrimary" color="blue">默认联系人</Tag>
-                      <Tag :color="getStatusMeta(item.status).color">
-                        {{ getStatusMeta(item.status).text }}
-                      </Tag>
+                      <h3>{{ item.familyName }}</h3>
+                      <Tag color="gold">{{ item.relationshipType }}</Tag>
+                      <Tag v-if="item.isEmergencyContact" color="blue">默认联系人</Tag>
+                      <Tag :color="item.status === 'active' ? 'success' : 'warning'">{{ item.status }}</Tag>
                     </div>
-                    <p class="binding-phone">{{ item.phone }}</p>
-                    <p class="binding-note">{{ item.note }}</p>
-                    <p class="binding-time">最近授权：{{ item.lastAuthorizedAt }}</p>
+                    <p class="binding-time">最近授权：{{ item.authorizedAt }}</p>
                   </div>
                   <Space wrap>
-                    <Button @click="openAction(`重新授权 ${item.name}`)">重新授权</Button>
-                    <Button danger @click="openAction(`解绑 ${item.name}`)">解绑</Button>
+                    <Button @click="openEdit(item)">修改</Button>
+                    <Button danger @click="removeBinding(item.id)">解绑</Button>
                   </Space>
                 </div>
               </List.Item>
@@ -114,137 +110,49 @@ function getStatusMeta(status: FamilyBindingItem['status']) {
       </Col>
       <Col :lg="8" :span="24">
         <Card class="flow-card" :bordered="false" title="绑定流程">
-          <Steps
-            direction="vertical"
-            :items="[
-              { title: '新增家人', description: '填写姓名、手机号和关系。' },
-              { title: '确认授权', description: '确认允许接收风险提醒和求助通知。' },
-              { title: '后续管理', description: '支持解绑和重新授权。' },
-            ]"
-          />
-          <div class="flow-actions">
-            <Button block size="large" type="primary" @click="openAction('新增亲属绑定')">
-              新增绑定
-            </Button>
-          </div>
+          <p>支持新增家属、更新关系和重新设为紧急联系人。</p>
+          <Button block size="large" type="primary" :disabled="availableSlots <= 0" @click="openCreate">新增绑定</Button>
         </Card>
       </Col>
     </Row>
 
-    <Modal v-model:open="modalVisible" :title="modalTitle" ok-text="我知道了" cancel-text="关闭">
-      <p>当前版本已完成绑定、解绑和重新授权的流程入口展示。</p>
-      <p>下一步可继续接入表单提交、短信确认和真实绑定关系接口。</p>
+    <Modal v-model:open="modalVisible" title="绑定家属" ok-text="保存" cancel-text="关闭" @ok="submitBinding">
+      <Form layout="vertical">
+        <Form.Item label="家属账号">
+          <Select
+            v-model:value="formState.familyUserId"
+            :options="[
+              { label: '王女士', value: 'u-family-001' },
+              { label: '李先生', value: 'u-family-002' },
+            ]"
+          />
+        </Form.Item>
+        <Form.Item label="关系">
+          <Input v-model:value="formState.relationshipType" />
+        </Form.Item>
+        <Form.Item label="紧急联系人">
+          <Select
+            v-model:value="formState.isEmergencyContact"
+            :options="[
+              { label: '是', value: true },
+              { label: '否', value: false },
+            ]"
+          />
+        </Form.Item>
+      </Form>
     </Modal>
   </div>
 </template>
 
 <style scoped>
-.elder-family-binding-page {
-  min-height: 100%;
-  padding: 24px;
-  background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 28%),
-    linear-gradient(180deg, #f8fcff 0%, #eef7ff 100%);
-}
-
-.hero-panel,
-.list-card,
-.flow-card {
-  border: 1px solid rgba(14, 165, 233, 0.14);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 36px rgba(14, 116, 144, 0.08);
-}
-
-.hero-panel {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 28px 30px;
-}
-
-.eyebrow {
-  margin: 0 0 12px;
-  color: #0284c7;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-h1 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 34px;
-}
-
-.description {
-  margin: 16px 0 0;
-  max-width: 760px;
-  color: #334155;
-  font-size: 16px;
-  line-height: 1.8;
-}
-
-.hero-note {
-  max-width: 280px;
-  padding: 18px;
-  border-radius: 20px;
-  background: #eff6ff;
-  color: #075985;
-  line-height: 1.8;
-}
-
-.content-row {
-  margin-top: 18px;
-}
-
-.binding-item {
-  padding: 10px 0;
-}
-
-.binding-main {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-}
-
-.binding-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.binding-head h3 {
-  margin: 0;
-  color: #0f172a;
-}
-
-.binding-phone,
-.binding-note,
-.binding-time {
-  margin: 8px 0 0;
-  color: #475569;
-  line-height: 1.8;
-}
-
-.flow-actions {
-  margin-top: 20px;
-}
-
-@media (max-width: 768px) {
-  .elder-family-binding-page {
-    padding: 16px;
-  }
-
-  .hero-panel,
-  .binding-main {
-    flex-direction: column;
-  }
-
-  h1 {
-    font-size: 28px;
-  }
-}
+.elder-family-binding-page { min-height: 100%; padding: 24px; background: linear-gradient(180deg, #f8fcff 0%, #eef7ff 100%); }
+.hero-panel,.list-card,.flow-card { border: 1px solid rgba(14,165,233,.14); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: 0 16px 36px rgba(14,116,144,.08); }
+.hero-panel { display: flex; justify-content: space-between; gap: 20px; padding: 28px 30px; }
+.eyebrow { margin: 0 0 12px; color: #0284c7; font-size: 13px; font-weight: 700; letter-spacing: .08em; }
+h1 { margin: 0; color: #0f172a; font-size: 34px; }
+.description,.hero-note,.binding-time { color: #334155; line-height: 1.8; }
+.hero-note { max-width: 280px; padding: 18px; border-radius: 20px; background: #eff6ff; }
+.content-row { margin-top: 18px; }
+.binding-main,.binding-head { display: flex; justify-content: space-between; gap: 12px; width: 100%; align-items: center; }
+@media (max-width: 768px) { .elder-family-binding-page { padding: 16px; } .hero-panel,.binding-main,.binding-head { flex-direction: column; align-items: flex-start; } h1 { font-size: 28px; } }
 </style>

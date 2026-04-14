@@ -139,3 +139,46 @@ def test_risk_recognition_call_creates_structured_result(client: TestClient) -> 
     assert data["risk_level"] == "high"
     assert "CALL_ISOLATION_PRESSURE" in data["hit_rule_codes"]
     assert data["reason_detail"]
+
+
+def test_elder_help_settings_and_family_reminder(client: TestClient) -> None:
+    elder_headers = auth_headers(client, "elder_demo", "Elder123!")
+    family_headers = auth_headers(client, "family_demo", "Family123!")
+
+    help_response = client.post(
+        "/api/v1/elder/help-requests",
+        headers=elder_headers,
+        json={
+            "action_type": "联系家人",
+            "note": "收到可疑电话，想先联系家人。",
+            "notify_family": True,
+            "notify_community": True,
+        },
+    )
+    assert help_response.status_code == 200
+    assert len(help_response.json()["data"]["notification_ids"]) >= 1
+
+    settings_response = client.put(
+        "/api/v1/elder/accessibility-settings",
+        headers=elder_headers,
+        json={
+            "font_scale": "x-large",
+            "high_contrast": True,
+            "voice_assistant": True,
+            "voice_speed": "slow",
+        },
+    )
+    assert settings_response.status_code == 200
+    assert settings_response.json()["data"]["font_scale"] == "x-large"
+
+    reminder_response = client.post(
+        "/api/v1/family/reminders",
+        headers=family_headers,
+        json={
+            "elder_user_id": "u-elder-001",
+            "content": "先别转账，我马上打给你。",
+            "channel": "app",
+        },
+    )
+    assert reminder_response.status_code == 200
+    assert reminder_response.json()["data"]["receiver_name"] == "李阿姨"

@@ -14,6 +14,7 @@ from app.models import (
     ElderFamilyBinding,
     NotificationRecord,
     PromptTemplate,
+    Role,
     RiskAlert,
     RiskRule,
     SystemConfig,
@@ -25,19 +26,31 @@ from app.models import (
 )
 from app.schemas.business import (
     AdminUserItem,
+    AccessibilitySettings,
+    AccessibilitySettingsUpdateRequest,
     BindingCreateRequest,
     BindingItem,
     BindingUpdateRequest,
+    CommunityReportData,
+    ContentUpsertRequest,
     CommunityElderItem,
     ContentItem,
+    EducationContentItem,
+    FamilyReminderCreateRequest,
+    FamilyReminderResult,
+    HelpRequestCreate,
+    HelpRequestResult,
     NotificationItem,
+    NotificationReadResult,
     PaginationMeta,
     PagedResult,
     RiskAlertDetail,
     RiskAlertItem,
     RiskRuleItem,
+    RiskRuleUpsertRequest,
     RoleInfo,
     SystemConfigItem,
+    SystemConfigUpdateRequest,
     WorkorderActionItem,
     WorkorderDetail,
     WorkorderItem,
@@ -74,6 +87,10 @@ def _parse_notes(raw: str | None) -> dict[str, str]:
         key, value = pair.split("=", 1)
         result[key] = value
     return result
+
+
+def _dump_notes(values: dict[str, str]) -> str:
+    return ";".join(f"{key}={value}" for key, value in values.items())
 
 
 def get_paged_payload(items: list, page: int, page_size: int) -> PagedResult:
@@ -345,6 +362,146 @@ def list_notifications(user: UserProfile, is_read: bool | None = None) -> list[N
         ]
 
 
+def mark_notification_read(notification_id: str, user: UserProfile) -> NotificationReadResult:
+    with session_scope() as session:
+        item = session.get(NotificationRecord, notification_id)
+        if not item or item.receiver_user_id != user.user_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通知不存在")
+        item.is_read = True
+        item.read_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        return NotificationReadResult(id=item.id, is_read=item.is_read, read_at=item.read_at)
+
+
+def create_help_request(user: UserProfile, payload: HelpRequestCreate) -> HelpRequestResult:
+    now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    notification_ids: list[str] = []
+    with session_scope() as session:
+        current_user = session.get(User, user.user_id)
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        latest_alert = session.scalar(
+            select(RiskAlert)
+            .where(RiskAlert.elder_user_id == user.user_id)
+            .order_by(RiskAlert.occurred_at.desc())
+        )
+        if payload.notify_family:
+            family_bindings = session.execute(
+                select(ElderFamilyBinding).where(ElderFamilyBinding.elder_user_id == user.user_id)
+            ).scalars().all()
+            for binding in family_bindings:
+                notification = NotificationRecord(
+                    alert_id=(latest_alert.id if latest_alert else "alert-001"),
+                    receiver_user_id=binding.family_user_id,
+                    channel="app",
+                    notification_type="help_request",
+                    title=f"{current_user.display_name} 发起一键求助",
+                    content=payload.note or "老人发起求助，请尽快回电确认。",
+                    status="sent",
+                    is_read=False,
+                    sent_at=now,
+                )
+                session.add(notification)
+                session.flush()
+                notification_ids.append(notification.id)
+        if payload.notify_community:
+            community_users = session.execute(
+                select(User)
+                .join(User.roles)
+                .join(UserRoleLink.role)
+                .where(Role.code == UserRole.COMMUNITY.value)
+            ).scalars().all()
+            for community_user in community_users[:1]:
+                notification = NotificationRecord(
+                    alert_id=(latest_alert.id if latest_alert else "alert-001"),
+                    receiver_user_id=community_user.id,
+                    channel="workbench",
+                    notification_type="help_request",
+                    title=f"{current_user.display_name} 需要协助",
+                    content=payload.note or "老人发起求助，请安排回访。",
+                    status="sent",
+                    is_read=False,
+                    sent_at=now,
+                )
+                session.add(notification)
+                session.flush()
+                notification_ids.append(notification.id)
+        return HelpRequestResult(
+            help_id=f"help-{user.user_id}-{int(datetime.now(UTC).timestamp())}",
+            action_type=payload.action_type,
+            created_at=now,
+            notification_ids=notification_ids,
+            summary="已向家属/社区发送求助通知并记录留痕。",
+        )
+
+
+def send_family_reminder(user: UserProfile, payload: FamilyReminderCreateRequest) -> FamilyReminderResult:
+    now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    with session_scope() as session:
+        elder = session.get(User, payload.elder_user_id)
+        if not elder:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="老人不存在")
+        latest_alert = session.scalar(
+            select(RiskAlert)
+            .where(RiskAlert.elder_user_id == payload.elder_user_id)
+            .order_by(RiskAlert.occurred_at.desc())
+        )
+        notification = NotificationRecord(
+            alert_id=(latest_alert.id if latest_alert else "alert-001"),
+            receiver_user_id=payload.elder_user_id,
+            channel=payload.channel,
+            notification_type="family_reminder",
+            title=f"{user.display_name} 向您发送了提醒",
+            content=payload.content,
+            status="sent",
+            is_read=False,
+            sent_at=now,
+        )
+        session.add(notification)
+        session.flush()
+        return FamilyReminderResult(
+            notification_id=notification.id,
+            sent_at=now,
+            receiver_name=elder.display_name,
+            content=payload.content,
+        )
+
+
+def get_accessibility_settings(user: UserProfile) -> AccessibilitySettings:
+    with session_scope() as session:
+        current_user = session.get(User, user.user_id)
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        notes = _parse_notes(current_user.notes)
+        return AccessibilitySettings(
+            font_scale=notes.get("font_scale", "large"),
+            high_contrast=notes.get("high_contrast", "false") == "true",
+            voice_assistant=notes.get("voice_assistant", "false") == "true",
+            voice_speed=notes.get("voice_speed", "normal"),
+        )
+
+
+def update_accessibility_settings(
+    user: UserProfile,
+    payload: AccessibilitySettingsUpdateRequest,
+) -> AccessibilitySettings:
+    with session_scope() as session:
+        current_user = session.get(User, user.user_id)
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        notes = _parse_notes(current_user.notes)
+        notes["font_scale"] = payload.font_scale
+        notes["high_contrast"] = "true" if payload.high_contrast else "false"
+        notes["voice_assistant"] = "true" if payload.voice_assistant else "false"
+        notes["voice_speed"] = payload.voice_speed
+        current_user.notes = _dump_notes(notes)
+        return AccessibilitySettings(
+            font_scale=payload.font_scale,
+            high_contrast=payload.high_contrast,
+            voice_assistant=payload.voice_assistant,
+            voice_speed=payload.voice_speed,
+        )
+
+
 def list_community_elders(keyword: str | None = None, risk_level: str | None = None) -> list[CommunityElderItem]:
     with session_scope() as session:
         elder_ids = session.scalars(
@@ -507,6 +664,46 @@ def list_risk_rules() -> list[RiskRuleItem]:
         ]
 
 
+def create_risk_rule(payload: RiskRuleUpsertRequest) -> RiskRuleItem:
+    with session_scope() as session:
+        item = RiskRule(**payload.model_dump())
+        session.add(item)
+        session.flush()
+        return RiskRuleItem(
+            id=item.id,
+            code=item.code,
+            name=item.name,
+            scene=item.scene,
+            risk_level=item.risk_level,
+            priority=item.priority,
+            status=item.status,
+            trigger_expression=item.trigger_expression,
+            reason_template=item.reason_template or "",
+            suggestion_template=item.suggestion_template or "",
+        )
+
+
+def update_risk_rule(rule_id: str, payload: RiskRuleUpsertRequest) -> RiskRuleItem:
+    with session_scope() as session:
+        item = session.get(RiskRule, rule_id)
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="规则不存在")
+        for key, value in payload.model_dump().items():
+            setattr(item, key, value)
+        return RiskRuleItem(
+            id=item.id,
+            code=item.code,
+            name=item.name,
+            scene=item.scene,
+            risk_level=item.risk_level,
+            priority=item.priority,
+            status=item.status,
+            trigger_expression=item.trigger_expression,
+            reason_template=item.reason_template or "",
+            suggestion_template=item.suggestion_template or "",
+        )
+
+
 def list_contents() -> list[ContentItem]:
     with session_scope() as session:
         templates = session.execute(select(PromptTemplate)).scalars().all()
@@ -544,6 +741,137 @@ def list_contents() -> list[ContentItem]:
         return sorted(contents, key=lambda item: item.updated_at, reverse=True)
 
 
+def list_education_contents(
+    audience: str | None = None,
+    category: str | None = None,
+    publish_status: str | None = "published",
+) -> list[EducationContentItem]:
+    with session_scope() as session:
+        query = select(EducationContent)
+        if audience:
+            query = query.where(EducationContent.audience == audience)
+        if category:
+            query = query.where(EducationContent.category == category)
+        if publish_status:
+            query = query.where(EducationContent.publish_status == publish_status)
+        rows = session.execute(query.order_by(EducationContent.updated_at.desc())).scalars().all()
+        return [
+            EducationContentItem(
+                id=item.id,
+                title=item.title,
+                category=item.category,
+                audience=item.audience,
+                summary=item.summary,
+                content_body=item.content_body,
+                publish_status=item.publish_status,
+                published_at=item.published_at,
+            )
+            for item in rows
+        ]
+
+
+def create_content(payload: ContentUpsertRequest) -> ContentItem:
+    now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    with session_scope() as session:
+        if payload.content_type == "template":
+            item = PromptTemplate(
+                code=payload.code or f"TPL-{int(datetime.now(UTC).timestamp())}",
+                name=payload.title,
+                category=payload.category,
+                channel=payload.channel or "app",
+                content=payload.content_body,
+                status=payload.status,
+                notes=payload.summary,
+            )
+            session.add(item)
+            session.flush()
+            return ContentItem(
+                id=item.id,
+                content_type="template",
+                code=item.code,
+                title=item.name,
+                category=item.category,
+                audience=None,
+                channel=item.channel,
+                status=item.status,
+                summary=item.notes,
+                updated_at=now,
+            )
+        item = EducationContent(
+            title=payload.title,
+            category=payload.category,
+            audience=payload.audience or "elder",
+            summary=payload.summary,
+            content_body=payload.content_body,
+            publish_status=payload.status,
+            published_at=now if payload.status == "published" else None,
+        )
+        session.add(item)
+        session.flush()
+        return ContentItem(
+            id=item.id,
+            content_type="education",
+            code=None,
+            title=item.title,
+            category=item.category,
+            audience=item.audience,
+            channel="article",
+            status=item.publish_status,
+            summary=item.summary,
+            updated_at=now,
+        )
+
+
+def update_content(content_id: str, payload: ContentUpsertRequest) -> ContentItem:
+    now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    with session_scope() as session:
+        if payload.content_type == "template":
+            item = session.get(PromptTemplate, content_id)
+            if not item:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="内容不存在")
+            item.code = payload.code or item.code
+            item.name = payload.title
+            item.category = payload.category
+            item.channel = payload.channel or item.channel
+            item.content = payload.content_body
+            item.status = payload.status
+            item.notes = payload.summary
+            return ContentItem(
+                id=item.id,
+                content_type="template",
+                code=item.code,
+                title=item.name,
+                category=item.category,
+                audience=None,
+                channel=item.channel,
+                status=item.status,
+                summary=item.notes,
+                updated_at=now,
+            )
+        item = session.get(EducationContent, content_id)
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="内容不存在")
+        item.title = payload.title
+        item.category = payload.category
+        item.audience = payload.audience or item.audience
+        item.summary = payload.summary
+        item.content_body = payload.content_body
+        item.publish_status = payload.status
+        item.published_at = now if payload.status == "published" else item.published_at
+        return ContentItem(
+            id=item.id,
+            content_type="education",
+            code=None,
+            title=item.title,
+            category=item.category,
+            audience=item.audience,
+            channel="article",
+            status=item.publish_status,
+            summary=item.summary,
+            updated_at=now,
+        )
+
+
 def list_system_configs() -> list[SystemConfigItem]:
     with session_scope() as session:
         rows = session.execute(select(SystemConfig).order_by(SystemConfig.group.asc(), SystemConfig.key.asc())).scalars().all()
@@ -557,3 +885,52 @@ def list_system_configs() -> list[SystemConfigItem]:
             )
             for item in rows
         ]
+
+
+def update_system_config(config_key: str, payload: SystemConfigUpdateRequest) -> SystemConfigItem:
+    with session_scope() as session:
+        item = session.scalar(select(SystemConfig).where(SystemConfig.key == config_key))
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="配置不存在")
+        item.value = payload.value
+        return SystemConfigItem(
+            key=item.key,
+            name=item.name,
+            value=item.value,
+            group=item.group,
+            description=item.description or "",
+        )
+
+
+def get_community_report() -> CommunityReportData:
+    with session_scope() as session:
+        alerts = session.execute(select(RiskAlert)).scalars().all()
+        workorders = session.execute(select(Workorder)).scalars().all()
+        educations = session.execute(select(EducationContent)).scalars().all()
+        risk_by_level = [
+            {"label": level, "count": len([item for item in alerts if item.risk_level == level])}
+            for level in ["high", "medium", "low"]
+        ]
+        workorder_status = [
+            {"label": status_name, "count": len([item for item in workorders if item.status == status_name])}
+            for status_name in ["pending", "processing", "closed"]
+        ]
+        education_summary = [
+            {"label": status_name, "count": len([item for item in educations if item.publish_status == status_name])}
+            for status_name in ["published", "draft"]
+        ]
+        closed_workorders = [item for item in workorders if item.closed_at]
+        avg_minutes = 0
+        if closed_workorders:
+            total_minutes = 0
+            for item in closed_workorders:
+                created = item.created_at
+                closed = datetime.fromisoformat(item.closed_at.replace("Z", "+00:00"))
+                total_minutes += int((closed - created).total_seconds() / 60)
+            avg_minutes = int(total_minutes / len(closed_workorders))
+        return CommunityReportData(
+            risk_by_level=risk_by_level,
+            workorder_status=workorder_status,
+            education_summary=education_summary,
+            disposal_avg_minutes=avg_minutes,
+        )

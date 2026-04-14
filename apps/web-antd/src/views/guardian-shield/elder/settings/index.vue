@@ -1,22 +1,89 @@
 <script lang="ts" setup>
-import PortalPage from '../../shared/portal-page.vue';
+import { onMounted, reactive, ref } from 'vue';
+
+import { Button, Card, Form, Select, Switch, message } from 'ant-design-vue';
+
+import { getAccessibilitySettingsApi, updateAccessibilitySettingsApi } from '#/api';
+
+defineOptions({ name: 'ElderSettings' });
+
+const loading = ref(false);
+const saving = ref(false);
+const formState = reactive({
+  fontScale: 'large',
+  highContrast: false,
+  voiceAssistant: false,
+  voiceSpeed: 'normal',
+});
+
+async function loadSettings() {
+  loading.value = true;
+  try {
+    Object.assign(formState, await getAccessibilitySettingsApi());
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function saveSettings() {
+  saving.value = true;
+  try {
+    await updateAccessibilitySettingsApi({ ...formState });
+    message.success('适老设置已保存');
+  } finally {
+    saving.value = false;
+  }
+}
+
+onMounted(() => {
+  void loadSettings();
+});
 </script>
 
 <template>
-  <PortalPage
-    accent="#7c3aed"
-    description="适老设置页聚焦字号、对比度、提醒方式和语音辅助，是后续提升可用性的关键页面。"
-    role="老年端"
-    title="适老设置"
-    :hero-stats="[
-      { title: '大字号', description: '默认采用更高可读性的文本尺寸。' },
-      { title: '高对比度', description: '保留浅底深字与重点风险色强调。' },
-      { title: '语音辅助', description: '后续接入读屏与语音播报。' },
-    ]"
-    :sections="[
-      { title: '显示设置', description: '控制字号、间距和按钮尺寸。' },
-      { title: '提醒设置', description: '管理风险提示和求助反馈方式。' },
-      { title: '隐私授权', description: '承接数据采集范围与授权说明。' },
-    ]"
-  />
+  <div class="elder-settings-page">
+    <Card class="settings-card" :bordered="false" :loading="loading">
+      <p class="eyebrow">老年端 / 适老设置</p>
+      <h1>适老设置</h1>
+      <p class="description">当前已接真实配置接口，可保存大字号、高对比度和语音辅助偏好。</p>
+      <Form layout="vertical">
+        <Form.Item label="字号">
+          <Select
+            v-model:value="formState.fontScale"
+            :options="[
+              { label: '标准', value: 'normal' },
+              { label: '大字号', value: 'large' },
+              { label: '超大字号', value: 'x-large' },
+            ]"
+          />
+        </Form.Item>
+        <Form.Item label="高对比度">
+          <Switch v-model:checked="formState.highContrast" />
+        </Form.Item>
+        <Form.Item label="语音辅助">
+          <Switch v-model:checked="formState.voiceAssistant" />
+        </Form.Item>
+        <Form.Item label="语速">
+          <Select
+            v-model:value="formState.voiceSpeed"
+            :options="[
+              { label: '慢速', value: 'slow' },
+              { label: '正常', value: 'normal' },
+              { label: '快速', value: 'fast' },
+            ]"
+          />
+        </Form.Item>
+        <Button type="primary" :loading="saving" @click="saveSettings">保存设置</Button>
+      </Form>
+    </Card>
+  </div>
 </template>
+
+<style scoped>
+.elder-settings-page { min-height: 100%; padding: 24px; background: linear-gradient(180deg, #faf7ff 0%, #f3edff 100%); }
+.settings-card { max-width: 760px; border: 1px solid rgba(124,58,237,.14); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: 0 16px 36px rgba(91,33,182,.08); }
+.eyebrow { margin: 0 0 12px; color: #7c3aed; font-size: 13px; font-weight: 700; letter-spacing: .08em; }
+h1 { margin: 0; color: #5b21b6; font-size: 34px; }
+.description { margin: 16px 0 24px; color: #6b21a8; line-height: 1.8; }
+@media (max-width: 768px) { .elder-settings-page { padding: 16px; } h1 { font-size: 28px; } }
+</style>

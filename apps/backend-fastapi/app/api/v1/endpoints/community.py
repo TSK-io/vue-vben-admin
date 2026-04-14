@@ -9,6 +9,7 @@ from app.schemas.business import WorkorderTransitionRequest
 from app.schemas.common import ApiResponse, MetaPayload
 from app.schemas.user import UserProfile
 from app.services.business import (
+    get_community_report,
     get_paged_payload,
     get_workorder_detail,
     list_community_elders,
@@ -68,4 +69,13 @@ async def post_workorder_transition(
     user: Annotated[UserProfile, Depends(require_roles(UserRole.COMMUNITY, UserRole.ADMIN))],
 ) -> ApiResponse:
     data = transition_workorder(workorder_id, payload, user).model_dump()
+    return ApiResponse(data=data, meta=response_meta(request))
+
+
+@router.get("/reports", summary="社区统计报表", response_model=ApiResponse)
+async def get_reports(
+    request: Request,
+    _: Annotated[UserProfile, Depends(require_roles(UserRole.COMMUNITY, UserRole.ADMIN))],
+) -> ApiResponse:
+    data = get_community_report().model_dump()
     return ApiResponse(data=data, meta=response_meta(request))

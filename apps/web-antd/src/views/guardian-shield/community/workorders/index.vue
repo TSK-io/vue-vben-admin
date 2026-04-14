@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, Empty, Input, List, Row, Select, Space, Tag } from 'ant-design-vue';
+import { Button, Card, Col, Empty, Input, List, Modal, Row, Select, Space, Tag, message } from 'ant-design-vue';
 
-import { getCommunityWorkorderListApi } from '#/api';
+import { getCommunityWorkorderListApi, transitionCommunityWorkorderApi } from '#/api';
 import type { CommunityWorkorderListItem } from '#/api';
 
 defineOptions({ name: 'CommunityWorkorders' });
@@ -11,6 +11,8 @@ defineOptions({ name: 'CommunityWorkorders' });
 const loading = ref(false);
 const rows = ref<CommunityWorkorderListItem[]>([]);
 const total = ref(0);
+const actionVisible = ref(false);
+const currentWorkorder = ref<CommunityWorkorderListItem | null>(null);
 
 const filters = reactive({
   keyword: '',
@@ -138,6 +140,25 @@ function handlePageChange(page: number, pageSize: number) {
 onMounted(() => {
   void loadRows();
 });
+
+function openTransition(item: CommunityWorkorderListItem) {
+  currentWorkorder.value = item;
+  actionVisible.value = true;
+}
+
+async function completeWorkorder() {
+  if (!currentWorkorder.value) return;
+  await transitionCommunityWorkorderApi(currentWorkorder.value.id, {
+    actionType: 'close',
+    disposeMethod: 'phone_visit',
+    disposeResult: '已完成回访与宣教提醒。',
+    note: '前端发起流转',
+    toStatus: 'closed',
+  });
+  message.success('工单已完成流转');
+  actionVisible.value = false;
+  await loadRows();
+}
 </script>
 
 <template>
@@ -248,6 +269,7 @@ onMounted(() => {
                   <p class="info-label">状态流转</p>
                   <p class="info-text">{{ getStatusLabel(item.status) }}</p>
                   <p class="info-subtext">当前责任人：{{ item.assignee }}</p>
+                  <Button type="primary" size="small" @click="openTransition(item)">完成流转</Button>
                 </div>
               </Col>
               <Col :lg="8" :span="24">
@@ -269,6 +291,10 @@ onMounted(() => {
       </List>
       <Empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE" description="当前条件下暂无工单" />
     </Card>
+
+    <Modal v-model:open="actionVisible" title="确认工单流转" ok-text="完成" cancel-text="关闭" @ok="completeWorkorder">
+      <p>将把工单“{{ currentWorkorder?.title }}”流转为完成/归档状态，并写入处置结果。</p>
+    </Modal>
   </div>
 </template>
 
