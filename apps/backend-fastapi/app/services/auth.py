@@ -77,11 +77,20 @@ def authenticate_user(username: str, password: str) -> LoginResponse:
     )
     return LoginResponse(
         access_token=token,
+        refresh_token=f"refresh-{matched_user.user_id}",
         expires_in=expires_at,
         user_id=matched_user.user_id,
         username=matched_user.username,
         display_name=matched_user.display_name,
         roles=matched_user.roles,
+    )
+
+
+def refresh_user_token(user: UserProfile) -> tuple[str, int]:
+    return create_access_token(
+        user_id=user.user_id,
+        username=user.username,
+        roles=[role.value for role in user.roles],
     )
 
 
@@ -97,4 +106,3 @@ def get_demo_user_by_id(user_id: str) -> UserProfile | None:
         roles=matched_user.roles,
         permissions=matched_user.permissions,
     )
-
