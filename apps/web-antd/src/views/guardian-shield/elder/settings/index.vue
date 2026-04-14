@@ -3,7 +3,10 @@ import { onMounted, reactive, ref } from 'vue';
 
 import { Button, Card, Form, Select, Switch, message } from 'ant-design-vue';
 
-import { getAccessibilitySettingsApi, updateAccessibilitySettingsApi } from '#/api';
+import {
+  getAccessibilitySettingsApi,
+  updateAccessibilitySettingsApi,
+} from '#/api';
 
 defineOptions({ name: 'ElderSettings' });
 
@@ -45,7 +48,9 @@ onMounted(() => {
     <Card class="settings-card" :bordered="false" :loading="loading">
       <p class="eyebrow">老年端 / 适老设置</p>
       <h1>适老设置</h1>
-      <p class="description">当前已接真实配置接口，可保存大字号、高对比度和语音辅助偏好。</p>
+      <p class="description">
+        当前已接真实配置接口，可保存大字号、高对比度和语音辅助偏好。
+      </p>
       <Form layout="vertical">
         <Form.Item label="字号">
           <Select
@@ -73,17 +78,56 @@ onMounted(() => {
             ]"
           />
         </Form.Item>
-        <Button type="primary" :loading="saving" @click="saveSettings">保存设置</Button>
+        <Button type="primary" :loading="saving" @click="saveSettings"
+          >保存设置</Button
+        >
       </Form>
     </Card>
   </div>
 </template>
 
 <style scoped>
-.elder-settings-page { min-height: 100%; padding: 24px; background: linear-gradient(180deg, #faf7ff 0%, #f3edff 100%); }
-.settings-card { max-width: 760px; border: 1px solid rgba(124,58,237,.14); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: 0 16px 36px rgba(91,33,182,.08); }
-.eyebrow { margin: 0 0 12px; color: #7c3aed; font-size: 13px; font-weight: 700; letter-spacing: .08em; }
-h1 { margin: 0; color: #5b21b6; font-size: 34px; }
-.description { margin: 16px 0 24px; color: #6b21a8; line-height: 1.8; }
-@media (max-width: 768px) { .elder-settings-page { padding: 16px; } h1 { font-size: 28px; } }
+.elder-settings-page {
+  min-height: 100%;
+  padding: 24px;
+  background: linear-gradient(180deg, #faf7ff 0%, #f3edff 100%);
+}
+
+.settings-card {
+  max-width: 760px;
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(124 58 237 / 14%);
+  border-radius: 24px;
+  box-shadow: 0 16px 36px rgb(91 33 182 / 8%);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #7c3aed;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  margin: 0;
+  font-size: 34px;
+  color: #5b21b6;
+}
+
+.description {
+  margin: 16px 0 24px;
+  line-height: 1.8;
+  color: #6b21a8;
+}
+
+@media (max-width: 768px) {
+  .elder-settings-page {
+    padding: 16px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+}
 </style>

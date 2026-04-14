@@ -1,9 +1,25 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, Empty, Input, List, Modal, Row, Select, Space, Tag, message } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  Empty,
+  Input,
+  List,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Tag,
+  message,
+} from 'ant-design-vue';
 
-import { getCommunityWorkorderListApi, transitionCommunityWorkorderApi } from '#/api';
+import {
+  getCommunityWorkorderListApi,
+  transitionCommunityWorkorderApi,
+} from '#/api';
 import type { CommunityWorkorderListItem } from '#/api';
 
 defineOptions({ name: 'CommunityWorkorders' });
@@ -22,22 +38,29 @@ const filters = reactive({
   status: undefined as string | undefined,
 });
 
-const priorityMap: Record<CommunityWorkorderListItem['priority'], { color: string; text: string }> = {
+const priorityMap: Record<
+  CommunityWorkorderListItem['priority'],
+  { color: string; text: string }
+> = {
   high: { color: 'red', text: '高优先级' },
   medium: { color: 'orange', text: '中优先级' },
   low: { color: 'green', text: '低优先级' },
 };
 
-const riskMap: Record<CommunityWorkorderListItem['riskLevel'], { color: string; text: string }> = {
+const riskMap: Record<
+  CommunityWorkorderListItem['riskLevel'],
+  { color: string; text: string }
+> = {
   high: { color: 'red', text: '高风险' },
   medium: { color: 'orange', text: '中风险' },
   low: { color: 'green', text: '低风险' },
 };
 
-const sourceTextMap: Record<CommunityWorkorderListItem['sourceType'], string> = {
-  call: '通话识别',
-  sms: '短信识别',
-};
+const sourceTextMap: Record<CommunityWorkorderListItem['sourceType'], string> =
+  {
+    call: '通话识别',
+    sms: '短信识别',
+  };
 
 const statusTextMap: Record<CommunityWorkorderListItem['status'], string> = {
   archived: '已归档',
@@ -96,7 +119,9 @@ function getNotes(item: CommunityWorkorderListItem) {
   return [
     `${item.createdAt} 创建工单`,
     item.latestProgress,
-    ...noteMap[item.status].map((note) => `${getStatusLabel(item.status)}：${note}`),
+    ...noteMap[item.status].map(
+      (note) => `${getStatusLabel(item.status)}：${note}`,
+    ),
   ];
 }
 
@@ -168,7 +193,8 @@ async function completeWorkorder() {
         <p class="eyebrow">社区端 / 协同处置</p>
         <h1>风险工单</h1>
         <p class="description">
-          当前页面已经接入真实 mock 工单数据，支持工单详情、状态流转展示和备注留痕，便于社区完整追踪每次处置。
+          当前页面已经接入真实 mock
+          工单数据，支持工单详情、状态流转展示和备注留痕，便于社区完整追踪每次处置。
         </p>
       </div>
       <div class="hero-note">
@@ -178,7 +204,13 @@ async function completeWorkorder() {
     </section>
 
     <Row :gutter="[16, 16]" class="summary-row">
-      <Col v-for="item in summaryCards" :key="item.title" :lg="6" :md="12" :span="24">
+      <Col
+        v-for="item in summaryCards"
+        :key="item.title"
+        :lg="6"
+        :md="12"
+        :span="24"
+      >
         <Card class="summary-card" :bordered="false">
           <p class="summary-title">{{ item.title }}</p>
           <strong class="summary-value">{{ item.value }}</strong>
@@ -242,7 +274,8 @@ async function completeWorkorder() {
               <div>
                 <h3>{{ item.title }}</h3>
                 <p class="subline">
-                  {{ item.id }} · {{ item.elderName }} · {{ item.assignee }} · {{ item.createdAt }}
+                  {{ item.id }} · {{ item.elderName }} · {{ item.assignee }} ·
+                  {{ item.createdAt }}
                 </p>
               </div>
               <Space wrap>
@@ -269,14 +302,21 @@ async function completeWorkorder() {
                   <p class="info-label">状态流转</p>
                   <p class="info-text">{{ getStatusLabel(item.status) }}</p>
                   <p class="info-subtext">当前责任人：{{ item.assignee }}</p>
-                  <Button type="primary" size="small" @click="openTransition(item)">完成流转</Button>
+                  <Button
+                    type="primary"
+                    size="small"
+                    @click="openTransition(item)"
+                    >完成流转</Button
+                  >
                 </div>
               </Col>
               <Col :lg="8" :span="24">
                 <div class="info-card">
                   <p class="info-label">备注记录</p>
                   <ul class="note-list">
-                    <li v-for="note in getNotes(item)" :key="note">{{ note }}</li>
+                    <li v-for="note in getNotes(item)" :key="note">
+                      {{ note }}
+                    </li>
                   </ul>
                 </div>
               </Col>
@@ -289,11 +329,25 @@ async function completeWorkorder() {
           </List.Item>
         </template>
       </List>
-      <Empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE" description="当前条件下暂无工单" />
+      <Empty
+        v-else
+        :image="Empty.PRESENTED_IMAGE_SIMPLE"
+        description="当前条件下暂无工单"
+      />
     </Card>
 
-    <Modal v-model:open="actionVisible" title="确认工单流转" ok-text="完成" cancel-text="关闭" @ok="completeWorkorder">
-      <p>将把工单“{{ currentWorkorder?.title }}”流转为完成/归档状态，并写入处置结果。</p>
+    <Modal
+      v-model:open="actionVisible"
+      title="确认工单流转"
+      ok-text="完成"
+      cancel-text="关闭"
+      @ok="completeWorkorder"
+    >
+      <p>
+        将把工单“{{
+          currentWorkorder?.title
+        }}”流转为完成/归档状态，并写入处置结果。
+      </p>
     </Modal>
   </div>
 </template>
@@ -303,7 +357,7 @@ async function completeWorkorder() {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(194, 65, 12, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgb(194 65 12 / 14%), transparent 28%),
     linear-gradient(180deg, #fffaf7 0%, #fff1e8 100%);
 }
 
@@ -312,46 +366,46 @@ async function completeWorkorder() {
 .filter-card,
 .list-card,
 .info-card {
-  border: 1px solid rgba(194, 65, 12, 0.14);
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(194 65 12 / 14%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 36px rgba(124, 45, 18, 0.08);
+  box-shadow: 0 16px 36px rgb(124 45 18 / 8%);
 }
 
 .hero-panel {
   display: flex;
-  justify-content: space-between;
   gap: 20px;
+  justify-content: space-between;
   padding: 28px 30px;
 }
 
 .eyebrow {
   margin: 0 0 12px;
-  color: #c2410c;
   font-size: 13px;
   font-weight: 700;
+  color: #c2410c;
   letter-spacing: 0.08em;
 }
 
 h1 {
   margin: 0;
-  color: #7c2d12;
   font-size: 34px;
+  color: #7c2d12;
 }
 
 .description {
   margin: 16px 0 0;
-  color: #7c4a2d;
   line-height: 1.8;
+  color: #7c4a2d;
 }
 
 .hero-note {
   max-width: 300px;
   padding: 18px;
-  border-radius: 20px;
-  background: #fff7ed;
-  color: #9a3412;
   line-height: 1.8;
+  color: #9a3412;
+  background: #fff7ed;
+  border-radius: 20px;
 }
 
 .summary-row,
@@ -372,14 +426,14 @@ h1 {
 .summary-value {
   display: block;
   margin-top: 10px;
-  color: #7c2d12;
   font-size: 30px;
+  color: #7c2d12;
 }
 
 .summary-desc {
   margin-top: 12px;
-  color: #7c4a2d;
   line-height: 1.7;
+  color: #7c4a2d;
 }
 
 .workorder-item {
@@ -388,15 +442,15 @@ h1 {
 
 .workorder-header {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
+  justify-content: space-between;
   margin-bottom: 16px;
 }
 
 .workorder-header h3 {
   margin: 0;
-  color: #7c2d12;
   font-size: 24px;
+  color: #7c2d12;
 }
 
 .subline {
@@ -411,22 +465,22 @@ h1 {
 
 .info-label {
   margin: 0;
-  color: #c2410c;
   font-weight: 700;
+  color: #c2410c;
 }
 
 .info-text,
 .info-subtext {
   margin: 12px 0 0;
-  color: #7c4a2d;
   line-height: 1.8;
+  color: #7c4a2d;
 }
 
 .note-list {
-  margin: 12px 0 0;
   padding-left: 20px;
-  color: #7c4a2d;
+  margin: 12px 0 0;
   line-height: 1.8;
+  color: #7c4a2d;
 }
 
 .action-card {
@@ -434,10 +488,10 @@ h1 {
 }
 
 .follow-up {
-  margin-top: 16px;
   padding: 18px;
-  border-radius: 18px;
+  margin-top: 16px;
   background: #fffbeb;
+  border-radius: 18px;
 }
 
 @media (max-width: 768px) {

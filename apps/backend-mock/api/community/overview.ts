@@ -1,7 +1,11 @@
 import { eventHandler } from 'h3';
 
 import { verifyAccessToken } from '~/utils/jwt-utils';
-import { sleep, unAuthorizedResponse, useResponseSuccess } from '~/utils/response';
+import {
+  sleep,
+  unAuthorizedResponse,
+  useResponseSuccess,
+} from '~/utils/response';
 
 const MOCK_COMMUNITY_OVERVIEW = {
   stats: [

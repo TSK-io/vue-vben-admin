@@ -77,6 +77,8 @@ export interface FamilyNotificationListParams {
   page?: number;
   pageSize?: number;
   readStatus?: string;
+  riskLevel?: string;
+  status?: string;
 }
 
 export async function getFamilyOverviewApi() {
@@ -85,16 +87,35 @@ export async function getFamilyOverviewApi() {
     getRiskAlertListApi({ page: 1, pageSize: 50 }),
   ]);
   const riskDistribution = [
-    { count: alerts.items.filter((item) => item.riskLevel === 'high').length, label: '高风险' },
-    { count: alerts.items.filter((item) => item.riskLevel === 'medium').length, label: '中风险' },
-    { count: alerts.items.filter((item) => item.riskLevel === 'low').length, label: '低风险' },
+    {
+      count: alerts.items.filter(
+        (item: { riskLevel: string }) => item.riskLevel === 'high',
+      ).length,
+      label: '高风险',
+    },
+    {
+      count: alerts.items.filter(
+        (item: { riskLevel: string }) => item.riskLevel === 'medium',
+      ).length,
+      label: '中风险',
+    },
+    {
+      count: alerts.items.filter(
+        (item: { riskLevel: string }) => item.riskLevel === 'low',
+      ).length,
+      label: '低风险',
+    },
   ];
+  const highRiskCount =
+    riskDistribution.find((item) => item.label === '高风险')?.count ?? 0;
   return {
-    alertTrend: alerts.items.slice(0, 7).map((item) => ({
-      date: item.occurredAt.slice(5, 10),
-      total: 1,
-    })),
-    focusList: alerts.items.slice(0, 5).map((item) => ({
+    alertTrend: alerts.items
+      .slice(0, 7)
+      .map((item: { occurredAt: string }) => ({
+        date: item.occurredAt.slice(5, 10),
+        total: 1,
+      })),
+    focusList: alerts.items.slice(0, 5).map((item: FamilyAlertItem | any) => ({
       currentStatus: item.status === 'pending' ? '待跟进' : '已处理',
       elderName: item.elderName,
       id: item.id,
@@ -104,10 +125,30 @@ export async function getFamilyOverviewApi() {
     })),
     riskDistribution,
     stats: [
-      { description: '已绑定老人', key: 'bindings', trend: '监护关系已接真实绑定数据', value: `${bindings.length}` },
-      { description: '风险事件', key: 'alerts', trend: '来自真实风险告警接口', value: `${alerts.total}` },
-      { description: '高风险', key: 'high', trend: '优先联系老人并核实', value: `${riskDistribution[0].count}` },
-      { description: '待跟进', key: 'pending', trend: '继续查看通知与提醒发送', value: `${alerts.items.filter((item) => item.status === 'pending').length}` },
+      {
+        description: '已绑定老人',
+        key: 'bindings',
+        trend: '监护关系已接真实绑定数据',
+        value: `${bindings.length}`,
+      },
+      {
+        description: '风险事件',
+        key: 'alerts',
+        trend: '来自真实风险告警接口',
+        value: `${alerts.total}`,
+      },
+      {
+        description: '高风险',
+        key: 'high',
+        trend: '优先联系老人并核实',
+        value: `${highRiskCount}`,
+      },
+      {
+        description: '待跟进',
+        key: 'pending',
+        trend: '继续查看通知与提醒发送',
+        value: `${alerts.items.filter((item: { status: string }) => item.status === 'pending').length}`,
+      },
     ],
   } satisfies FamilyOverviewData;
 }
@@ -121,7 +162,7 @@ export async function getFamilyAlertListApi(params: FamilyAlertListParams) {
   return {
     items: alerts.items
       .map(
-        (item): FamilyAlertItem => ({
+        (item: (typeof alerts.items)[number]): FamilyAlertItem => ({
           advice: item.advice,
           contactSuggestion: item.contactSuggestion,
           elderName: item.elderName,
@@ -138,12 +179,17 @@ export async function getFamilyAlertListApi(params: FamilyAlertListParams) {
           title: item.title,
         }),
       )
-      .filter((item) => !params.status || item.status === params.status),
+      .filter(
+        (item: FamilyAlertItem) =>
+          !params.status || item.status === params.status,
+      ),
     total: alerts.total,
   };
 }
 
-export async function getFamilyNotificationListApi(params: FamilyNotificationListParams) {
+export async function getFamilyNotificationListApi(
+  params: FamilyNotificationListParams,
+) {
   const result = await requestClient.get<any>('/notifications', {
     params: {
       is_read: params.readStatus ? params.readStatus === 'read' : undefined,
@@ -153,29 +199,52 @@ export async function getFamilyNotificationListApi(params: FamilyNotificationLis
   });
 
   return {
-    items: result.items.map(
-      (item: any): FamilyNotificationItem => ({
-        channel: item.channel === 'voice' ? 'voice' : item.channel === 'sms' ? 'sms' : 'app',
-        elderName: item.alert_title.includes('周叔叔') ? '周叔叔' : '李阿姨',
-        id: item.id,
-        notifiedAt: item.sent_at,
-        operatorName: item.receiver_name,
-        readStatus: item.is_read ? 'read' : 'unread',
-        relatedAlertTitle: item.alert_title,
-        result: item.status === 'failed' ? 'failed' : item.status === 'pending' ? 'processing' : 'delivered',
-        riskLevel: item.alert_title.includes('高风险') ? 'high' : 'medium',
-        status: item.is_read ? 'closed' : 'pending',
-      }),
-    ),
+    items: result.items
+      .map(
+        (item: any): FamilyNotificationItem => ({
+          channel:
+            item.channel === 'voice'
+              ? 'voice'
+              : item.channel === 'sms'
+                ? 'sms'
+                : 'app',
+          elderName: item.alert_title.includes('周叔叔') ? '周叔叔' : '李阿姨',
+          id: item.id,
+          notifiedAt: item.sent_at,
+          operatorName: item.receiver_name,
+          readStatus: item.is_read ? 'read' : 'unread',
+          relatedAlertTitle: item.alert_title,
+          result:
+            item.status === 'failed'
+              ? 'failed'
+              : item.status === 'pending'
+                ? 'processing'
+                : 'delivered',
+          riskLevel: item.alert_title.includes('高风险') ? 'high' : 'medium',
+          status: item.is_read ? 'closed' : 'pending',
+        }),
+      )
+      .filter(
+        (item: FamilyNotificationItem) =>
+          !params.riskLevel || item.riskLevel === params.riskLevel,
+      )
+      .filter(
+        (item: FamilyNotificationItem) =>
+          !params.status || item.status === params.status,
+      ),
     total: result.pagination.total,
   };
 }
 
 export async function markFamilyNotificationReadApi(notificationId: string) {
-  return requestClient.patch(`/notifications/${notificationId}/read`);
+  return (requestClient as any).patch(`/notifications/${notificationId}/read`);
 }
 
-export async function sendFamilyReminderApi(payload: { channel: string; content: string; elderUserId: string }) {
+export async function sendFamilyReminderApi(payload: {
+  channel: string;
+  content: string;
+  elderUserId: string;
+}) {
   return requestClient.post('/family/reminders', {
     channel: payload.channel,
     content: payload.content,

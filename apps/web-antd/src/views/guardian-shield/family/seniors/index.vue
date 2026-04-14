@@ -1,7 +1,16 @@
 <script lang="ts" setup>
 import { computed, reactive } from 'vue';
 
-import { Button, Card, Col, Input, Row, Select, Space, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  Row,
+  Select,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 
 defineOptions({ name: 'FamilySeniors' });
 
@@ -160,53 +169,53 @@ function getRiskMeta(level: SeniorItem['riskLevel']) {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(220, 38, 38, 0.1), transparent 28%),
+    radial-gradient(circle at top right, rgb(220 38 38 / 10%), transparent 28%),
     linear-gradient(180deg, #fff8f8 0%, #fff1f2 100%);
 }
 
 .hero-panel,
 .filter-card,
 .senior-card {
-  border: 1px solid rgba(244, 63, 94, 0.14);
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(244 63 94 / 14%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 36px rgba(136, 19, 55, 0.08);
+  box-shadow: 0 16px 36px rgb(136 19 55 / 8%);
 }
 
 .hero-panel {
   display: flex;
-  justify-content: space-between;
   gap: 20px;
+  justify-content: space-between;
   padding: 28px 30px;
 }
 
 .eyebrow {
   margin: 0 0 12px;
-  color: #e11d48;
   font-size: 13px;
   font-weight: 700;
+  color: #e11d48;
   letter-spacing: 0.08em;
 }
 
 h1 {
   margin: 0;
-  color: #881337;
   font-size: 34px;
+  color: #881337;
 }
 
 .description {
   margin: 16px 0 0;
-  color: #9f1239;
   line-height: 1.8;
+  color: #9f1239;
 }
 
 .hero-note {
   max-width: 280px;
   padding: 18px;
-  border-radius: 20px;
-  background: #fff1f2;
-  color: #9f1239;
   line-height: 1.8;
+  color: #9f1239;
+  background: #fff1f2;
+  border-radius: 20px;
 }
 
 .filter-card,
@@ -216,8 +225,8 @@ h1 {
 
 .card-head {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
+  justify-content: space-between;
 }
 
 .card-head h3 {
@@ -232,10 +241,10 @@ h1 {
 }
 
 .info-block {
-  margin-top: 16px;
   padding: 18px;
-  border-radius: 18px;
+  margin-top: 16px;
   background: #fff7f8;
+  border-radius: 18px;
 }
 
 .warning {
@@ -244,15 +253,15 @@ h1 {
 
 .label {
   margin: 0;
-  color: #be123c;
   font-weight: 700;
+  color: #be123c;
 }
 
 .value {
   margin: 10px 0 0;
-  color: #881337;
   font-size: 17px;
   line-height: 1.8;
+  color: #881337;
 }
 
 @media (max-width: 768px) {

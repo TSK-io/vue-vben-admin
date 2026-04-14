@@ -71,8 +71,12 @@ export interface CommunitySeniorItem {
 
 export async function getCommunityOverviewApi() {
   const [elders, workorders] = await Promise.all([
-    requestClient.get<any>('/community/elders', { params: { page: 1, page_size: 20 } }),
-    requestClient.get<any>('/community/workorders', { params: { page: 1, page_size: 20 } }),
+    requestClient.get<any>('/community/elders', {
+      params: { page: 1, page_size: 20 },
+    }),
+    requestClient.get<any>('/community/workorders', {
+      params: { page: 1, page_size: 20 },
+    }),
   ]);
   return {
     focusSeniors: elders.items.slice(0, 5).map((item: any) => ({
@@ -89,10 +93,30 @@ export async function getCommunityOverviewApi() {
       visits: item.alert_count_7d,
     })),
     stats: [
-      { description: '重点老人', key: 'elders', trend: '来自真实社区老人接口', value: `${elders.pagination.total}` },
-      { description: '工单总数', key: 'workorders', trend: '可继续追踪流转状态', value: `${workorders.pagination.total}` },
-      { description: '高风险对象', key: 'highRisk', trend: '优先电话回访', value: `${elders.items.filter((item: any) => item.risk_level === 'high').length}` },
-      { description: '处理中工单', key: 'processing', trend: '继续补录处置结果', value: `${workorders.items.filter((item: any) => item.status === 'processing').length}` },
+      {
+        description: '重点老人',
+        key: 'elders',
+        trend: '来自真实社区老人接口',
+        value: `${elders.pagination.total}`,
+      },
+      {
+        description: '工单总数',
+        key: 'workorders',
+        trend: '可继续追踪流转状态',
+        value: `${workorders.pagination.total}`,
+      },
+      {
+        description: '高风险对象',
+        key: 'highRisk',
+        trend: '优先电话回访',
+        value: `${elders.items.filter((item: any) => item.risk_level === 'high').length}`,
+      },
+      {
+        description: '处理中工单',
+        key: 'processing',
+        trend: '继续补录处置结果',
+        value: `${workorders.items.filter((item: any) => item.status === 'processing').length}`,
+      },
     ],
     todoWorkorders: workorders.items.slice(0, 5).map((item: any) => ({
       assignee: item.assigned_to_name || '待分配',
@@ -105,7 +129,12 @@ export async function getCommunityOverviewApi() {
   } satisfies CommunityOverviewData;
 }
 
-export async function getCommunitySeniorListApi(params: { keyword?: string; page?: number; pageSize?: number; riskLevel?: string }) {
+export async function getCommunitySeniorListApi(params: {
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+  riskLevel?: string;
+}) {
   const result = await requestClient.get<any>('/community/elders', {
     params: {
       keyword: params.keyword,
@@ -129,7 +158,9 @@ export async function getCommunitySeniorListApi(params: { keyword?: string; page
   };
 }
 
-export async function getCommunityWorkorderListApi(params: CommunityWorkorderListParams) {
+export async function getCommunityWorkorderListApi(
+  params: CommunityWorkorderListParams,
+) {
   const result = await requestClient.get<any>('/community/workorders', {
     params: {
       page: params.page,
@@ -161,7 +192,13 @@ export async function getCommunityWorkorderListApi(params: CommunityWorkorderLis
           title: item.title,
         }),
       )
-      .filter((item) => !params.keyword || `${item.id} ${item.title} ${item.elderName} ${item.assignee}`.includes(params.keyword)),
+      .filter(
+        (item: CommunityWorkorderListItem) =>
+          !params.keyword ||
+          `${item.id} ${item.title} ${item.elderName} ${item.assignee}`.includes(
+            params.keyword,
+          ),
+      ),
     total: result.pagination.total,
   };
 }

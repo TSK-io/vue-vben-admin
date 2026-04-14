@@ -1,7 +1,16 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 
-import { Card, Col, Empty, List, Row, Skeleton, Space, Tag } from 'ant-design-vue';
+import {
+  Card,
+  Col,
+  Empty,
+  List,
+  Row,
+  Skeleton,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 
 import { getFamilyOverviewApi } from '#/api';
 import type {
@@ -28,9 +37,15 @@ const riskTextMap: Record<FamilyOverviewFocusItem['riskLevel'], string> = {
   medium: '中风险',
 };
 
-const summaryCards = computed<FamilyOverviewStat[]>(() => overview.value?.stats ?? []);
-const focusList = computed<FamilyOverviewFocusItem[]>(() => overview.value?.focusList ?? []);
-const alertTrend = computed<FamilyOverviewAlertTrendItem[]>(() => overview.value?.alertTrend ?? []);
+const summaryCards = computed<FamilyOverviewStat[]>(
+  () => overview.value?.stats ?? [],
+);
+const focusList = computed<FamilyOverviewFocusItem[]>(
+  () => overview.value?.focusList ?? [],
+);
+const alertTrend = computed<FamilyOverviewAlertTrendItem[]>(
+  () => overview.value?.alertTrend ?? [],
+);
 const riskDistribution = computed<FamilyOverviewRiskDistributionItem[]>(
   () => overview.value?.riskDistribution ?? [],
 );
@@ -83,18 +98,27 @@ onMounted(() => {
         <p class="eyebrow">子女端 / 核心闭环</p>
         <h1>监护总览</h1>
         <p class="description">
-          首页现在会聚合已绑定老人、近 7 日风险趋势、重点关注对象和待跟进事件，方便家属进入系统后先判断今天最需要处理什么。
+          首页现在会聚合已绑定老人、近 7
+          日风险趋势、重点关注对象和待跟进事件，方便家属进入系统后先判断今天最需要处理什么。
         </p>
       </div>
       <div class="hero-note">
         <strong>今日建议</strong>
-        <span>优先联系高风险且未确认处置的老人，再查看通知记录和风险详情。</span>
+        <span
+          >优先联系高风险且未确认处置的老人，再查看通知记录和风险详情。</span
+        >
       </div>
     </section>
 
     <Skeleton active :loading="loading" :paragraph="{ rows: 8 }">
       <Row :gutter="[16, 16]" class="summary-row">
-        <Col v-for="item in summaryCards" :key="item.key" :lg="6" :md="12" :span="24">
+        <Col
+          v-for="item in summaryCards"
+          :key="item.key"
+          :lg="6"
+          :md="12"
+          :span="24"
+        >
           <Card class="summary-card" :bordered="false">
             <p class="summary-title">{{ item.description }}</p>
             <strong class="summary-value">{{ item.value }}</strong>
@@ -119,7 +143,9 @@ onMounted(() => {
                       <p>{{ item.id }} · 最近告警 {{ item.lastAlertAt }}</p>
                     </div>
                     <Space wrap>
-                      <Tag :color="getRiskColor(item.riskLevel)">{{ getRiskLabel(item.riskLevel) }}</Tag>
+                      <Tag :color="getRiskColor(item.riskLevel)">{{
+                        getRiskLabel(item.riskLevel)
+                      }}</Tag>
                       <Tag>{{ item.currentStatus }}</Tag>
                     </Space>
                   </div>
@@ -134,22 +160,40 @@ onMounted(() => {
         <Col :lg="10" :span="24">
           <Card class="panel-card" :bordered="false" title="近 7 日风险趋势">
             <div class="chart-list">
-              <div v-for="item in alertTrend" :key="item.date" class="chart-row">
+              <div
+                v-for="item in alertTrend"
+                :key="item.date"
+                class="chart-row"
+              >
                 <span class="chart-label">{{ item.date }}</span>
                 <div class="chart-track">
-                  <div class="chart-bar" :style="getTrendBarStyle(item.total)" />
+                  <div
+                    class="chart-bar"
+                    :style="getTrendBarStyle(item.total)"
+                  />
                 </div>
                 <strong class="chart-value">{{ item.total }}</strong>
               </div>
             </div>
           </Card>
 
-          <Card class="panel-card distribution-card" :bordered="false" title="风险级别分布">
+          <Card
+            class="panel-card distribution-card"
+            :bordered="false"
+            title="风险级别分布"
+          >
             <div class="distribution-list">
-              <div v-for="item in riskDistribution" :key="item.label" class="distribution-row">
+              <div
+                v-for="item in riskDistribution"
+                :key="item.label"
+                class="distribution-row"
+              >
                 <span class="distribution-label">{{ item.label }}</span>
                 <div class="distribution-track">
-                  <div class="distribution-bar" :style="getDistributionBarStyle(item.count)" />
+                  <div
+                    class="distribution-bar"
+                    :style="getDistributionBarStyle(item.count)"
+                  />
                 </div>
                 <strong class="distribution-value">{{ item.count }}</strong>
               </div>
@@ -166,54 +210,54 @@ onMounted(() => {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgb(37 99 235 / 14%), transparent 28%),
     linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
 }
 
 .hero-panel,
 .summary-card,
 .panel-card {
-  border: 1px solid rgba(191, 219, 254, 0.9);
+  background: rgb(255 255 255 / 94%);
+  border: 1px solid rgb(191 219 254 / 90%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 38px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 18px 38px rgb(37 99 235 / 10%);
 }
 
 .hero-panel {
   display: flex;
-  justify-content: space-between;
   gap: 24px;
+  justify-content: space-between;
   padding: 28px;
   margin-bottom: 16px;
 }
 
 .eyebrow {
   margin: 0 0 10px;
-  color: #2563eb;
   font-size: 13px;
   font-weight: 700;
+  color: #2563eb;
   letter-spacing: 0.08em;
 }
 
 h1 {
   margin: 0;
-  color: #102a43;
   font-size: 30px;
+  color: #102a43;
 }
 
 .description,
 .summary-desc,
 .focus-item p {
-  color: #486581;
   line-height: 1.75;
+  color: #486581;
 }
 
 .hero-note {
   max-width: 320px;
   padding: 18px 20px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
   color: #1d4ed8;
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  border-radius: 20px;
 }
 
 .hero-note strong,
@@ -236,8 +280,8 @@ h1 {
 .summary-title {
   min-height: 46px;
   margin: 0;
-  color: #334e68;
   line-height: 1.6;
+  color: #334e68;
 }
 
 .summary-value {
@@ -259,8 +303,8 @@ h1 {
 
 .focus-header {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
+  justify-content: space-between;
 }
 
 .focus-header h3 {
@@ -289,16 +333,16 @@ h1 {
 
 .chart-label,
 .distribution-label {
-  color: #334e68;
   font-weight: 600;
+  color: #334e68;
 }
 
 .chart-track,
 .distribution-track {
-  overflow: hidden;
   height: 12px;
-  border-radius: 999px;
+  overflow: hidden;
   background: #dbeafe;
+  border-radius: 999px;
 }
 
 .chart-bar,

@@ -3,7 +3,16 @@ import type { TableColumnsType } from 'ant-design-vue';
 
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, Row, Select, Space, Table, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+} from 'ant-design-vue';
 
 import { getFamilyNotificationListApi } from '#/api';
 import type { FamilyNotificationItem } from '#/api';
@@ -22,7 +31,10 @@ const filters = reactive({
   status: undefined as string | undefined,
 });
 
-const riskMap: Record<FamilyNotificationItem['riskLevel'], { color: string; text: string }> = {
+const riskMap: Record<
+  FamilyNotificationItem['riskLevel'],
+  { color: string; text: string }
+> = {
   high: { color: 'red', text: '高风险' },
   medium: { color: 'orange', text: '中风险' },
   low: { color: 'green', text: '低风险' },
@@ -71,7 +83,11 @@ const summaryCards = computed(() => [
 ]);
 
 const columns: TableColumnsType<FamilyNotificationItem> = [
-  { dataIndex: 'relatedAlertTitle', key: 'relatedAlertTitle', title: '关联事件' },
+  {
+    dataIndex: 'relatedAlertTitle',
+    key: 'relatedAlertTitle',
+    title: '关联事件',
+  },
   { dataIndex: 'elderName', key: 'elderName', title: '老人' },
   { dataIndex: 'riskLevel', key: 'riskLevel', title: '风险等级' },
   { dataIndex: 'channel', key: 'channel', title: '通知渠道' },
@@ -149,13 +165,20 @@ onMounted(() => {
         <p class="eyebrow">子女端 / 通知中心</p>
         <h1>通知记录</h1>
         <p class="description">
-          当前页面已经接入真实 mock 通知记录，可查看通知渠道、送达结果、已读状态和后续跟进状态。
+          当前页面已经接入真实 mock
+          通知记录，可查看通知渠道、送达结果、已读状态和后续跟进状态。
         </p>
       </div>
     </section>
 
     <Row :gutter="[16, 16]" class="summary-row">
-      <Col v-for="item in summaryCards" :key="item.title" :lg="6" :md="12" :span="24">
+      <Col
+        v-for="item in summaryCards"
+        :key="item.title"
+        :lg="6"
+        :md="12"
+        :span="24"
+      >
         <Card class="summary-card" :bordered="false">
           <p class="summary-title">{{ item.title }}</p>
           <strong class="summary-value">{{ item.value }}</strong>
@@ -226,7 +249,9 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'riskLevel'">
             <Space wrap>
-              <Tag :color="getRiskMeta(record.riskLevel).color">{{ getRiskMeta(record.riskLevel).text }}</Tag>
+              <Tag :color="getRiskMeta(record.riskLevel).color">{{
+                getRiskMeta(record.riskLevel).text
+              }}</Tag>
               <Tag>{{ getReadLabel(record.readStatus) }}</Tag>
             </Space>
           </template>
@@ -250,7 +275,11 @@ onMounted(() => {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(147, 51, 234, 0.12), transparent 28%),
+    radial-gradient(
+      circle at top right,
+      rgb(147 51 234 / 12%),
+      transparent 28%
+    ),
     linear-gradient(180deg, #fbf8ff 0%, #f5f3ff 100%);
 }
 
@@ -258,10 +287,10 @@ onMounted(() => {
 .summary-card,
 .filter-card,
 .table-card {
-  border: 1px solid rgba(147, 51, 234, 0.12);
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(147 51 234 / 12%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 36px rgba(88, 28, 135, 0.08);
+  box-shadow: 0 16px 36px rgb(88 28 135 / 8%);
 }
 
 .hero-panel {
@@ -270,9 +299,9 @@ onMounted(() => {
 
 .eyebrow {
   margin: 0 0 12px;
-  color: #7c3aed;
   font-size: 13px;
   font-weight: 700;
+  color: #7c3aed;
   letter-spacing: 0.08em;
 }
 
@@ -284,8 +313,8 @@ h1 {
 .description {
   max-width: 760px;
   margin-top: 16px;
-  color: #6b21a8;
   line-height: 1.8;
+  color: #6b21a8;
 }
 
 .summary-row,
@@ -302,14 +331,14 @@ h1 {
 .summary-value {
   display: block;
   margin-top: 10px;
-  color: #581c87;
   font-size: 30px;
+  color: #581c87;
 }
 
 .summary-desc {
   margin-top: 10px;
-  color: #6b21a8;
   line-height: 1.7;
+  color: #6b21a8;
 }
 
 .event-cell {
@@ -323,8 +352,8 @@ h1 {
 }
 
 .event-cell span {
-  color: #7e22ce;
   font-size: 13px;
+  color: #7e22ce;
 }
 
 @media (max-width: 768px) {

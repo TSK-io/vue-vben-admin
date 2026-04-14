@@ -5,7 +5,18 @@ import type { AdminUserListItem } from '#/api';
 
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, Empty, Input, Row, Select, Space, Table, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  Empty,
+  Input,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+} from 'ant-design-vue';
 
 import { getAdminUserListApi } from '#/api';
 
@@ -193,16 +204,25 @@ onMounted(() => {
         <p class="eyebrow">管理后台 / 第一阶段</p>
         <h1>用户管理</h1>
         <p class="description">
-          当前页面已经接入真实 mock 数据，可按角色、状态和关键词筛选账号，用于支撑第一阶段的账号、角色与权限联调。
+          当前页面已经接入真实 mock
+          数据，可按角色、状态和关键词筛选账号，用于支撑第一阶段的账号、角色与权限联调。
         </p>
       </div>
       <div class="hero-tip">
-        <span>本页下一步可继续接入新增用户、角色分配、绑定关系详情和审计记录。</span>
+        <span
+          >本页下一步可继续接入新增用户、角色分配、绑定关系详情和审计记录。</span
+        >
       </div>
     </section>
 
     <Row :gutter="[16, 16]" class="summary-row">
-      <Col v-for="item in summaryCards" :key="item.title" :lg="6" :md="12" :span="24">
+      <Col
+        v-for="item in summaryCards"
+        :key="item.title"
+        :lg="6"
+        :md="12"
+        :span="24"
+      >
         <Card class="summary-card" :bordered="false">
           <p class="summary-title">{{ item.title }}</p>
           <strong class="summary-value">{{ item.value }}</strong>
@@ -308,7 +328,7 @@ onMounted(() => {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgb(37 99 235 / 12%), transparent 28%),
     linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
 }
 
@@ -316,39 +336,39 @@ onMounted(() => {
 .filter-card,
 .table-card,
 .summary-card {
-  border: 1px solid rgba(59, 130, 246, 0.12);
+  background: rgb(255 255 255 / 94%);
+  border: 1px solid rgb(59 130 246 / 12%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 16px 40px rgb(15 23 42 / 6%);
 }
 
 .hero-panel {
   display: flex;
-  justify-content: space-between;
   gap: 24px;
+  justify-content: space-between;
   padding: 28px 30px;
 }
 
 .eyebrow {
   margin: 0 0 12px;
-  color: #2563eb;
   font-size: 13px;
   font-weight: 700;
+  color: #2563eb;
   letter-spacing: 0.08em;
 }
 
 h1 {
   margin: 0;
-  color: #0f172a;
   font-size: 32px;
+  color: #0f172a;
 }
 
 .description {
   max-width: 720px;
   margin: 16px 0 0;
-  color: #475569;
   font-size: 15px;
   line-height: 1.8;
+  color: #475569;
 }
 
 .hero-tip {
@@ -356,10 +376,10 @@ h1 {
   align-items: flex-start;
   max-width: 320px;
   padding: 16px 18px;
-  border-radius: 18px;
-  background: rgba(37, 99, 235, 0.08);
-  color: #1e3a8a;
   line-height: 1.7;
+  color: #1e3a8a;
+  background: rgb(37 99 235 / 8%);
+  border-radius: 18px;
 }
 
 .summary-row {
@@ -372,21 +392,21 @@ h1 {
 }
 
 .summary-title {
-  color: #64748b;
   font-size: 14px;
+  color: #64748b;
 }
 
 .summary-value {
   display: block;
   margin-top: 10px;
-  color: #0f172a;
   font-size: 30px;
+  color: #0f172a;
 }
 
 .summary-desc {
   margin-top: 12px;
-  color: #475569;
   line-height: 1.7;
+  color: #475569;
 }
 
 .filter-card,
@@ -407,8 +427,8 @@ h1 {
 
 .user-cell span,
 .risk-cell span {
-  color: #64748b;
   font-size: 13px;
+  color: #64748b;
 }
 
 @media (max-width: 768px) {

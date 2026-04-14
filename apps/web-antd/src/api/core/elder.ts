@@ -10,7 +10,6 @@ export interface BindingItem {
   status: string;
   isEmergencyContact: boolean;
   authorizedAt: string;
-  familyUserId: string;
 }
 
 export interface AccessibilitySettings {
@@ -64,9 +63,13 @@ export async function createBindingApi(payload: {
 
 export async function updateBindingApi(
   bindingId: string,
-  payload: { isEmergencyContact?: boolean; relationshipType?: string; status?: string },
+  payload: {
+    isEmergencyContact?: boolean;
+    relationshipType?: string;
+    status?: string;
+  },
 ) {
-  return requestClient.patch(`/bindings/${bindingId}`, {
+  return (requestClient as any).patch(`/bindings/${bindingId}`, {
     is_emergency_contact: payload.isEmergencyContact,
     relationship_type: payload.relationshipType,
     status: payload.status,
@@ -101,7 +104,9 @@ export async function getAccessibilitySettingsApi() {
   } satisfies AccessibilitySettings;
 }
 
-export async function updateAccessibilitySettingsApi(payload: AccessibilitySettings) {
+export async function updateAccessibilitySettingsApi(
+  payload: AccessibilitySettings,
+) {
   return requestClient.put('/elder/accessibility-settings', {
     font_scale: payload.fontScale,
     high_contrast: payload.highContrast,

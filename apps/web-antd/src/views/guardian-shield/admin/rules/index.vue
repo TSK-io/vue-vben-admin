@@ -1,9 +1,25 @@
 <script lang="ts" setup>
 import { onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, Form, Input, Modal, Row, Select, Space, Tag, message } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Tag,
+  message,
+} from 'ant-design-vue';
 
-import { createAdminRuleApi, getAdminRuleListApi, updateAdminRuleApi } from '#/api';
+import {
+  createAdminRuleApi,
+  getAdminRuleListApi,
+  updateAdminRuleApi,
+} from '#/api';
 
 defineOptions({ name: 'AdminRules' });
 
@@ -28,7 +44,17 @@ async function loadRows() {
 
 function openCreate() {
   editingId.value = undefined;
-  Object.assign(formState, { code: '', name: '', scene: 'sms', riskLevel: 'high', priority: 100, status: 'enabled', triggerExpression: '', reasonTemplate: '', suggestionTemplate: '' });
+  Object.assign(formState, {
+    code: '',
+    name: '',
+    scene: 'sms',
+    riskLevel: 'high',
+    priority: 100,
+    status: 'enabled',
+    triggerExpression: '',
+    reasonTemplate: '',
+    suggestionTemplate: '',
+  });
   visible.value = true;
 }
 
@@ -79,7 +105,9 @@ onMounted(() => {
           <Space wrap>
             <Tag color="red">{{ item.riskLevel }}</Tag>
             <Tag color="blue">{{ item.scene }}</Tag>
-            <Tag :color="item.status === 'enabled' ? 'success' : 'default'">{{ item.status }}</Tag>
+            <Tag :color="item.status === 'enabled' ? 'success' : 'default'">{{
+              item.status
+            }}</Tag>
           </Space>
           <div class="block">
             <p class="label">触发表达式</p>
@@ -89,27 +117,118 @@ onMounted(() => {
       </Col>
     </Row>
 
-    <Modal v-model:open="visible" title="规则配置" ok-text="保存" cancel-text="关闭" @ok="submitRule">
+    <Modal
+      v-model:open="visible"
+      title="规则配置"
+      ok-text="保存"
+      cancel-text="关闭"
+      @ok="submitRule"
+    >
       <Form layout="vertical">
-        <Form.Item label="规则编码"><Input v-model:value="formState.code" /></Form.Item>
-        <Form.Item label="规则名称"><Input v-model:value="formState.name" /></Form.Item>
-        <Form.Item label="场景"><Select v-model:value="formState.scene" :options="[{ label: '短信', value: 'sms' }, { label: '通话', value: 'call' }]" /></Form.Item>
-        <Form.Item label="风险等级"><Select v-model:value="formState.riskLevel" :options="[{ label: '高', value: 'high' }, { label: '中', value: 'medium' }, { label: '低', value: 'low' }]" /></Form.Item>
-        <Form.Item label="触发表达式"><Input.TextArea v-model:value="formState.triggerExpression" :rows="3" /></Form.Item>
+        <Form.Item label="规则编码"
+          ><Input v-model:value="formState.code"
+        /></Form.Item>
+        <Form.Item label="规则名称"
+          ><Input v-model:value="formState.name"
+        /></Form.Item>
+        <Form.Item label="场景"
+          ><Select
+            v-model:value="formState.scene"
+            :options="[
+              { label: '短信', value: 'sms' },
+              { label: '通话', value: 'call' },
+            ]"
+        /></Form.Item>
+        <Form.Item label="风险等级"
+          ><Select
+            v-model:value="formState.riskLevel"
+            :options="[
+              { label: '高', value: 'high' },
+              { label: '中', value: 'medium' },
+              { label: '低', value: 'low' },
+            ]"
+        /></Form.Item>
+        <Form.Item label="触发表达式"
+          ><Input.TextArea
+            v-model:value="formState.triggerExpression"
+            :rows="3"
+        /></Form.Item>
       </Form>
     </Modal>
   </div>
 </template>
 
 <style scoped>
-.admin-rules-page { min-height: 100%; padding: 24px; background: linear-gradient(180deg, #fffdf7 0%, #fff7e8 100%); }
-.hero-panel,.rule-card { border: 1px solid rgba(245,158,11,.16); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: 0 16px 36px rgba(146,64,14,.08); }
-.hero-panel { display: flex; justify-content: space-between; gap: 16px; padding: 28px 30px; }
-.eyebrow { margin: 0 0 12px; color: #d97706; font-size: 13px; font-weight: 700; letter-spacing: .08em; }
-h1 { margin: 0; color: #92400e; font-size: 34px; }
-.description,.value,.card-head p { color: #78350f; line-height: 1.8; }
-.list-row { margin-top: 18px; }
-.card-head { display: flex; justify-content: space-between; gap: 16px; }
-.label { margin: 0; color: #b45309; font-weight: 700; }
-@media (max-width: 768px) { .admin-rules-page { padding: 16px; } .hero-panel,.card-head { flex-direction: column; } h1 { font-size: 28px; } }
+.admin-rules-page {
+  min-height: 100%;
+  padding: 24px;
+  background: linear-gradient(180deg, #fffdf7 0%, #fff7e8 100%);
+}
+
+.hero-panel,
+.rule-card {
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(245 158 11 / 16%);
+  border-radius: 24px;
+  box-shadow: 0 16px 36px rgb(146 64 14 / 8%);
+}
+
+.hero-panel {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 28px 30px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #d97706;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  margin: 0;
+  font-size: 34px;
+  color: #92400e;
+}
+
+.description,
+.value,
+.card-head p {
+  line-height: 1.8;
+  color: #78350f;
+}
+
+.list-row {
+  margin-top: 18px;
+}
+
+.card-head {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.label {
+  margin: 0;
+  font-weight: 700;
+  color: #b45309;
+}
+
+@media (max-width: 768px) {
+  .admin-rules-page {
+    padding: 16px;
+  }
+
+  .hero-panel,
+  .card-head {
+    flex-direction: column;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+}
 </style>

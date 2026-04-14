@@ -1,7 +1,16 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, List, Row, Select, Space, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  List,
+  Row,
+  Select,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 
 import { getFamilyAlertListApi } from '#/api';
 import type { FamilyAlertItem } from '#/api';
@@ -131,17 +140,26 @@ onMounted(() => {
         <p class="eyebrow">子女端 / 风险联动</p>
         <h1>风险详情</h1>
         <p class="description">
-          当前页面已经接入真实 mock 风险事件，会展示老人姓名、识别原因、建议动作和推荐提醒文案，帮助家属快速干预。
+          当前页面已经接入真实 mock
+          风险事件，会展示老人姓名、识别原因、建议动作和推荐提醒文案，帮助家属快速干预。
         </p>
       </div>
       <div class="hero-note">
         <strong>干预建议</strong>
-        <span>看到高风险事件时，优先电话联系老人，提醒不要转账、不要泄露验证码。</span>
+        <span
+          >看到高风险事件时，优先电话联系老人，提醒不要转账、不要泄露验证码。</span
+        >
       </div>
     </section>
 
     <Row :gutter="[16, 16]" class="summary-row">
-      <Col v-for="item in summaryCards" :key="item.title" :lg="6" :md="12" :span="24">
+      <Col
+        v-for="item in summaryCards"
+        :key="item.title"
+        :lg="6"
+        :md="12"
+        :span="24"
+      >
         <Card class="summary-card" :bordered="false">
           <p class="summary-title">{{ item.title }}</p>
           <strong class="summary-value">{{ item.value }}</strong>
@@ -206,10 +224,15 @@ onMounted(() => {
             <div class="alert-header">
               <div>
                 <h3>{{ item.title }}</h3>
-                <p class="subline">{{ item.elderName }} · {{ item.occurredAt }} · {{ getSourceLabel(item.sourceType) }}</p>
+                <p class="subline">
+                  {{ item.elderName }} · {{ item.occurredAt }} ·
+                  {{ getSourceLabel(item.sourceType) }}
+                </p>
               </div>
               <Space wrap>
-                <Tag :color="getRiskColor(item.riskLevel)">{{ getRiskLabel(item.riskLevel) }}</Tag>
+                <Tag :color="getRiskColor(item.riskLevel)">{{
+                  getRiskLabel(item.riskLevel)
+                }}</Tag>
                 <Tag color="blue">风险分 {{ item.riskScore }}</Tag>
                 <Tag>{{ getReadLabel(item.readStatus) }}</Tag>
                 <Tag>{{ getStatusLabel(item.status) }}</Tag>
@@ -239,7 +262,9 @@ onMounted(() => {
                 <div class="info-card">
                   <p class="info-label">联动建议</p>
                   <p class="info-text">{{ item.contactSuggestion }}</p>
-                  <p v-if="item.handledAt" class="handled-at">已于 {{ item.handledAt }} 记录处置结果</p>
+                  <p v-if="item.handledAt" class="handled-at">
+                    已于 {{ item.handledAt }} 记录处置结果
+                  </p>
                 </div>
               </Col>
             </Row>
@@ -255,7 +280,7 @@ onMounted(() => {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(185, 28, 28, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgb(185 28 28 / 12%), transparent 28%),
     linear-gradient(180deg, #fff8f8 0%, #fff1f2 100%);
 }
 
@@ -264,33 +289,38 @@ onMounted(() => {
 .filter-card,
 .list-card,
 .info-card {
-  border: 1px solid rgba(244, 63, 94, 0.14);
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(244 63 94 / 14%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 36px rgba(127, 29, 29, 0.08);
+  box-shadow: 0 16px 36px rgb(127 29 29 / 8%);
 }
 
 .hero-panel {
   display: flex;
-  justify-content: space-between;
   gap: 20px;
+  justify-content: space-between;
   padding: 28px 30px;
 }
 
 .eyebrow {
   margin: 0 0 12px;
-  color: #be123c;
   font-size: 13px;
   font-weight: 700;
+  color: #be123c;
   letter-spacing: 0.08em;
 }
 
-h1, h3 {
+h1,
+h3 {
   margin: 0;
   color: #881337;
 }
 
-.description, .summary-desc, .info-text, .subline, .handled-at {
+.description,
+.summary-desc,
+.info-text,
+.subline,
+.handled-at {
   color: #7f1d1d;
 }
 
@@ -306,13 +336,15 @@ h1, h3 {
   gap: 8px;
   max-width: 320px;
   padding: 18px;
-  border-radius: 20px;
-  background: #fff1f2;
-  color: #9f1239;
   line-height: 1.8;
+  color: #9f1239;
+  background: #fff1f2;
+  border-radius: 20px;
 }
 
-.summary-row, .filter-card, .list-card {
+.summary-row,
+.filter-card,
+.list-card {
   margin-top: 18px;
 }
 
@@ -324,11 +356,13 @@ h1, h3 {
 .summary-value {
   display: block;
   margin-top: 10px;
-  color: #881337;
   font-size: 30px;
+  color: #881337;
 }
 
-.summary-desc, .subline, .handled-at {
+.summary-desc,
+.subline,
+.handled-at {
   margin-top: 10px;
   line-height: 1.7;
 }
@@ -339,8 +373,8 @@ h1, h3 {
 
 .alert-header {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
+  justify-content: space-between;
   margin-bottom: 16px;
 }
 
@@ -351,8 +385,8 @@ h1, h3 {
 
 .info-label {
   margin: 0;
-  color: #be123c;
   font-weight: 700;
+  color: #be123c;
 }
 
 .callout-card {

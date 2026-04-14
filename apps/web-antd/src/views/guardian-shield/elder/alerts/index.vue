@@ -1,7 +1,16 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, List, Row, Select, Space, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  List,
+  Row,
+  Select,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 import { useRouter } from 'vue-router';
 
 import { getRiskAlertListApi } from '#/api';
@@ -53,7 +62,9 @@ const summaryCards = computed(() => {
   const pendingCount = alerts.value.filter(
     (item) => item.status === 'pending',
   ).length;
-  const smsCount = alerts.value.filter((item) => item.sourceType === 'sms').length;
+  const smsCount = alerts.value.filter(
+    (item) => item.sourceType === 'sms',
+  ).length;
 
   return [
     {
@@ -186,14 +197,20 @@ onMounted(() => {
               <p class="focus-label">优先查看</p>
               <h2>{{ primaryAlert.title }}</h2>
               <p class="focus-time">
-                {{ primaryAlert.occurredAt }} · {{ getSourceLabel(primaryAlert.sourceType) }}
+                {{ primaryAlert.occurredAt }} ·
+                {{ getSourceLabel(primaryAlert.sourceType) }}
               </p>
             </div>
             <div class="focus-tags">
-              <Tag :color="getRiskColor(primaryAlert.riskLevel)" class="large-tag">
+              <Tag
+                :color="getRiskColor(primaryAlert.riskLevel)"
+                class="large-tag"
+              >
                 {{ getRiskLabel(primaryAlert.riskLevel) }}
               </Tag>
-              <Tag color="blue" class="large-tag">风险分 {{ primaryAlert.riskScore }}</Tag>
+              <Tag color="blue" class="large-tag"
+                >风险分 {{ primaryAlert.riskScore }}</Tag
+              >
             </div>
           </div>
 
@@ -213,7 +230,9 @@ onMounted(() => {
             <Col :md="8" :span="24">
               <div class="focus-block preview-block">
                 <p class="focus-block-label">识别到的内容</p>
-                <p class="focus-block-text">{{ primaryAlert.contentPreview }}</p>
+                <p class="focus-block-text">
+                  {{ primaryAlert.contentPreview }}
+                </p>
               </div>
             </Col>
           </Row>
@@ -226,15 +245,25 @@ onMounted(() => {
             <li v-for="item in quickActions" :key="item">{{ item }}</li>
           </ul>
           <div class="action-buttons">
-            <Button block size="large" type="primary" @click="goToHelpPage">一键求助</Button>
-            <Button block size="large" @click="goToFamilyBindingPage">联系家人</Button>
+            <Button block size="large" type="primary" @click="goToHelpPage"
+              >一键求助</Button
+            >
+            <Button block size="large" @click="goToFamilyBindingPage"
+              >联系家人</Button
+            >
           </div>
         </Card>
       </Col>
     </Row>
 
     <Row :gutter="[16, 16]" class="summary-row">
-      <Col v-for="item in summaryCards" :key="item.title" :lg="6" :md="12" :span="24">
+      <Col
+        v-for="item in summaryCards"
+        :key="item.title"
+        :lg="6"
+        :md="12"
+        :span="24"
+      >
         <Card class="summary-card" :bordered="false">
           <p class="summary-title">{{ item.title }}</p>
           <strong class="summary-value">{{ item.value }}</strong>
@@ -299,10 +328,14 @@ onMounted(() => {
             <div class="alert-header">
               <div>
                 <h3>{{ item.title }}</h3>
-                <p class="alert-time">{{ item.occurredAt }} · {{ getSourceLabel(item.sourceType) }}</p>
+                <p class="alert-time">
+                  {{ item.occurredAt }} · {{ getSourceLabel(item.sourceType) }}
+                </p>
               </div>
               <Space wrap>
-                <Tag :color="getRiskColor(item.riskLevel)">{{ getRiskLabel(item.riskLevel) }}</Tag>
+                <Tag :color="getRiskColor(item.riskLevel)">{{
+                  getRiskLabel(item.riskLevel)
+                }}</Tag>
                 <Tag color="blue">风险分 {{ item.riskScore }}</Tag>
                 <Tag>{{ getStatusLabel(item.status) }}</Tag>
               </Space>
@@ -346,7 +379,7 @@ onMounted(() => {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(234, 88, 12, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgb(234 88 12 / 14%), transparent 28%),
     linear-gradient(180deg, #fffaf5 0%, #fff4eb 100%);
 }
 
@@ -357,39 +390,39 @@ onMounted(() => {
 .filter-card,
 .list-card,
 .info-card {
-  border: 1px solid rgba(251, 146, 60, 0.18);
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(251 146 60 / 18%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 36px rgba(120, 53, 15, 0.08);
+  box-shadow: 0 16px 36px rgb(120 53 15 / 8%);
 }
 
 .hero-panel {
   display: flex;
-  justify-content: space-between;
   gap: 20px;
+  justify-content: space-between;
   padding: 28px 30px;
 }
 
 .eyebrow {
   margin: 0 0 12px;
-  color: #ea580c;
   font-size: 13px;
   font-weight: 700;
+  color: #ea580c;
   letter-spacing: 0.08em;
 }
 
 h1 {
   margin: 0;
-  color: #7c2d12;
   font-size: 34px;
+  color: #7c2d12;
 }
 
 .description {
   max-width: 760px;
   margin: 16px 0 0;
-  color: #7c4a2d;
   font-size: 16px;
   line-height: 1.8;
+  color: #7c4a2d;
 }
 
 .hero-note {
@@ -398,10 +431,10 @@ h1 {
   gap: 8px;
   max-width: 320px;
   padding: 18px;
-  border-radius: 20px;
-  background: #fff7ed;
-  color: #9a3412;
   line-height: 1.8;
+  color: #9a3412;
+  background: #fff7ed;
+  border-radius: 20px;
 }
 
 .summary-row,
@@ -413,29 +446,29 @@ h1 {
 
 .focus-header {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
+  justify-content: space-between;
   margin-bottom: 18px;
 }
 
 .focus-label {
   margin: 0 0 10px;
-  color: #c2410c;
   font-size: 14px;
   font-weight: 700;
+  color: #c2410c;
   letter-spacing: 0.08em;
 }
 
 .focus-header h2 {
   margin: 0;
-  color: #7c2d12;
   font-size: 30px;
+  color: #7c2d12;
 }
 
 .focus-time {
   margin: 10px 0 0;
-  color: #9a3412;
   font-size: 16px;
+  color: #9a3412;
 }
 
 .focus-tags {
@@ -465,22 +498,22 @@ h1 {
 
 .preview-block {
   background: #fff;
-  border: 1px solid rgba(251, 146, 60, 0.18);
+  border: 1px solid rgb(251 146 60 / 18%);
 }
 
 .focus-block-label,
 .action-title {
   margin: 0;
-  color: #c2410c;
   font-size: 16px;
   font-weight: 700;
+  color: #c2410c;
 }
 
 .focus-block-text {
   margin: 12px 0 0;
-  color: #7c4a2d;
   font-size: 20px;
   line-height: 1.8;
+  color: #7c4a2d;
 }
 
 .action-card {
@@ -489,11 +522,11 @@ h1 {
 }
 
 .action-list {
-  margin: 18px 0 0;
   padding-left: 24px;
-  color: #7c4a2d;
+  margin: 18px 0 0;
   font-size: 18px;
   line-height: 1.9;
+  color: #7c4a2d;
 }
 
 .action-buttons {
@@ -509,21 +542,21 @@ h1 {
 }
 
 .summary-title {
-  color: #9a3412;
   font-size: 15px;
+  color: #9a3412;
 }
 
 .summary-value {
   display: block;
   margin-top: 10px;
-  color: #7c2d12;
   font-size: 30px;
+  color: #7c2d12;
 }
 
 .summary-desc {
   margin-top: 12px;
-  color: #7c4a2d;
   line-height: 1.7;
+  color: #7c4a2d;
 }
 
 .alert-item {
@@ -532,15 +565,15 @@ h1 {
 
 .alert-header {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
+  justify-content: space-between;
   margin-bottom: 16px;
 }
 
 .alert-header h3 {
   margin: 0;
-  color: #7c2d12;
   font-size: 24px;
+  color: #7c2d12;
 }
 
 .alert-time {
@@ -555,16 +588,16 @@ h1 {
 
 .info-label {
   margin: 0;
-  color: #c2410c;
   font-size: 14px;
   font-weight: 700;
+  color: #c2410c;
 }
 
 .info-text {
   margin: 12px 0 0;
-  color: #7c4a2d;
   font-size: 16px;
   line-height: 1.9;
+  color: #7c4a2d;
 }
 
 .advice-card {

@@ -2,7 +2,10 @@ import { requestClient } from '#/api/request';
 
 export interface AdminUserListParams {
   keyword?: string;
+  page?: number;
+  pageSize?: number;
   role?: string;
+  status?: string;
 }
 
 export interface AdminUserListItem {
@@ -83,20 +86,28 @@ function mapRiskLevelFromRoles(roles: string[]): 'high' | 'low' | 'medium' {
 }
 
 export async function getAdminUserListApi(params: AdminUserListParams) {
-  const rows = await requestClient.get<any[]>('/admin/users', { params });
+  const rows = await requestClient.get<any[]>('/admin/users', {
+    params: {
+      keyword: params.keyword,
+      role: params.role,
+      status: params.status,
+    },
+  });
   return {
-    items: rows.map((item) => ({
-      bindCount: item.roles.includes('elder') ? 1 : 0,
-      communityName: item.roles.includes('community') ? '东湖社区' : '-',
-      id: item.user_id,
-      lastAlertAt: item.last_login_at || '-',
-      name: item.display_name,
-      phone: item.phone,
-      riskLevel: mapRiskLevelFromRoles(item.roles),
-      role: item.roles[0] || 'elder',
-      status: item.status === 'active' ? 'enabled' : 'disabled',
-      username: item.username,
-    })),
+    items: rows.map(
+      (item): AdminUserListItem => ({
+        bindCount: item.roles.includes('elder') ? 1 : 0,
+        communityName: item.roles.includes('community') ? '东湖社区' : '-',
+        id: item.user_id,
+        lastAlertAt: item.last_login_at || '-',
+        name: item.display_name,
+        phone: item.phone,
+        riskLevel: mapRiskLevelFromRoles(item.roles),
+        role: item.roles[0] || 'elder',
+        status: item.status === 'active' ? 'enabled' : 'disabled',
+        username: item.username,
+      }),
+    ),
     total: rows.length,
   };
 }
@@ -133,7 +144,10 @@ export async function createAdminRuleApi(payload: RiskRulePayload) {
   });
 }
 
-export async function updateAdminRuleApi(ruleId: string, payload: RiskRulePayload) {
+export async function updateAdminRuleApi(
+  ruleId: string,
+  payload: RiskRulePayload,
+) {
   return requestClient.put(`/admin/rules/${ruleId}`, {
     code: payload.code,
     name: payload.name,
@@ -179,7 +193,10 @@ export async function createAdminContentApi(payload: ContentPayload) {
   });
 }
 
-export async function updateAdminContentApi(contentId: string, payload: ContentPayload) {
+export async function updateAdminContentApi(
+  contentId: string,
+  payload: ContentPayload,
+) {
   return requestClient.put(`/admin/contents/${contentId}`, {
     audience: payload.audience,
     category: payload.category,

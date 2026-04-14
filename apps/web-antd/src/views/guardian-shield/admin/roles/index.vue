@@ -50,7 +50,8 @@ onMounted(() => {
         <p class="eyebrow">管理后台 / 权限总览</p>
         <h1>角色权限</h1>
         <p class="description">
-          当前页面已经接入角色权限 mock 数据，支持查看角色说明、菜单项和权限资源，满足第一阶段“角色查看与权限项展示”目标。
+          当前页面已经接入角色权限 mock
+          数据，支持查看角色说明、菜单项和权限资源，满足第一阶段“角色查看与权限项展示”目标。
         </p>
       </div>
     </section>
@@ -88,7 +89,11 @@ onMounted(() => {
           <div class="block">
             <p class="label">权限资源</p>
             <Space wrap>
-              <Tag v-for="resource in item.resources" :key="resource" color="processing">
+              <Tag
+                v-for="resource in item.resources"
+                :key="resource"
+                color="processing"
+              >
                 {{ resource }}
               </Tag>
             </Space>
@@ -104,17 +109,21 @@ onMounted(() => {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 28%),
+    radial-gradient(
+      circle at top right,
+      rgb(59 130 246 / 12%),
+      transparent 28%
+    ),
     linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
 }
 
 .hero-panel,
 .summary-card,
 .role-card {
-  border: 1px solid rgba(59, 130, 246, 0.14);
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(59 130 246 / 14%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 36px rgba(30, 64, 175, 0.08);
+  box-shadow: 0 16px 36px rgb(30 64 175 / 8%);
 }
 
 .hero-panel {
@@ -123,22 +132,22 @@ onMounted(() => {
 
 .eyebrow {
   margin: 0 0 12px;
-  color: #2563eb;
   font-size: 13px;
   font-weight: 700;
+  color: #2563eb;
   letter-spacing: 0.08em;
 }
 
 h1 {
   margin: 0;
-  color: #1d4ed8;
   font-size: 34px;
+  color: #1d4ed8;
 }
 
 .description {
   margin: 16px 0 0;
-  color: #334155;
   line-height: 1.8;
+  color: #334155;
 }
 
 .summary-row,
@@ -158,20 +167,20 @@ h1 {
 .summary-value {
   display: block;
   margin-top: 10px;
-  color: #172554;
   font-size: 30px;
+  color: #172554;
 }
 
 .summary-desc {
   margin-top: 12px;
-  color: #475569;
   line-height: 1.7;
+  color: #475569;
 }
 
 .role-head {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
+  justify-content: space-between;
 }
 
 .role-head h3 {
@@ -182,8 +191,8 @@ h1 {
 .role-head p,
 .role-desc {
   margin: 8px 0 0;
-  color: #475569;
   line-height: 1.8;
+  color: #475569;
 }
 
 .block {
@@ -192,8 +201,8 @@ h1 {
 
 .label {
   margin: 0 0 10px;
-  color: #1d4ed8;
   font-weight: 700;
+  color: #1d4ed8;
 }
 
 @media (max-width: 768px) {

@@ -1,7 +1,16 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
 
-import { Button, Card, Col, Input, Row, Space, Tag, message } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  Row,
+  Space,
+  Tag,
+  message,
+} from 'ant-design-vue';
 
 import { getAdminSystemConfigListApi, updateAdminSystemConfigApi } from '#/api';
 
@@ -35,7 +44,9 @@ onMounted(() => {
       <div>
         <p class="eyebrow">管理后台 / 参数管理</p>
         <h1>系统配置</h1>
-        <p class="description">系统配置已切到真实后端，可直接修改参数值并保存。</p>
+        <p class="description">
+          系统配置已切到真实后端，可直接修改参数值并保存。
+        </p>
       </div>
     </section>
 
@@ -50,7 +61,13 @@ onMounted(() => {
           <p class="key">{{ item.key }}</p>
           <Input v-model:value="item.value" />
           <p class="desc">{{ item.description }}</p>
-          <Button type="primary" size="small" :loading="savingKey === item.key" @click="saveRow(item)">保存</Button>
+          <Button
+            type="primary"
+            size="small"
+            :loading="savingKey === item.key"
+            @click="saveRow(item)"
+            >保存</Button
+          >
         </Card>
       </Col>
     </Row>
@@ -58,13 +75,61 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.admin-system-settings-page { min-height: 100%; padding: 24px; background: linear-gradient(180deg, #f8f9ff 0%, #eef0ff 100%); }
-.hero-panel,.setting-card { border: 1px solid rgba(99,102,241,.14); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: 0 16px 36px rgba(67,56,202,.08); }
-.hero-panel { padding: 28px 30px; }
-.eyebrow { margin: 0 0 12px; color: #4f46e5; font-size: 13px; font-weight: 700; letter-spacing: .08em; }
-h1,.setting-card h3 { margin: 0; color: #312e81; }
-h1 { font-size: 34px; }
-.description,.key,.desc { margin: 16px 0 0; color: #475569; line-height: 1.8; }
-.list-row { margin-top: 18px; }
-@media (max-width: 768px) { .admin-system-settings-page { padding: 16px; } h1 { font-size: 28px; } }
+.admin-system-settings-page {
+  min-height: 100%;
+  padding: 24px;
+  background: linear-gradient(180deg, #f8f9ff 0%, #eef0ff 100%);
+}
+
+.hero-panel,
+.setting-card {
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(99 102 241 / 14%);
+  border-radius: 24px;
+  box-shadow: 0 16px 36px rgb(67 56 202 / 8%);
+}
+
+.hero-panel {
+  padding: 28px 30px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4f46e5;
+  letter-spacing: 0.08em;
+}
+
+h1,
+.setting-card h3 {
+  margin: 0;
+  color: #312e81;
+}
+
+h1 {
+  font-size: 34px;
+}
+
+.description,
+.key,
+.desc {
+  margin: 16px 0 0;
+  line-height: 1.8;
+  color: #475569;
+}
+
+.list-row {
+  margin-top: 18px;
+}
+
+@media (max-width: 768px) {
+  .admin-system-settings-page {
+    padding: 16px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+}
 </style>

@@ -1,13 +1,25 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { Button, Card, Col, Input, Row, Select, Space, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  Row,
+  Select,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 
 import { getCommunitySeniorListApi } from '#/api';
 
 defineOptions({ name: 'CommunitySeniors' });
 
-const filters = reactive({ keyword: '', riskLevel: undefined as string | undefined });
+const filters = reactive({
+  keyword: '',
+  riskLevel: undefined as string | undefined,
+});
 const rows = ref<any[]>([]);
 
 const filteredRows = computed(() => rows.value);
@@ -45,7 +57,9 @@ onMounted(() => {
       <div>
         <p class="eyebrow">社区端 / 重点对象</p>
         <h1>重点老人</h1>
-        <p class="description">当前页面已接真实社区重点老人接口，可按关键词和风险等级筛选。</p>
+        <p class="description">
+          当前页面已接真实社区重点老人接口，可按关键词和风险等级筛选。
+        </p>
       </div>
       <div class="hero-note">
         <strong>工作提示</strong>
@@ -55,7 +69,13 @@ onMounted(() => {
 
     <Card class="filter-card" :bordered="false">
       <Space wrap :size="12">
-        <Input v-model:value="filters.keyword" allow-clear placeholder="搜索老人、标签或回访状态" style="width: 260px" @press-enter="loadRows" />
+        <Input
+          v-model:value="filters.keyword"
+          allow-clear
+          placeholder="搜索老人、标签或回访状态"
+          style="width: 260px"
+          @press-enter="loadRows"
+        />
         <Select
           v-model:value="filters.riskLevel"
           allow-clear
@@ -80,10 +100,14 @@ onMounted(() => {
               <h3>{{ item.elderName }}</h3>
               <p>{{ item.id }} · {{ item.followUpStatus }}</p>
             </div>
-            <Tag :color="getRiskMeta(item.riskLevel).color">{{ getRiskMeta(item.riskLevel).text }}</Tag>
+            <Tag :color="getRiskMeta(item.riskLevel).color">{{
+              getRiskMeta(item.riskLevel).text
+            }}</Tag>
           </div>
           <div class="tag-row">
-            <Tag v-for="tag in item.labels" :key="tag" color="blue">{{ tag }}</Tag>
+            <Tag v-for="tag in item.labels" :key="tag" color="blue">{{
+              tag
+            }}</Tag>
           </div>
           <div class="info-block">
             <p class="label">协同信息</p>
@@ -96,17 +120,100 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.community-seniors-page { min-height: 100%; padding: 24px; background: linear-gradient(180deg, #f6fffb 0%, #edfff7 100%); }
-.hero-panel,.filter-card,.senior-card { border: 1px solid rgba(16,185,129,.14); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: 0 16px 36px rgba(6,95,70,.08); }
-.hero-panel { display: flex; justify-content: space-between; gap: 20px; padding: 28px 30px; }
-.eyebrow { margin: 0 0 12px; color: #059669; font-size: 13px; font-weight: 700; letter-spacing: .08em; }
-h1 { margin: 0; color: #065f46; font-size: 34px; }
-.description,.hero-note,.value,.card-head p { color: #047857; line-height: 1.8; }
-.hero-note { max-width: 280px; padding: 18px; border-radius: 20px; background: #ecfdf5; }
-.filter-card,.list-row { margin-top: 18px; }
-.card-head { display: flex; justify-content: space-between; gap: 16px; }
-.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.info-block { margin-top: 16px; padding: 18px; border-radius: 18px; background: #f0fdf4; }
-.label { margin: 0; color: #047857; font-weight: 700; }
-@media (max-width: 768px) { .community-seniors-page { padding: 16px; } .hero-panel,.card-head { flex-direction: column; } h1 { font-size: 28px; } }
+.community-seniors-page {
+  min-height: 100%;
+  padding: 24px;
+  background: linear-gradient(180deg, #f6fffb 0%, #edfff7 100%);
+}
+
+.hero-panel,
+.filter-card,
+.senior-card {
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(16 185 129 / 14%);
+  border-radius: 24px;
+  box-shadow: 0 16px 36px rgb(6 95 70 / 8%);
+}
+
+.hero-panel {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 28px 30px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #059669;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  margin: 0;
+  font-size: 34px;
+  color: #065f46;
+}
+
+.description,
+.hero-note,
+.value,
+.card-head p {
+  line-height: 1.8;
+  color: #047857;
+}
+
+.hero-note {
+  max-width: 280px;
+  padding: 18px;
+  background: #ecfdf5;
+  border-radius: 20px;
+}
+
+.filter-card,
+.list-row {
+  margin-top: 18px;
+}
+
+.card-head {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.info-block {
+  padding: 18px;
+  margin-top: 16px;
+  background: #f0fdf4;
+  border-radius: 18px;
+}
+
+.label {
+  margin: 0;
+  font-weight: 700;
+  color: #047857;
+}
+
+@media (max-width: 768px) {
+  .community-seniors-page {
+    padding: 16px;
+  }
+
+  .hero-panel,
+  .card-head {
+    flex-direction: column;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+}
 </style>

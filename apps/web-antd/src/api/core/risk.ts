@@ -4,6 +4,8 @@ export interface RiskAlertListParams {
   page?: number;
   pageSize?: number;
   riskLevel?: string;
+  sourceType?: string;
+  status?: string;
 }
 
 export interface RiskAlertItem {
@@ -35,27 +37,40 @@ export async function getRiskAlertListApi(params: RiskAlertListParams) {
   });
 
   const details = await Promise.all(
-    result.items.map((item: any) => requestClient.get<any>(`/risk-alerts/${item.id}`)),
+    result.items.map((item: any) =>
+      requestClient.get<any>(`/risk-alerts/${item.id}`),
+    ),
   );
 
   return {
-    items: result.items.map(
-      (item: any, index: number): RiskAlertItem => ({
-        advice: details[index].suggestion_action,
-        contactSuggestion:
-          item.risk_level === 'high' ? '建议立即联系家属并视情况同步社区。' : '建议先联系家属核实。',
-        contentPreview: item.summary,
-        elderName: item.elder_name,
-        hitReason: details[index].reason_detail,
-        id: item.id,
-        occurredAt: item.occurred_at,
-        riskLevel: item.risk_level,
-        riskScore: item.risk_score,
-        sourceType: item.source_type,
-        status: normalizeStatus(item.status),
-        title: item.title,
-      }),
-    ),
+    items: result.items
+      .map(
+        (item: any, index: number): RiskAlertItem => ({
+          advice: details[index].suggestion_action,
+          contactSuggestion:
+            item.risk_level === 'high'
+              ? '建议立即联系家属并视情况同步社区。'
+              : '建议先联系家属核实。',
+          contentPreview: item.summary,
+          elderName: item.elder_name,
+          hitReason: details[index].reason_detail,
+          id: item.id,
+          occurredAt: item.occurred_at,
+          riskLevel: item.risk_level,
+          riskScore: item.risk_score,
+          sourceType: item.source_type,
+          status: normalizeStatus(item.status),
+          title: item.title,
+        }),
+      )
+      .filter(
+        (item: RiskAlertItem) =>
+          !params.sourceType || item.sourceType === params.sourceType,
+      )
+      .filter(
+        (item: RiskAlertItem) =>
+          !params.status || item.status === params.status,
+      ),
     total: result.pagination.total,
   };
 }

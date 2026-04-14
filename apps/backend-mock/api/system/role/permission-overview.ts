@@ -1,7 +1,11 @@
 import { eventHandler } from 'h3';
 
 import { verifyAccessToken } from '~/utils/jwt-utils';
-import { sleep, unAuthorizedResponse, useResponseSuccess } from '~/utils/response';
+import {
+  sleep,
+  unAuthorizedResponse,
+  useResponseSuccess,
+} from '~/utils/response';
 
 const ROLE_PERMISSION_OVERVIEW = [
   {
@@ -30,7 +34,11 @@ const ROLE_PERMISSION_OVERVIEW = [
     menuCount: 5,
     menus: ['辖区总览', '重点老人', '风险工单', '宣教管理', '统计报表'],
     name: '社区工作人员',
-    resources: ['community:dashboard', 'community:workorder', 'community:report'],
+    resources: [
+      'community:dashboard',
+      'community:workorder',
+      'community:report',
+    ],
     role: 'community',
     scope: '管理辖区风险事件与宣教工作',
   },

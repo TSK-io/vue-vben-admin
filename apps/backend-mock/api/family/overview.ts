@@ -1,7 +1,11 @@
 import { eventHandler } from 'h3';
 
 import { verifyAccessToken } from '~/utils/jwt-utils';
-import { sleep, unAuthorizedResponse, useResponseSuccess } from '~/utils/response';
+import {
+  sleep,
+  unAuthorizedResponse,
+  useResponseSuccess,
+} from '~/utils/response';
 
 const MOCK_FAMILY_OVERVIEW = {
   stats: [
@@ -51,7 +55,8 @@ const MOCK_FAMILY_OVERVIEW = {
       id: 'FOV-5001',
       lastAlertAt: '2026-04-14 09:12',
       riskLevel: 'high',
-      riskSummary: '收到疑似冒充医保短信，系统建议立即电话联系并提醒不要点击链接。',
+      riskSummary:
+        '收到疑似冒充医保短信，系统建议立即电话联系并提醒不要点击链接。',
     },
     {
       currentStatus: '社区回访中',

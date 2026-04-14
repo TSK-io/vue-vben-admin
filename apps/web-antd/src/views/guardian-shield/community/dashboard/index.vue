@@ -1,7 +1,16 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 
-import { Card, Col, Empty, List, Row, Skeleton, Space, Tag } from 'ant-design-vue';
+import {
+  Card,
+  Col,
+  Empty,
+  List,
+  Row,
+  Skeleton,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 
 import { getCommunityOverviewApi } from '#/api';
 import type {
@@ -17,30 +26,41 @@ defineOptions({ name: 'CommunityDashboard' });
 const loading = ref(false);
 const overview = ref<CommunityOverviewData | null>(null);
 
-const riskColorMap: Record<CommunityOverviewFocusSenior['riskLevel'], string> = {
-  high: 'red',
-  low: 'green',
-  medium: 'orange',
-};
+const riskColorMap: Record<CommunityOverviewFocusSenior['riskLevel'], string> =
+  {
+    high: 'red',
+    low: 'green',
+    medium: 'orange',
+  };
 const riskTextMap: Record<CommunityOverviewFocusSenior['riskLevel'], string> = {
   high: '高风险',
   low: '低风险',
   medium: '中风险',
 };
-const workorderPriorityMap: Record<CommunityOverviewWorkorder['priority'], { color: string; text: string }> = {
+const workorderPriorityMap: Record<
+  CommunityOverviewWorkorder['priority'],
+  { color: string; text: string }
+> = {
   high: { color: 'red', text: '高优先级' },
   low: { color: 'green', text: '低优先级' },
   medium: { color: 'orange', text: '中优先级' },
 };
-const workorderStatusMap: Record<CommunityOverviewWorkorder['status'], string> = {
-  archived: '已归档',
-  processing: '处理中',
-  todo: '待处理',
-};
+const workorderStatusMap: Record<CommunityOverviewWorkorder['status'], string> =
+  {
+    archived: '已归档',
+    processing: '处理中',
+    todo: '待处理',
+  };
 
-const summaryCards = computed<CommunityOverviewStat[]>(() => overview.value?.stats ?? []);
-const riskTrend = computed<CommunityOverviewTrendItem[]>(() => overview.value?.riskTrend ?? []);
-const focusSeniors = computed<CommunityOverviewFocusSenior[]>(() => overview.value?.focusSeniors ?? []);
+const summaryCards = computed<CommunityOverviewStat[]>(
+  () => overview.value?.stats ?? [],
+);
+const riskTrend = computed<CommunityOverviewTrendItem[]>(
+  () => overview.value?.riskTrend ?? [],
+);
+const focusSeniors = computed<CommunityOverviewFocusSenior[]>(
+  () => overview.value?.focusSeniors ?? [],
+);
 const todoWorkorders = computed<CommunityOverviewWorkorder[]>(
   () => overview.value?.todoWorkorders ?? [],
 );
@@ -104,13 +124,21 @@ onMounted(() => {
       </div>
       <div class="hero-note">
         <strong>值守建议</strong>
-        <span>先查看高风险对象，再跟进待处理工单，最后补录走访和宣教记录。</span>
+        <span
+          >先查看高风险对象，再跟进待处理工单，最后补录走访和宣教记录。</span
+        >
       </div>
     </section>
 
     <Skeleton active :loading="loading" :paragraph="{ rows: 10 }">
       <Row :gutter="[16, 16]" class="summary-row">
-        <Col v-for="item in summaryCards" :key="item.key" :lg="6" :md="12" :span="24">
+        <Col
+          v-for="item in summaryCards"
+          :key="item.key"
+          :lg="6"
+          :md="12"
+          :span="24"
+        >
           <Card class="summary-card" :bordered="false">
             <p class="summary-title">{{ item.description }}</p>
             <strong class="summary-value">{{ item.value }}</strong>
@@ -121,7 +149,11 @@ onMounted(() => {
 
       <Row :gutter="[16, 16]">
         <Col :lg="11" :span="24">
-          <Card class="panel-card" :bordered="false" title="近 7 日风险与回访趋势">
+          <Card
+            class="panel-card"
+            :bordered="false"
+            title="近 7 日风险与回访趋势"
+          >
             <div class="trend-list">
               <div v-for="item in riskTrend" :key="item.date" class="trend-row">
                 <span class="trend-date">{{ item.date }}</span>
@@ -129,14 +161,20 @@ onMounted(() => {
                   <div class="trend-item">
                     <span>高风险</span>
                     <div class="trend-track">
-                      <div class="trend-bar" :style="getTrendBarStyle(item.highRisk, 'alert')" />
+                      <div
+                        class="trend-bar"
+                        :style="getTrendBarStyle(item.highRisk, 'alert')"
+                      />
                     </div>
                     <strong>{{ item.highRisk }}</strong>
                   </div>
                   <div class="trend-item">
                     <span>回访</span>
                     <div class="trend-track">
-                      <div class="trend-bar" :style="getTrendBarStyle(item.visits, 'visit')" />
+                      <div
+                        class="trend-bar"
+                        :style="getTrendBarStyle(item.visits, 'visit')"
+                      />
                     </div>
                     <strong>{{ item.visits }}</strong>
                   </div>
@@ -160,10 +198,14 @@ onMounted(() => {
                       <h3>{{ item.elderName }}</h3>
                       <p>{{ item.id }} · 最近告警 {{ item.lastAlertAt }}</p>
                     </div>
-                    <Tag :color="getRiskColor(item.riskLevel)">{{ getRiskLabel(item.riskLevel) }}</Tag>
+                    <Tag :color="getRiskColor(item.riskLevel)">{{
+                      getRiskLabel(item.riskLevel)
+                    }}</Tag>
                   </div>
                   <Space wrap class="tag-row">
-                    <Tag v-for="tag in item.tags" :key="tag" color="blue">{{ tag }}</Tag>
+                    <Tag v-for="tag in item.tags" :key="tag" color="blue">{{
+                      tag
+                    }}</Tag>
                   </Space>
                   <p class="focus-advice">{{ item.disposalAdvice }}</p>
                 </List.Item>
@@ -174,7 +216,11 @@ onMounted(() => {
         </Col>
       </Row>
 
-      <Card class="panel-card workorder-card" :bordered="false" title="待办工单">
+      <Card
+        class="panel-card workorder-card"
+        :bordered="false"
+        title="待办工单"
+      >
         <List
           v-if="todoWorkorders.length"
           :data-source="todoWorkorders"
@@ -185,7 +231,9 @@ onMounted(() => {
               <div class="workorder-main">
                 <div>
                   <h3>{{ item.reason }}</h3>
-                  <p>{{ item.id }} · {{ item.elderName }} · {{ item.assignee }}</p>
+                  <p>
+                    {{ item.id }} · {{ item.elderName }} · {{ item.assignee }}
+                  </p>
                 </div>
                 <Space wrap>
                   <Tag :color="getPriorityMeta(item.priority).color">
@@ -208,55 +256,55 @@ onMounted(() => {
   min-height: 100%;
   padding: 24px;
   background:
-    radial-gradient(circle at top right, rgba(194, 65, 12, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgb(194 65 12 / 14%), transparent 28%),
     linear-gradient(180deg, #fffaf5 0%, #fff4eb 100%);
 }
 
 .hero-panel,
 .summary-card,
 .panel-card {
-  border: 1px solid rgba(253, 186, 116, 0.8);
+  background: rgb(255 255 255 / 95%);
+  border: 1px solid rgb(253 186 116 / 80%);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 18px 40px rgba(194, 65, 12, 0.1);
+  box-shadow: 0 18px 40px rgb(194 65 12 / 10%);
 }
 
 .hero-panel {
   display: flex;
-  justify-content: space-between;
   gap: 24px;
+  justify-content: space-between;
   padding: 28px;
   margin-bottom: 16px;
 }
 
 .eyebrow {
   margin: 0 0 10px;
-  color: #c2410c;
   font-size: 13px;
   font-weight: 700;
+  color: #c2410c;
   letter-spacing: 0.08em;
 }
 
 h1 {
   margin: 0;
-  color: #7c2d12;
   font-size: 30px;
+  color: #7c2d12;
 }
 
 .description,
 .summary-desc,
 .focus-item p,
 .workorder-item p {
-  color: #7c5e4f;
   line-height: 1.75;
+  color: #7c5e4f;
 }
 
 .hero-note {
   max-width: 320px;
   padding: 18px 20px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #fed7aa 0%, #ffedd5 100%);
   color: #9a3412;
+  background: linear-gradient(135deg, #fed7aa 0%, #ffedd5 100%);
+  border-radius: 20px;
 }
 
 .hero-note strong,
@@ -274,8 +322,8 @@ h1 {
 .summary-title {
   min-height: 46px;
   margin: 0;
-  color: #9a3412;
   line-height: 1.6;
+  color: #9a3412;
 }
 
 .summary-value {
@@ -300,8 +348,8 @@ h1 {
 }
 
 .trend-date {
-  color: #9a3412;
   font-weight: 700;
+  color: #9a3412;
 }
 
 .trend-content {
@@ -318,10 +366,10 @@ h1 {
 }
 
 .trend-track {
-  overflow: hidden;
   height: 12px;
-  border-radius: 999px;
+  overflow: hidden;
   background: #ffedd5;
+  border-radius: 999px;
 }
 
 .trend-bar {
@@ -337,8 +385,8 @@ h1 {
 .focus-header,
 .workorder-main {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
+  justify-content: space-between;
 }
 
 .focus-header h3,

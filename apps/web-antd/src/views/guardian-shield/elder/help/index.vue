@@ -1,7 +1,17 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 
-import { Button, Card, Col, List, Modal, Row, Space, Tag, message } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  List,
+  Modal,
+  Row,
+  Space,
+  Tag,
+  message,
+} from 'ant-design-vue';
 
 import { createHelpRequestApi, getBindingListApi } from '#/api';
 
@@ -50,7 +60,9 @@ onMounted(() => {
       <div>
         <p class="eyebrow">老年端 / 快速求助</p>
         <h1>一键求助</h1>
-        <p class="description">现在已接入真实求助联动。点击按钮后会向家属和社区同步通知，并保留求助记录。</p>
+        <p class="description">
+          现在已接入真实求助联动。点击按钮后会向家属和社区同步通知，并保留求助记录。
+        </p>
       </div>
       <div class="hero-note">
         <strong>先做这 3 件事</strong>
@@ -59,9 +71,39 @@ onMounted(() => {
     </section>
 
     <Row :gutter="[16, 16]" class="action-row">
-      <Col :lg="8" :span="24"><Card class="action-card"><Button block size="large" type="primary" @click="openAction('联系家人')">联系家人</Button></Card></Col>
-      <Col :lg="8" :span="24"><Card class="action-card"><Button block size="large" type="primary" @click="openAction('同步社区')">同步社区</Button></Card></Col>
-      <Col :lg="8" :span="24"><Card class="action-card"><Button block size="large" type="primary" @click="openAction('记录求助')">记录求助</Button></Card></Col>
+      <Col :lg="8" :span="24"
+        ><Card class="action-card"
+          ><Button
+            block
+            size="large"
+            type="primary"
+            @click="openAction('联系家人')"
+            >联系家人</Button
+          ></Card
+        ></Col
+      >
+      <Col :lg="8" :span="24"
+        ><Card class="action-card"
+          ><Button
+            block
+            size="large"
+            type="primary"
+            @click="openAction('同步社区')"
+            >同步社区</Button
+          ></Card
+        ></Col
+      >
+      <Col :lg="8" :span="24"
+        ><Card class="action-card"
+          ><Button
+            block
+            size="large"
+            type="primary"
+            @click="openAction('记录求助')"
+            >记录求助</Button
+          ></Card
+        ></Col
+      >
     </Row>
 
     <Row :gutter="[16, 16]" class="content-row">
@@ -75,11 +117,19 @@ onMounted(() => {
                     <div class="contact-head">
                       <h3>{{ item.familyName }}</h3>
                       <Tag color="gold">{{ item.relationshipType }}</Tag>
-                      <Tag v-if="item.isEmergencyContact" color="blue">紧急联系人</Tag>
+                      <Tag v-if="item.isEmergencyContact" color="blue"
+                        >紧急联系人</Tag
+                      >
                     </div>
-                    <p class="contact-note">最近授权：{{ item.authorizedAt }}</p>
+                    <p class="contact-note">
+                      最近授权：{{ item.authorizedAt }}
+                    </p>
                   </div>
-                  <Button type="primary" @click="openAction(`联系${item.familyName}`)">联系</Button>
+                  <Button
+                    type="primary"
+                    @click="openAction(`联系${item.familyName}`)"
+                    >联系</Button
+                  >
                 </div>
               </List.Item>
             </template>
@@ -97,7 +147,14 @@ onMounted(() => {
       </Col>
     </Row>
 
-    <Modal v-model:open="actionVisible" title="确认发起求助" ok-text="立即发送" cancel-text="关闭" :confirm-loading="submitting" @ok="submitAction">
+    <Modal
+      v-model:open="actionVisible"
+      title="确认发起求助"
+      ok-text="立即发送"
+      cancel-text="关闭"
+      :confirm-loading="submitting"
+      @ok="submitAction"
+    >
       <p>将执行：{{ selectedAction }}</p>
       <p>系统会同时通知家属和社区，便于快速回电或回访。</p>
     </Modal>
@@ -105,14 +162,85 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.elder-help-page { min-height: 100%; padding: 24px; background: linear-gradient(180deg, #fff9f5 0%, #fff2ea 100%); }
-.hero-panel,.action-card,.list-card,.tips-card { border: 1px solid rgba(249,115,22,.14); border-radius: 24px; background: rgba(255,255,255,.96); box-shadow: 0 16px 36px rgba(124,45,18,.08); }
-.hero-panel { display: flex; justify-content: space-between; gap: 20px; padding: 28px 30px; }
-.eyebrow { margin: 0 0 12px; color: #ea580c; font-size: 13px; font-weight: 700; letter-spacing: .08em; }
-h1 { margin: 0; color: #7c2d12; font-size: 34px; }
-.description,.hero-note,.contact-note { color: #7c4a2d; line-height: 1.8; }
-.hero-note { max-width: 280px; padding: 18px; border-radius: 20px; background: #fff7ed; }
-.action-row,.content-row { margin-top: 18px; }
-.contact-main,.contact-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; width: 100%; }
-@media (max-width: 768px) { .elder-help-page { padding: 16px; } .hero-panel,.contact-main,.contact-head { flex-direction: column; align-items: flex-start; } h1 { font-size: 28px; } }
+.elder-help-page {
+  min-height: 100%;
+  padding: 24px;
+  background: linear-gradient(180deg, #fff9f5 0%, #fff2ea 100%);
+}
+
+.hero-panel,
+.action-card,
+.list-card,
+.tips-card {
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(249 115 22 / 14%);
+  border-radius: 24px;
+  box-shadow: 0 16px 36px rgb(124 45 18 / 8%);
+}
+
+.hero-panel {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 28px 30px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ea580c;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  margin: 0;
+  font-size: 34px;
+  color: #7c2d12;
+}
+
+.description,
+.hero-note,
+.contact-note {
+  line-height: 1.8;
+  color: #7c4a2d;
+}
+
+.hero-note {
+  max-width: 280px;
+  padding: 18px;
+  background: #fff7ed;
+  border-radius: 20px;
+}
+
+.action-row,
+.content-row {
+  margin-top: 18px;
+}
+
+.contact-main,
+.contact-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .elder-help-page {
+    padding: 16px;
+  }
+
+  .hero-panel,
+  .contact-main,
+  .contact-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+}
 </style>
