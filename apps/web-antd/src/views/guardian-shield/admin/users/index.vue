@@ -204,8 +204,7 @@ onMounted(() => {
         <p class="eyebrow">管理后台 / 第一阶段</p>
         <h1>用户管理</h1>
         <p class="description">
-          当前页面已经接入真实 mock
-          数据，可按角色、状态和关键词筛选账号，用于支撑第一阶段的账号、角色与权限联调。
+          当前页面已接入真实用户接口，可按角色、状态和关键词筛选账号，用于支撑账号、角色与权限联调。
         </p>
       </div>
       <div class="hero-tip">
@@ -287,7 +286,9 @@ onMounted(() => {
             <div class="user-cell">
               <strong>{{ record.name }}</strong>
               <span>{{ record.id }} · {{ record.phone }}</span>
-              <span>{{ record.age }} 岁 · {{ record.createdAt }} 注册</span>
+              <span>
+                {{ record.age ?? '--' }} 岁 · {{ record.createdAt || '-' }} 注册
+              </span>
             </div>
           </template>
 

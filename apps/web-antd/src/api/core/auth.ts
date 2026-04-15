@@ -74,11 +74,8 @@ export async function logoutApi() {
  * 获取用户权限码
  */
 export async function getAccessCodesApi() {
-  const roles = await requestClient.get<
-    Array<{
-      code: string;
-      permissions: string[];
-    }>
-  >('/auth/roles');
-  return roles.flatMap((item) => item.permissions);
+  const profile = await requestClient.get<{
+    permissions: string[];
+  }>('/auth/me');
+  return profile.permissions ?? [];
 }

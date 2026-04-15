@@ -9,16 +9,19 @@ export interface AdminUserListParams {
 }
 
 export interface AdminUserListItem {
+  age: number | null;
+  createdAt: string;
   id: string;
-  name: string;
-  username: string;
-  phone: string;
-  role: 'admin' | 'community' | 'elder' | 'family';
-  riskLevel: 'high' | 'low' | 'medium';
   bindCount: number;
   communityName: string;
   lastAlertAt: string;
+  name: string;
+  phone: string;
+  riskLevel: 'high' | 'low' | 'medium';
+  riskScore: number;
+  role: 'admin' | 'community' | 'elder' | 'family';
   status: 'disabled' | 'enabled';
+  username: string;
 }
 
 export interface AdminRuleItem {
@@ -96,13 +99,21 @@ export async function getAdminUserListApi(params: AdminUserListParams) {
   return {
     items: rows.map(
       (item): AdminUserListItem => ({
+        age: null,
         bindCount: item.roles.includes('elder') ? 1 : 0,
         communityName: item.roles.includes('community') ? '东湖社区' : '-',
+        createdAt: '-',
         id: item.user_id,
         lastAlertAt: item.last_login_at || '-',
         name: item.display_name,
         phone: item.phone,
         riskLevel: mapRiskLevelFromRoles(item.roles),
+        riskScore:
+          item.roles.includes('elder')
+            ? 90
+            : item.roles.includes('family')
+              ? 60
+              : 20,
         role: item.roles[0] || 'elder',
         status: item.status === 'active' ? 'enabled' : 'disabled',
         username: item.username,

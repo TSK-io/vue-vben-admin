@@ -35,6 +35,17 @@ export interface FamilyOverviewData {
   stats: FamilyOverviewStat[];
 }
 
+export interface FamilySeniorListItem {
+  bindStatus: string;
+  elderName: string;
+  id: string;
+  lastAlert: string;
+  latestAlertTitle: string;
+  relation: string;
+  riskLevel: 'high' | 'low' | 'medium';
+  riskSummary: string;
+}
+
 export interface FamilyAlertListParams {
   page?: number;
   pageSize?: number;
@@ -184,6 +195,74 @@ export async function getFamilyAlertListApi(params: FamilyAlertListParams) {
           !params.status || item.status === params.status,
       ),
     total: alerts.total,
+  };
+}
+
+function formatBindingDays(authorizedAt?: string) {
+  if (!authorizedAt) {
+    return '已绑定';
+  }
+  const start = new Date(authorizedAt).getTime();
+  if (Number.isNaN(start)) {
+    return '已绑定';
+  }
+  const days = Math.max(
+    1,
+    Math.floor((Date.now() - start) / (24 * 60 * 60 * 1000)),
+  );
+  return `已绑定 ${days} 天`;
+}
+
+export async function getFamilySeniorListApi(params: {
+  keyword?: string;
+  riskLevel?: string;
+}) {
+  const [bindings, alerts] = await Promise.all([
+    requestClient.get<any[]>('/bindings'),
+    getRiskAlertListApi({ page: 1, pageSize: 100 }),
+  ]);
+
+  const latestAlertMap = new Map<string, (typeof alerts.items)[number]>();
+  for (const item of alerts.items) {
+    if (!latestAlertMap.has(item.elderName)) {
+      latestAlertMap.set(item.elderName, item);
+    }
+  }
+
+  const items = bindings
+    .map((item): FamilySeniorListItem => {
+      const latestAlert = latestAlertMap.get(item.elder_name);
+      return {
+        bindStatus: formatBindingDays(item.authorized_at),
+        elderName: item.elder_name,
+        id: item.elder_user_id,
+        lastAlert: latestAlert?.occurredAt ?? '暂无告警',
+        latestAlertTitle: latestAlert?.title ?? '暂无风险告警',
+        relation: item.relationship_type,
+        riskLevel: latestAlert?.riskLevel ?? 'low',
+        riskSummary:
+          latestAlert?.hitReason ?? '当前暂无风险告警，可继续保持日常关怀。',
+      };
+    })
+    .filter(
+      (item) =>
+        !params.keyword ||
+        [
+          item.elderName,
+          item.relation,
+          item.latestAlertTitle,
+          item.id,
+          item.riskSummary,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(params.keyword.toLowerCase()),
+    )
+    .filter((item) => !params.riskLevel || item.riskLevel === params.riskLevel);
+
+  return {
+    items,
+    total: items.length,
   };
 }
 

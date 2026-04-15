@@ -1,10 +1,13 @@
 <script lang="ts" setup>
-import { computed, reactive } from 'vue';
+import type { FamilySeniorListItem } from '#/api';
+
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import {
   Button,
   Card,
   Col,
+  Empty,
   Input,
   Row,
   Select,
@@ -12,90 +15,50 @@ import {
   Tag,
 } from 'ant-design-vue';
 
+import { getFamilySeniorListApi } from '#/api';
+
 defineOptions({ name: 'FamilySeniors' });
-
-interface SeniorItem {
-  bindStatus: string;
-  id: string;
-  lastAlert: string;
-  latestAlertTitle: string;
-  name: string;
-  relation: string;
-  riskLevel: 'high' | 'low' | 'medium';
-  riskSummary: string;
-}
-
-const sourceRows: SeniorItem[] = [
-  {
-    bindStatus: '已绑定 128 天',
-    id: 'ELD-1',
-    lastAlert: '2026-04-14 09:12',
-    latestAlertTitle: '疑似冒充医保短信',
-    name: '王阿姨',
-    relation: '母亲',
-    riskLevel: 'high',
-    riskSummary: '今日出现高风险短信，建议优先电话核实。',
-  },
-  {
-    bindStatus: '已绑定 96 天',
-    id: 'ELD-2',
-    lastAlert: '2026-04-14 08:45',
-    latestAlertTitle: '疑似冒充公检法来电',
-    name: '周奶奶',
-    relation: '外婆',
-    riskLevel: 'high',
-    riskSummary: '正在处理中，社区已跟进。',
-  },
-  {
-    bindStatus: '已绑定 54 天',
-    id: 'ELD-3',
-    lastAlert: '2026-04-13 18:20',
-    latestAlertTitle: '疑似退款验证码套取',
-    name: '孙大爷',
-    relation: '父亲',
-    riskLevel: 'medium',
-    riskSummary: '已完成首次提醒，建议持续关注。',
-  },
-  {
-    bindStatus: '已绑定 41 天',
-    id: 'ELD-4',
-    lastAlert: '2026-04-12 16:36',
-    latestAlertTitle: '疑似熟人冒充来电',
-    name: '赵桂兰',
-    relation: '姑妈',
-    riskLevel: 'low',
-    riskSummary: '当前风险较低，可结合通话记录复查。',
-  },
-];
 
 const filters = reactive({
   keyword: '',
   riskLevel: undefined as string | undefined,
 });
 
-const rows = computed(() =>
-  sourceRows.filter((item) => {
-    const hitKeyword =
-      !filters.keyword ||
-      [item.name, item.relation, item.latestAlertTitle, item.id]
-        .join(' ')
-        .toLowerCase()
-        .includes(filters.keyword.toLowerCase());
-    const hitRisk = !filters.riskLevel || item.riskLevel === filters.riskLevel;
-    return hitKeyword && hitRisk;
-  }),
-);
+const loading = ref(false);
+const rows = ref<FamilySeniorListItem[]>([]);
+const summary = computed(() => ({
+  highRiskCount: rows.value.filter((item) => item.riskLevel === 'high').length,
+  total: rows.value.length,
+}));
 
 function resetFilters() {
   filters.keyword = '';
   filters.riskLevel = undefined;
+  void loadRows();
 }
 
-function getRiskMeta(level: SeniorItem['riskLevel']) {
+async function loadRows() {
+  loading.value = true;
+  try {
+    const data = await getFamilySeniorListApi({
+      keyword: filters.keyword || undefined,
+      riskLevel: filters.riskLevel,
+    });
+    rows.value = data.items;
+  } finally {
+    loading.value = false;
+  }
+}
+
+function getRiskMeta(level: FamilySeniorListItem['riskLevel']) {
   if (level === 'high') return { color: 'red', text: '高风险' };
   if (level === 'medium') return { color: 'orange', text: '中风险' };
   return { color: 'green', text: '低风险' };
 }
+
+onMounted(() => {
+  void loadRows();
+});
 </script>
 
 <template>
@@ -110,7 +73,10 @@ function getRiskMeta(level: SeniorItem['riskLevel']) {
       </div>
       <div class="hero-note">
         <strong>当前关注</strong>
-        <span>高风险对象优先联系，不确定时先查看风险详情页。</span>
+        <span>
+          当前共 {{ summary.total }} 位绑定老人，其中 {{ summary.highRiskCount }}
+          位为高风险，建议优先联系。
+        </span>
       </div>
     </section>
 
@@ -121,6 +87,7 @@ function getRiskMeta(level: SeniorItem['riskLevel']) {
           allow-clear
           placeholder="搜索老人姓名、关系或最近告警"
           style="width: 260px"
+          @press-enter="loadRows"
         />
         <Select
           v-model:value="filters.riskLevel"
@@ -133,16 +100,17 @@ function getRiskMeta(level: SeniorItem['riskLevel']) {
             { label: '低风险', value: 'low' },
           ]"
         />
+        <Button type="primary" @click="loadRows">查询</Button>
         <Button @click="resetFilters">重置</Button>
       </Space>
     </Card>
 
-    <Row :gutter="[16, 16]" class="list-row">
+    <Row v-if="rows.length" :gutter="[16, 16]" class="list-row">
       <Col v-for="item in rows" :key="item.id" :lg="12" :span="24">
-        <Card class="senior-card" :bordered="false">
+        <Card class="senior-card" :bordered="false" :loading="loading">
           <div class="card-head">
             <div>
-              <h3>{{ item.name }}</h3>
+              <h3>{{ item.elderName }}</h3>
               <p>{{ item.relation }} · {{ item.bindStatus }} · {{ item.id }}</p>
             </div>
             <Tag :color="getRiskMeta(item.riskLevel).color">
@@ -161,6 +129,9 @@ function getRiskMeta(level: SeniorItem['riskLevel']) {
         </Card>
       </Col>
     </Row>
+    <Card v-else class="filter-card" :bordered="false" :loading="loading">
+      <Empty description="当前筛选条件下暂无绑定老人或风险数据" />
+    </Card>
   </div>
 </template>
 

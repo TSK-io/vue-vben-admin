@@ -23,6 +23,18 @@ export interface RiskAlertItem {
   title: string;
 }
 
+export interface RiskEventViewItem {
+  alertId: string;
+  alertTitle: string;
+  elderName: string;
+  notifiedCount: number;
+  occurredAt: string;
+  readNotificationCount: number;
+  riskLevel: 'high' | 'low' | 'medium';
+  status: 'handled' | 'pending';
+  workorderCount: number;
+}
+
 function normalizeStatus(status: string): 'handled' | 'pending' {
   return status === 'closed' || status === 'handled' ? 'handled' : 'pending';
 }
@@ -73,4 +85,55 @@ export async function getRiskAlertListApi(params: RiskAlertListParams) {
       ),
     total: result.pagination.total,
   };
+}
+
+export async function getRiskEventViewApi() {
+  const [alerts, notifications] = await Promise.all([
+    getRiskAlertListApi({ page: 1, pageSize: 100 }),
+    requestClient.get<any>('/notifications', {
+      params: {
+        page: 1,
+        page_size: 100,
+      },
+    }),
+  ]);
+
+  const notificationStats = new Map<
+    string,
+    { notifiedCount: number; readNotificationCount: number }
+  >();
+
+  for (const item of notifications.items ?? []) {
+    const key = item.alert_id;
+    const current = notificationStats.get(key) ?? {
+      notifiedCount: 0,
+      readNotificationCount: 0,
+    };
+    current.notifiedCount += 1;
+    if (item.is_read) {
+      current.readNotificationCount += 1;
+    }
+    notificationStats.set(key, current);
+  }
+
+  const detailList = await Promise.all(
+    alerts.items.map((item: RiskAlertItem) =>
+      requestClient.get<any>(`/risk-alerts/${item.id}`),
+    ),
+  );
+
+  return alerts.items.map(
+    (item: RiskAlertItem, index: number): RiskEventViewItem => ({
+      alertId: item.id,
+      alertTitle: item.title,
+      elderName: item.elderName,
+      notifiedCount: notificationStats.get(item.id)?.notifiedCount ?? 0,
+      occurredAt: item.occurredAt,
+      readNotificationCount:
+        notificationStats.get(item.id)?.readNotificationCount ?? 0,
+      riskLevel: item.riskLevel,
+      status: item.status,
+      workorderCount: detailList[index].related_workorder_ids.length,
+    }),
+  );
 }
