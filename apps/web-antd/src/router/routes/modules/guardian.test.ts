@@ -16,7 +16,7 @@ describe('guardian routes', () => {
       ['ElderPortal', ['ElderHome', 'ElderAlerts', 'ElderHelp', 'ElderFamilyBinding', 'ElderKnowledge', 'ElderSettings']],
       ['FamilyPortal', ['FamilyOverview', 'FamilySeniors', 'FamilyAlerts', 'FamilyNotifications', 'FamilySettings']],
       ['CommunityPortal', ['CommunityDashboard', 'CommunitySeniors', 'CommunityWorkorders', 'CommunityEducation', 'CommunityReports']],
-      ['AdminPortal', ['AdminUsers', 'AdminRoles', 'AdminRules', 'AdminContents', 'AdminSystemSettings']],
+      ['AdminPortal', ['AdminUsers', 'AdminRoles', 'AdminRules', 'AdminContents', 'AdminAlerts', 'AdminSystemSettings']],
     ] as const;
 
     for (const [portalName, childNames] of expectations) {

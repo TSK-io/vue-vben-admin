@@ -2,7 +2,7 @@ import {
   createAdminRoleApi,
   getAdminRoleListApi,
   updateAdminRoleApi,
-} from './admin';
+} from './admin/index';
 
 export interface RolePermissionOverviewItem {
   codeCount: number;
