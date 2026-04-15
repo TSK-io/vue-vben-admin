@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import re
+from urllib.parse import urlparse
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -399,9 +401,42 @@ def _analyze_text(scene: str, text: str) -> tuple[str, int, list[str], list[Matc
     return risk_level, risk_score, hit_terms, hit_rules, reason_detail, suggestion_action
 
 
+def _analyze_links(text: str) -> dict[str, object]:
+    urls = re.findall(r"(https?://[^\s]+|[a-zA-Z0-9.-]+\.(?:cn|com|net|cc|top|vip|xyz)/[^\s]*)", text)
+    normalized_urls: list[str] = []
+    suspicious_domains: list[str] = []
+    short_link_detected = False
+    for item in urls:
+        url = item if item.startswith("http") else f"https://{item}"
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        normalized_urls.append(url)
+        if any(domain.endswith(suffix) for suffix in ("t.cn", "bit.ly", "url.cn", "dwz.cn")):
+            short_link_detected = True
+            suspicious_domains.append(domain)
+        if any(flag in domain for flag in ("refund", "bonus", "gift", "verify", "safe")):
+            suspicious_domains.append(domain)
+    if not normalized_urls and ("点击链接" in text or "短链" in text):
+        normalized_urls.append("embedded-link-indicator")
+        short_link_detected = True
+    return {
+        "urls": normalized_urls,
+        "short_link_detected": short_link_detected,
+        "suspicious_domains": sorted(set(suspicious_domains)),
+    }
+
+
 def recognize_sms(*, elder_user_id: str, message_text: str, sender: str | None = None, occurred_at: str | None = None) -> dict:
     occurred_at = occurred_at or _now_iso()
     risk_level, risk_score, hit_terms, hit_rules, reason_detail, suggestion_action = _analyze_text("sms", message_text)
+    link_analysis = _analyze_links(message_text)
+    if link_analysis["short_link_detected"] or link_analysis["suspicious_domains"]:
+        risk_score = min(99, risk_score + 6)
+        risk_level = "high" if risk_score >= 85 else risk_level
+        if link_analysis["suspicious_domains"]:
+            reason_detail = (
+                f"{reason_detail} 额外识别到可疑域名：{'、'.join(link_analysis['suspicious_domains'][:3])}。"
+            )
 
     with session_scope() as session:
         elder = _ensure_elder_exists(session, elder_user_id)
@@ -447,6 +482,7 @@ def recognize_sms(*, elder_user_id: str, message_text: str, sender: str | None =
             "alert_id": alert.id if alert else None,
             "notification_ids": [item.id for item in notifications],
             "workorder_id": workorder.id if workorder else None,
+            "link_analysis": link_analysis,
         }
 
 
@@ -506,4 +542,5 @@ def recognize_call(
             "alert_id": alert.id if alert else None,
             "notification_ids": [item.id for item in notifications],
             "workorder_id": workorder.id if workorder else None,
+            "link_analysis": None,
         }

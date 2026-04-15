@@ -21,6 +21,11 @@ export interface RiskAlertItem {
   sourceType: 'call' | 'sms';
   status: 'handled' | 'pending';
   title: string;
+  linkAnalysis?: {
+    shortLinkDetected: boolean;
+    suspiciousDomains: string[];
+    urls: string[];
+  };
 }
 
 export interface RiskEventViewItem {
@@ -73,6 +78,14 @@ export async function getRiskAlertListApi(params: RiskAlertListParams) {
           sourceType: item.source_type,
           status: normalizeStatus(item.status),
           title: item.title,
+          linkAnalysis: details[index].link_analysis
+            ? {
+                shortLinkDetected: details[index].link_analysis.short_link_detected,
+                suspiciousDomains:
+                  details[index].link_analysis.suspicious_domains || [],
+                urls: details[index].link_analysis.urls || [],
+              }
+            : undefined,
         }),
       )
       .filter(

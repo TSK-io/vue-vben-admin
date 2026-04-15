@@ -10,18 +10,24 @@ from app.schemas.business import (
     AdminUserPhoneUpdateRequest,
     AdminUserUpsertRequest,
     ContentUpsertRequest,
+    RiskLexiconUpsertRequest,
     RiskRuleUpsertRequest,
+    RoleUpsertRequest,
     SystemConfigUpdateRequest,
 )
 from app.schemas.common import ApiResponse, MetaPayload
 from app.services.business import (
     create_content,
     create_admin_user,
+    create_role,
+    create_risk_lexicon,
     create_risk_rule,
+    get_admin_risk_alert_detail,
     get_admin_user_detail,
     list_admin_risk_alerts,
     list_admin_users,
     list_contents,
+    list_risk_lexicon,
     list_risk_rules,
     list_roles,
     list_system_configs,
@@ -29,6 +35,8 @@ from app.services.business import (
     update_content,
     update_admin_user,
     update_admin_user_phone,
+    update_role,
+    update_risk_lexicon,
     update_risk_rule,
     update_system_config,
 )
@@ -114,6 +122,27 @@ async def get_admin_roles(
     return ApiResponse(data=data, meta=response_meta(request))
 
 
+@router.post("/roles", summary="新增角色权限配置", response_model=ApiResponse)
+async def post_admin_role(
+    payload: RoleUpsertRequest,
+    request: Request,
+    _: Annotated[object, Depends(require_roles(UserRole.ADMIN))],
+) -> ApiResponse:
+    data = create_role(payload).model_dump()
+    return ApiResponse(data=data, meta=response_meta(request))
+
+
+@router.put("/roles/{role_code}", summary="更新角色权限配置", response_model=ApiResponse)
+async def put_admin_role(
+    payload: RoleUpsertRequest,
+    request: Request,
+    _: Annotated[object, Depends(require_roles(UserRole.ADMIN))],
+    role_code: str = Path(),
+) -> ApiResponse:
+    data = update_role(role_code, payload).model_dump()
+    return ApiResponse(data=data, meta=response_meta(request))
+
+
 @router.get("/rules", summary="管理端风险规则列表", response_model=ApiResponse)
 async def get_admin_rules(
     request: Request,
@@ -144,6 +173,37 @@ async def put_admin_rule(
     return ApiResponse(data=data, meta=response_meta(request))
 
 
+@router.get("/lexicon", summary="风险词库列表", response_model=ApiResponse)
+async def get_admin_lexicon(
+    request: Request,
+    _: Annotated[object, Depends(require_roles(UserRole.ADMIN))],
+    scene: str | None = Query(default=None),
+) -> ApiResponse:
+    data = [item.model_dump() for item in list_risk_lexicon(scene=scene)]
+    return ApiResponse(data=data, meta=response_meta(request))
+
+
+@router.post("/lexicon", summary="新增风险词", response_model=ApiResponse)
+async def post_admin_lexicon(
+    payload: RiskLexiconUpsertRequest,
+    request: Request,
+    _: Annotated[object, Depends(require_roles(UserRole.ADMIN))],
+) -> ApiResponse:
+    data = create_risk_lexicon(payload).model_dump()
+    return ApiResponse(data=data, meta=response_meta(request))
+
+
+@router.put("/lexicon/{term_id}", summary="更新风险词", response_model=ApiResponse)
+async def put_admin_lexicon(
+    payload: RiskLexiconUpsertRequest,
+    request: Request,
+    _: Annotated[object, Depends(require_roles(UserRole.ADMIN))],
+    term_id: str = Path(),
+) -> ApiResponse:
+    data = update_risk_lexicon(term_id, payload).model_dump()
+    return ApiResponse(data=data, meta=response_meta(request))
+
+
 @router.get("/contents", summary="管理端内容管理列表", response_model=ApiResponse)
 async def get_admin_contents(
     request: Request,
@@ -159,6 +219,16 @@ async def get_admin_risk_alerts(
     _: Annotated[object, Depends(require_roles(UserRole.ADMIN))],
 ) -> ApiResponse:
     data = [item.model_dump() for item in list_admin_risk_alerts()]
+    return ApiResponse(data=data, meta=response_meta(request))
+
+
+@router.get("/risk-alerts/{alert_id}", summary="管理端告警详情", response_model=ApiResponse)
+async def get_admin_risk_alert(
+    request: Request,
+    _: Annotated[object, Depends(require_roles(UserRole.ADMIN))],
+    alert_id: str = Path(),
+) -> ApiResponse:
+    data = get_admin_risk_alert_detail(alert_id).model_dump()
     return ApiResponse(data=data, meta=response_meta(request))
 
 

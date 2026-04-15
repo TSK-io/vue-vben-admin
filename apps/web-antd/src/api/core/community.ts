@@ -68,11 +68,15 @@ export interface CommunitySeniorItem {
   followUpStatus: string;
   id: string;
   labels: string[];
+  manualRiskTag?: string | null;
   riskLevel: 'high' | 'low' | 'medium';
+  visitRecords: Array<{ created_at: string; note: string; record_type: string }>;
 }
 
 export interface CommunityWorkorderActionItem {
   actionType: string;
+  attachments: string[];
+  collaborationNote?: string | null;
   createdAt: string;
   fromStatus: string;
   id: string;
@@ -261,7 +265,9 @@ export async function getCommunitySeniorListApi(params: {
         followUpStatus: item.follow_up_status,
         id: item.elder_user_id,
         labels: item.tags,
+        manualRiskTag: item.manual_risk_tag,
         riskLevel: item.risk_level,
+        visitRecords: item.visit_records || [],
       }),
     ),
     total: result.pagination.total,
@@ -319,6 +325,8 @@ export async function getCommunityWorkorderDetailApi(workorderId: string) {
     actions: item.actions.map(
       (action: any): CommunityWorkorderActionItem => ({
         actionType: action.action_type,
+        attachments: action.attachments || [],
+        collaborationNote: action.collaboration_note,
         createdAt: action.created_at,
         fromStatus: action.from_status,
         id: action.id,
@@ -347,6 +355,8 @@ export async function transitionCommunityWorkorderApi(
   payload: {
     actionType: string;
     assignedToUserId?: string;
+    attachments?: string[];
+    collaborationNote?: string;
     disposeMethod?: string;
     disposeResult?: string;
     note?: string;
@@ -356,10 +366,29 @@ export async function transitionCommunityWorkorderApi(
   return requestClient.post(`/community/workorders/${workorderId}/transition`, {
     action_type: payload.actionType,
     assigned_to_user_id: payload.assignedToUserId,
+    attachments: payload.attachments || [],
+    collaboration_note: payload.collaborationNote,
     dispose_method: payload.disposeMethod,
     dispose_result: payload.disposeResult,
     note: payload.note,
     to_status: payload.toStatus,
+  });
+}
+
+export async function updateCommunitySeniorFollowupApi(
+  elderUserId: string,
+  payload: {
+    followUpStatus: string;
+    manualRiskTag?: string;
+    recordType: string;
+    note: string;
+  },
+) {
+  return requestClient.post(`/community/elders/${elderUserId}/follow-up`, {
+    follow_up_status: payload.followUpStatus,
+    manual_risk_tag: payload.manualRiskTag,
+    note: payload.note,
+    record_type: payload.recordType,
   });
 }
 

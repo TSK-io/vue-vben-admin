@@ -36,6 +36,22 @@ class RoleInfo(BaseModel):
     description: str
     permissions: list[str]
     user_count: int | None = None
+    menus: list[str] = Field(default_factory=list)
+    button_permissions: list[str] = Field(default_factory=list)
+    api_permissions: list[str] = Field(default_factory=list)
+    data_scope: str = "self"
+    is_system: bool = False
+
+
+class RoleUpsertRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=32)
+    name: str = Field(min_length=1, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+    permissions: list[str] = Field(default_factory=list)
+    menus: list[str] = Field(default_factory=list)
+    button_permissions: list[str] = Field(default_factory=list)
+    api_permissions: list[str] = Field(default_factory=list)
+    data_scope: str = Field(default="self", min_length=1, max_length=30)
 
 
 class BindingItem(BaseModel):
@@ -111,6 +127,7 @@ class RiskRecognitionResult(BaseModel):
     alert_id: str | None
     notification_ids: list[str]
     workorder_id: str | None
+    link_analysis: dict[str, Any] | None = None
 
 
 class NotificationItem(BaseModel):
@@ -132,6 +149,16 @@ class NotificationReadResult(BaseModel):
     id: str
     is_read: bool
     read_at: str | None
+
+
+class NotificationActionRequest(BaseModel):
+    status: str = Field(min_length=1, max_length=30)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class NotificationActionResult(NotificationReadResult):
+    status: str
+    note: str | None = None
 
 
 class HelpRequestCreate(BaseModel):
@@ -200,6 +227,8 @@ class AccessibilitySettings(BaseModel):
     high_contrast: bool
     voice_assistant: bool
     voice_speed: str
+    screen_reader_enabled: bool = False
+    voice_prompt_enabled: bool = False
 
 
 class AccessibilitySettingsUpdateRequest(BaseModel):
@@ -207,6 +236,8 @@ class AccessibilitySettingsUpdateRequest(BaseModel):
     high_contrast: bool
     voice_assistant: bool
     voice_speed: str = Field(min_length=1, max_length=20)
+    screen_reader_enabled: bool = False
+    voice_prompt_enabled: bool = False
 
 
 class CommunityElderItem(BaseModel):
@@ -221,6 +252,15 @@ class CommunityElderItem(BaseModel):
     follow_up_status: str
     assigned_grid_member: str
     alert_count_7d: int
+    manual_risk_tag: str | None = None
+    visit_records: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class CommunityElderFollowupRequest(BaseModel):
+    follow_up_status: str = Field(min_length=1, max_length=30)
+    manual_risk_tag: str | None = Field(default=None, max_length=20)
+    record_type: str = Field(min_length=1, max_length=30)
+    note: str = Field(min_length=1, max_length=500)
 
 
 class WorkorderActionItem(BaseModel):
@@ -232,6 +272,8 @@ class WorkorderActionItem(BaseModel):
     to_status: str | None
     note: str | None
     created_at: str
+    attachments: list[str] = Field(default_factory=list)
+    collaboration_note: str | None = None
 
 
 class WorkorderItem(BaseModel):
@@ -263,6 +305,8 @@ class WorkorderTransitionRequest(BaseModel):
     assigned_to_user_id: str | None = None
     dispose_method: str | None = Field(default=None, max_length=30)
     dispose_result: str | None = Field(default=None, max_length=1000)
+    attachments: list[str] = Field(default_factory=list)
+    collaboration_note: str | None = Field(default=None, max_length=500)
 
 
 class AdminUserItem(BaseModel):
@@ -396,6 +440,13 @@ class AdminRiskAlertItem(BaseModel):
     related_workorders: int
 
 
+class AdminRiskAlertDetail(AdminRiskAlertItem):
+    reason_detail: str
+    suggestion_action: str
+    related_notification_ids: list[str]
+    related_workorder_ids: list[str]
+
+
 class CommunityReportData(BaseModel):
     risk_by_level: list[dict[str, int | str]]
 
@@ -471,3 +522,24 @@ class RuntimeQueueStatus(BaseModel):
     workorder_status: list[dict[str, int | str]]
     education_summary: list[dict[str, int | str]]
     disposal_avg_minutes: int
+
+
+class RiskLexiconItem(BaseModel):
+    id: str
+    term: str
+    category: str
+    scene: str
+    risk_level: str
+    status: str
+    source: str | None = None
+    notes: str | None = None
+
+
+class RiskLexiconUpsertRequest(BaseModel):
+    term: str = Field(min_length=1, max_length=100)
+    category: str = Field(min_length=1, max_length=30)
+    scene: str = Field(min_length=1, max_length=20)
+    risk_level: str = Field(min_length=1, max_length=20)
+    status: str = Field(default="enabled", min_length=1, max_length=20)
+    source: str | None = Field(default=None, max_length=50)
+    notes: str | None = Field(default=None, max_length=255)

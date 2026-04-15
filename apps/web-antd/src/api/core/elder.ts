@@ -17,6 +17,8 @@ export interface AccessibilitySettings {
   highContrast: boolean;
   voiceAssistant: boolean;
   voiceSpeed: string;
+  screenReaderEnabled: boolean;
+  voicePromptEnabled: boolean;
 }
 
 export interface KnowledgeItem {
@@ -100,7 +102,9 @@ export async function getAccessibilitySettingsApi() {
   return {
     fontScale: result.font_scale,
     highContrast: result.high_contrast,
+    screenReaderEnabled: result.screen_reader_enabled,
     voiceAssistant: result.voice_assistant,
+    voicePromptEnabled: result.voice_prompt_enabled,
     voiceSpeed: result.voice_speed,
   } satisfies AccessibilitySettings;
 }
@@ -111,7 +115,9 @@ export async function updateAccessibilitySettingsApi(
   return requestClient.put('/elder/accessibility-settings', {
     font_scale: payload.fontScale,
     high_contrast: payload.highContrast,
+    screen_reader_enabled: payload.screenReaderEnabled,
     voice_assistant: payload.voiceAssistant,
+    voice_prompt_enabled: payload.voicePromptEnabled,
     voice_speed: payload.voiceSpeed,
   });
 }

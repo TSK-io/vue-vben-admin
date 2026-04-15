@@ -89,6 +89,14 @@ def test_family_bindings_alerts_and_notifications(client: TestClient) -> None:
     assert notifications_response.status_code == 200
     assert notifications_response.json()["data"]["items"][0]["receiver_name"] == "王女士"
 
+    action_response = client.patch(
+        "/api/v1/notifications/notify-001/action",
+        headers=headers,
+        json={"status": "follow_up", "note": "已电话提醒老人"},
+    )
+    assert action_response.status_code == 200
+    assert action_response.json()["data"]["status"] == "follow_up"
+
 
 def test_community_workorder_transition(client: TestClient) -> None:
     headers = auth_headers(client, "community_demo", "111")
@@ -104,12 +112,28 @@ def test_community_workorder_transition(client: TestClient) -> None:
             "action_type": "close",
             "to_status": "closed",
             "note": "已联系老人和家属确认，无转账发生。",
+            "attachments": ["https://example.com/call-record.png"],
+            "collaboration_note": "家属已同步确认",
             "dispose_method": "phone_visit",
             "dispose_result": "完成电话回访并宣教提醒。",
         },
     )
     assert transition_response.status_code == 200
     assert transition_response.json()["data"]["status"] == "closed"
+    assert transition_response.json()["data"]["actions"][-1]["attachments"][0].endswith(".png")
+
+    followup_response = client.post(
+        "/api/v1/community/elders/u-elder-001/follow-up",
+        headers=headers,
+        json={
+            "follow_up_status": "education_done",
+            "manual_risk_tag": "high",
+            "record_type": "onsite_education",
+            "note": "已上门宣教并提醒不要点击链接",
+        },
+    )
+    assert followup_response.status_code == 200
+    assert followup_response.json()["data"]["visit_records"][0]["record_type"] == "onsite_education"
 
 
 def test_admin_management_endpoints(client: TestClient) -> None:
@@ -127,6 +151,45 @@ def test_admin_management_endpoints(client: TestClient) -> None:
     assert contents_response.status_code == 200
     assert configs_response.status_code == 200
     assert users_response.json()["data"][0]["user_id"].startswith("u-")
+
+    role_update_response = client.put(
+        "/api/v1/admin/roles/family",
+        headers=headers,
+        json={
+            "code": "family",
+            "name": "子女用户",
+            "description": "查看老人风险并跟进告警",
+            "permissions": ["family:read", "notifications:update"],
+            "menus": ["监护总览", "通知记录"],
+            "button_permissions": ["notifications:update"],
+            "api_permissions": ["notifications:update"],
+            "data_scope": "assigned",
+        },
+    )
+    assert role_update_response.status_code == 200
+    assert role_update_response.json()["data"]["data_scope"] == "assigned"
+
+    lexicon_create_response = client.post(
+        "/api/v1/admin/lexicon",
+        headers=headers,
+        json={
+            "term": "共享屏幕",
+            "category": "call_phrase",
+            "scene": "call",
+            "risk_level": "high",
+            "status": "enabled",
+            "source": "manual",
+            "notes": "诱导远控",
+        },
+    )
+    assert lexicon_create_response.status_code == 200
+
+    admin_alerts_response = client.get("/api/v1/admin/risk-alerts", headers=headers)
+    assert admin_alerts_response.status_code == 200
+    alert_id = admin_alerts_response.json()["data"][0]["id"]
+    admin_alert_detail_response = client.get(f"/api/v1/admin/risk-alerts/{alert_id}", headers=headers)
+    assert admin_alert_detail_response.status_code == 200
+    assert "reason_detail" in admin_alert_detail_response.json()["data"]
 
 
 def test_risk_recognition_sms_creates_alert_notifications_and_workorder(client: TestClient) -> None:
@@ -148,6 +211,7 @@ def test_risk_recognition_sms_creates_alert_notifications_and_workorder(client: 
     assert data["alert_id"] is not None
     assert len(data["notification_ids"]) >= 2
     assert data["workorder_id"] is not None
+    assert data["link_analysis"]["urls"]
 
 
 def test_risk_recognition_call_creates_structured_result(client: TestClient) -> None:
@@ -194,12 +258,15 @@ def test_elder_help_settings_and_family_reminder(client: TestClient) -> None:
         json={
             "font_scale": "x-large",
             "high_contrast": True,
+            "screen_reader_enabled": True,
             "voice_assistant": True,
+            "voice_prompt_enabled": True,
             "voice_speed": "slow",
         },
     )
     assert settings_response.status_code == 200
     assert settings_response.json()["data"]["font_scale"] == "x-large"
+    assert settings_response.json()["data"]["screen_reader_enabled"] is True
 
     reminder_response = client.post(
         "/api/v1/family/reminders",

@@ -6,6 +6,7 @@ import {
   Card,
   Col,
   List,
+  Modal,
   Row,
   Select,
   Space,
@@ -22,6 +23,9 @@ const router = useRouter();
 const loading = ref(false);
 const alerts = ref<RiskAlertItem[]>([]);
 const total = ref(0);
+const detailVisible = ref(false);
+const realtimeVisible = ref(false);
+const currentAlert = ref<RiskAlertItem | null>(null);
 
 const filters = reactive({
   page: 1,
@@ -119,6 +123,10 @@ async function loadAlerts() {
 
     alerts.value = data.items;
     total.value = data.total;
+    if (data.items[0]?.riskLevel === 'high' && !realtimeVisible.value) {
+      currentAlert.value = data.items[0];
+      realtimeVisible.value = true;
+    }
   } finally {
     loading.value = false;
   }
@@ -166,6 +174,11 @@ function goToHelpPage() {
 
 function goToFamilyBindingPage() {
   void router.push('/elder/family-binding');
+}
+
+function openDetail(item: RiskAlertItem) {
+  currentAlert.value = item;
+  detailVisible.value = true;
 }
 
 onMounted(() => {
@@ -367,10 +380,41 @@ onMounted(() => {
                 </div>
               </Col>
             </Row>
+            <Button style="margin-top: 12px" @click="openDetail(item)">
+              查看处置详情
+            </Button>
           </List.Item>
         </template>
       </List>
     </Card>
+
+    <Modal
+      v-model:open="realtimeVisible"
+      title="实时风险提醒"
+      ok-text="我知道了"
+      cancel-text="去求助"
+      @cancel="goToHelpPage"
+    >
+      <p>{{ currentAlert?.title }}</p>
+      <p>{{ currentAlert?.advice }}</p>
+    </Modal>
+
+    <Modal v-model:open="detailVisible" title="风险详情" footer="">
+      <Space v-if="currentAlert" direction="vertical" style="width: 100%">
+        <Card size="small" :bordered="false">
+          <p><strong>{{ currentAlert.title }}</strong></p>
+          <p>{{ currentAlert.occurredAt }} · {{ getSourceLabel(currentAlert.sourceType) }}</p>
+        </Card>
+        <Card size="small" title="为什么危险">{{ currentAlert.hitReason }}</Card>
+        <Card size="small" title="处置建议">{{ currentAlert.advice }}</Card>
+        <Card size="small" title="后续动作">
+          <Space>
+            <Button type="primary" @click="goToHelpPage">一键求助</Button>
+            <Button @click="goToFamilyBindingPage">联系家人</Button>
+          </Space>
+        </Card>
+      </Space>
+    </Modal>
   </div>
 </template>
 

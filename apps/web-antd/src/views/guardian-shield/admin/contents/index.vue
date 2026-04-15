@@ -4,13 +4,12 @@ import { onMounted, reactive, ref } from 'vue';
 import {
   Button,
   Card,
-  Col,
   Form,
   Input,
   Modal,
-  Row,
   Select,
   Space,
+  Table,
   Tag,
   message,
 } from 'ant-design-vue';
@@ -27,17 +26,17 @@ const rows = ref<any[]>([]);
 const visible = ref(false);
 const editingId = ref<string>();
 const formState = reactive({
-  contentType: 'template',
-  code: '',
-  title: '',
-  category: '',
+  assetUrl: '',
   audience: 'elder',
+  auditStatus: 'pending',
+  category: 'fraud_case',
   channel: 'app',
+  code: '',
+  contentBody: '',
+  contentType: 'education',
   status: 'draft',
   summary: '',
-  contentBody: '',
-  auditStatus: 'approved',
-  assetUrl: '',
+  title: '',
 });
 
 async function loadRows() {
@@ -47,17 +46,17 @@ async function loadRows() {
 function openCreate() {
   editingId.value = undefined;
   Object.assign(formState, {
-    contentType: 'template',
-    code: '',
-    title: '',
-    category: '',
+    assetUrl: '',
     audience: 'elder',
+    auditStatus: 'pending',
+    category: 'fraud_case',
     channel: 'app',
+    code: '',
+    contentBody: '',
+    contentType: 'education',
     status: 'draft',
     summary: '',
-    contentBody: '',
-    auditStatus: 'approved',
-    assetUrl: '',
+    title: '',
   });
   visible.value = true;
 }
@@ -65,17 +64,17 @@ function openCreate() {
 function openEdit(item: any) {
   editingId.value = item.id;
   Object.assign(formState, {
-    contentType: item.contentType,
-    code: item.code || '',
-    title: item.title,
-    category: item.category,
+    assetUrl: item.assetUrl || '',
     audience: item.audience || 'elder',
+    auditStatus: item.auditStatus || 'pending',
+    category: item.category,
     channel: item.channel || 'app',
+    code: item.code || '',
+    contentBody: item.summary || '',
+    contentType: item.contentType,
     status: item.status,
     summary: item.summary || '',
-    contentBody: item.summary || item.title,
-    auditStatus: item.auditStatus || 'approved',
-    assetUrl: item.assetUrl || '',
+    title: item.title,
   });
   visible.value = true;
 }
@@ -104,68 +103,89 @@ onMounted(() => {
         <p class="eyebrow">管理后台 / 内容资产</p>
         <h1>内容管理</h1>
         <p class="description">
-          内容管理已接真实后端，支持模板与宣教内容的新增、编辑和发布状态维护。
+          已补齐诈骗案例库分类、审核状态和素材地址字段，可维护文章、模板与宣教素材。
         </p>
       </div>
       <Button type="primary" @click="openCreate">新增内容</Button>
     </section>
 
-    <Row :gutter="[16, 16]" class="list-row">
-      <Col v-for="item in rows" :key="item.id" :lg="8" :span="24">
-        <Card class="content-card" :bordered="false">
-          <Space wrap>
-            <Tag color="blue">{{ item.contentType }}</Tag>
-            <Tag>{{ item.channel || item.audience }}</Tag>
-            <Tag
-              :color="
-                item.status === 'published' || item.status === 'enabled'
-                  ? 'success'
-                  : 'warning'
-              "
-              >{{ item.status }}</Tag
-            >
-          </Space>
-          <h3>{{ item.title }}</h3>
-          <p>{{ item.category }} · {{ item.updatedAt }}</p>
-          <Button size="small" @click="openEdit(item)">编辑</Button>
-        </Card>
-      </Col>
-    </Row>
+    <Card class="table-card" :bordered="false">
+      <Table :data-source="rows" row-key="id">
+        <Table.Column title="标题" data-index="title" key="title" />
+        <Table.Column title="分类" data-index="category" key="category" />
+        <Table.Column title="类型" data-index="contentType" key="contentType" />
+        <Table.Column title="状态" key="status">
+          <template #default="{ record }">
+            <Space>
+              <Tag>{{ record.status }}</Tag>
+              <Tag color="blue">{{ record.auditStatus }}</Tag>
+            </Space>
+          </template>
+        </Table.Column>
+        <Table.Column title="素材" key="asset">
+          <template #default="{ record }">
+            {{ record.assetUrl ? '已配置' : '未配置' }}
+          </template>
+        </Table.Column>
+        <Table.Column title="操作" key="actions">
+          <template #default="{ record }">
+            <Button type="link" size="small" @click="openEdit(record)">编辑</Button>
+          </template>
+        </Table.Column>
+      </Table>
+    </Card>
 
-    <Modal
-      v-model:open="visible"
-      title="内容配置"
-      ok-text="保存"
-      cancel-text="关闭"
-      @ok="submitContent"
-    >
+    <Modal v-model:open="visible" title="内容配置" width="720px" @ok="submitContent">
       <Form layout="vertical">
-        <Form.Item label="内容类型"
-          ><Select
+        <Form.Item label="内容类型">
+          <Select
             v-model:value="formState.contentType"
             :options="[
+              { label: '宣教/案例内容', value: 'education' },
               { label: '模板', value: 'template' },
-              { label: '宣教内容', value: 'education' },
             ]"
-        /></Form.Item>
-        <Form.Item label="标题"
-          ><Input v-model:value="formState.title"
-        /></Form.Item>
-        <Form.Item label="分类"
-          ><Input v-model:value="formState.category"
-        /></Form.Item>
-        <Form.Item label="状态"
-          ><Select
+          />
+        </Form.Item>
+        <Form.Item label="标题"><Input v-model:value="formState.title" /></Form.Item>
+        <Form.Item label="分类">
+          <Select
+            v-model:value="formState.category"
+            :options="[
+              { label: '诈骗案例库', value: 'fraud_case' },
+              { label: '防骗文章', value: 'anti_fraud_article' },
+              { label: '通知模板', value: 'notification_template' },
+            ]"
+          />
+        </Form.Item>
+        <Form.Item label="发布状态">
+          <Select
             v-model:value="formState.status"
             :options="[
               { label: '草稿', value: 'draft' },
               { label: '已发布', value: 'published' },
               { label: '启用', value: 'enabled' },
             ]"
-        /></Form.Item>
-        <Form.Item label="内容"
-          ><Input.TextArea v-model:value="formState.contentBody" :rows="4"
-        /></Form.Item>
+          />
+        </Form.Item>
+        <Form.Item label="审核状态">
+          <Select
+            v-model:value="formState.auditStatus"
+            :options="[
+              { label: '待审核', value: 'pending' },
+              { label: '已通过', value: 'approved' },
+              { label: '驳回', value: 'rejected' },
+            ]"
+          />
+        </Form.Item>
+        <Form.Item label="素材地址">
+          <Input v-model:value="formState.assetUrl" placeholder="图片/音频文件地址" />
+        </Form.Item>
+        <Form.Item label="摘要">
+          <Input.TextArea v-model:value="formState.summary" :rows="2" />
+        </Form.Item>
+        <Form.Item label="正文">
+          <Input.TextArea v-model:value="formState.contentBody" :rows="5" />
+        </Form.Item>
       </Form>
     </Modal>
   </div>
@@ -177,62 +197,20 @@ onMounted(() => {
   padding: 24px;
   background: linear-gradient(180deg, #f7fcff 0%, #eef8ff 100%);
 }
-
 .hero-panel,
-.content-card {
+.table-card {
   background: rgb(255 255 255 / 96%);
   border: 1px solid rgb(14 165 233 / 14%);
   border-radius: 24px;
   box-shadow: 0 16px 36px rgb(14 116 144 / 8%);
 }
-
 .hero-panel {
   display: flex;
-  gap: 16px;
   justify-content: space-between;
+  gap: 16px;
   padding: 28px 30px;
 }
-
-.eyebrow {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #0284c7;
-  letter-spacing: 0.08em;
-}
-
-h1,
-.content-card h3 {
-  margin: 0;
-  color: #0c4a6e;
-}
-
-h1 {
-  font-size: 34px;
-}
-
-.description,
-.content-card p {
-  margin: 16px 0 0;
-  line-height: 1.8;
-  color: #475569;
-}
-
-.list-row {
+.table-card {
   margin-top: 18px;
-}
-
-@media (max-width: 768px) {
-  .admin-contents-page {
-    padding: 16px;
-  }
-
-  .hero-panel {
-    flex-direction: column;
-  }
-
-  h1 {
-    font-size: 28px;
-  }
 }
 </style>

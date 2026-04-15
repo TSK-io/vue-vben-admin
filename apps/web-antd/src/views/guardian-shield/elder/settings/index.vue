@@ -15,7 +15,9 @@ const saving = ref(false);
 const formState = reactive({
   fontScale: 'large',
   highContrast: false,
+  screenReaderEnabled: false,
   voiceAssistant: false,
+  voicePromptEnabled: false,
   voiceSpeed: 'normal',
 });
 
@@ -49,7 +51,7 @@ onMounted(() => {
       <p class="eyebrow">老年端 / 适老设置</p>
       <h1>适老设置</h1>
       <p class="description">
-        当前已接真实配置接口，可保存大字号、高对比度和语音辅助偏好。
+        当前已接真实配置接口，可保存大字号、高对比度、语音提示和读屏偏好。
       </p>
       <Form layout="vertical">
         <Form.Item label="字号">
@@ -67,6 +69,12 @@ onMounted(() => {
         </Form.Item>
         <Form.Item label="语音辅助">
           <Switch v-model:checked="formState.voiceAssistant" />
+        </Form.Item>
+        <Form.Item label="语音提示">
+          <Switch v-model:checked="formState.voicePromptEnabled" />
+        </Form.Item>
+        <Form.Item label="读屏支持">
+          <Switch v-model:checked="formState.screenReaderEnabled" />
         </Form.Item>
         <Form.Item label="语速">
           <Select

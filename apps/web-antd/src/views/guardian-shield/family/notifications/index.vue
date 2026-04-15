@@ -17,6 +17,7 @@ import {
 import {
   getFamilyNotificationListApi,
   markFamilyNotificationReadApi,
+  updateFamilyNotificationActionApi,
 } from '#/api';
 import type { FamilyNotificationItem } from '#/api';
 
@@ -139,6 +140,14 @@ async function loadRows() {
 
 async function handleMarkRead(notificationId: string) {
   await markFamilyNotificationReadApi(notificationId);
+  await loadRows();
+}
+
+async function handleAction(notificationId: string, status: string) {
+  await updateFamilyNotificationActionApi(notificationId, {
+    note: status === 'follow_up' ? '已联系老人继续核实。' : '本次告警已关闭归档。',
+    status,
+  });
   await loadRows();
 }
 
@@ -280,6 +289,22 @@ onMounted(() => {
               @click="handleMarkRead(record.id)"
             >
               {{ record.readStatus === 'read' ? '已读' : '标记已读' }}
+            </Button>
+            <Button
+              size="small"
+              type="link"
+              :disabled="record.status === 'follow_up'"
+              @click="handleAction(record.id, 'follow_up')"
+            >
+              跟进
+            </Button>
+            <Button
+              size="small"
+              type="link"
+              :disabled="record.status === 'closed'"
+              @click="handleAction(record.id, 'closed')"
+            >
+              关闭
             </Button>
           </template>
         </template>

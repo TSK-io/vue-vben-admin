@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from urllib.parse import quote, unquote
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
@@ -16,6 +18,7 @@ from app.models import (
     PromptTemplate,
     Role,
     RiskAlert,
+    RiskLexiconTerm,
     RiskRule,
     SystemConfig,
     User,
@@ -31,6 +34,7 @@ from app.schemas.business import (
     AdminUserPhoneUpdateRequest,
     AdminUserUpsertRequest,
     AdminRiskAlertItem,
+    AdminRiskAlertDetail,
     AccessibilitySettings,
     AccessibilitySettingsUpdateRequest,
     BindingCreateRequest,
@@ -39,6 +43,7 @@ from app.schemas.business import (
     CommunityReportData,
     ContentUpsertRequest,
     CommunityElderItem,
+    CommunityElderFollowupRequest,
     ContentItem,
     EducationContentItem,
     FamilyReminderCreateRequest,
@@ -49,12 +54,17 @@ from app.schemas.business import (
     HelpRequestCreate,
     HelpRequestResult,
     NotificationItem,
+    NotificationActionRequest,
+    NotificationActionResult,
     NotificationReadResult,
     PaginationMeta,
     PagedResult,
     RiskAlertDetail,
     RiskAlertItem,
+    RiskLexiconItem,
+    RiskLexiconUpsertRequest,
     RiskRuleItem,
+    RoleUpsertRequest,
     RiskRuleUpsertRequest,
     RoleInfo,
     SystemConfigItem,
@@ -101,8 +111,102 @@ def _dump_notes(values: dict[str, str]) -> str:
     return ";".join(f"{key}={value}" for key, value in values.items())
 
 
+def _load_note_json(notes: dict[str, str], key: str, default):
+    raw = notes.get(key)
+    if not raw:
+        return default
+    try:
+        return json.loads(unquote(raw))
+    except (TypeError, ValueError):
+        return default
+
+
+def _dump_note_json(value) -> str:
+    return quote(json.dumps(value, ensure_ascii=False), safe="")
+
+
+def _load_action_note(note: str | None) -> tuple[str | None, list[str], str | None]:
+    if not note:
+        return None, [], None
+    if not note.startswith("__json__:"):
+        return note, [], None
+    try:
+        payload = json.loads(note.removeprefix("__json__:"))
+    except ValueError:
+        return note, [], None
+    return (
+        payload.get("note"),
+        [str(item) for item in payload.get("attachments", [])],
+        payload.get("collaboration_note"),
+    )
+
+
+def _dump_action_note(
+    note: str | None,
+    attachments: list[str] | None = None,
+    collaboration_note: str | None = None,
+) -> str | None:
+    attachments = [item for item in (attachments or []) if item]
+    if not attachments and not collaboration_note:
+        return note
+    return "__json__:" + json.dumps(
+        {
+            "note": note,
+            "attachments": attachments,
+            "collaboration_note": collaboration_note,
+        },
+        ensure_ascii=False,
+    )
+
+
+ROLE_MENU_DEFAULTS: dict[str, list[str]] = {
+    "admin": ["用户管理", "角色权限", "风险规则", "内容管理", "系统配置", "告警记录"],
+    "community": ["辖区总览", "重点老人", "风险工单", "宣教管理", "统计报表"],
+    "elder": ["首页", "风险提醒", "一键求助", "亲属绑定", "防骗知识", "适老设置"],
+    "family": ["监护总览", "老人列表", "风险详情", "通知记录", "监护设置"],
+}
+
+
 def get_paged_payload(items: list, page: int, page_size: int) -> PagedResult:
     return _paginate(items, page, page_size)
+
+
+def _get_role_config(session, role_code: str) -> dict[str, object]:
+    item = session.scalar(select(SystemConfig).where(SystemConfig.key == f"role.{role_code}.config"))
+    if not item or not item.value:
+        return {}
+    try:
+        return json.loads(item.value)
+    except ValueError:
+        return {}
+
+
+def _upsert_role_config(session, role_code: str, payload: RoleUpsertRequest) -> None:
+    value = json.dumps(
+        {
+            "menus": payload.menus,
+            "button_permissions": payload.button_permissions,
+            "api_permissions": payload.api_permissions,
+            "data_scope": payload.data_scope,
+            "permissions": payload.permissions,
+        },
+        ensure_ascii=False,
+    )
+    item = session.scalar(select(SystemConfig).where(SystemConfig.key == f"role.{role_code}.config"))
+    if item:
+        item.value = value
+        item.name = f"{payload.name}权限配置"
+        item.description = "角色菜单、按钮、接口和数据范围配置。"
+        return
+    session.add(
+        SystemConfig(
+            key=f"role.{role_code}.config",
+            name=f"{payload.name}权限配置",
+            value=value,
+            group="role",
+            description="角色菜单、按钮、接口和数据范围配置。",
+        )
+    )
 
 
 def list_roles() -> list[RoleInfo]:
@@ -120,16 +224,38 @@ def list_roles() -> list[RoleInfo]:
             if role:
                 role_counts[role] = count
 
-        return [
-            RoleInfo(
-                code=role,
-                name=str(detail["name"]),
-                description=str(detail["description"]),
-                permissions=[str(item) for item in detail["permissions"]],
-                user_count=role_counts.get(role, 0),
+        results: list[RoleInfo] = []
+        role_rows = session.execute(select(Role).order_by(Role.created_at.asc())).scalars().all()
+        for role_row in role_rows:
+            config = _get_role_config(session, role_row.code)
+            detail = ROLE_DETAILS.get(
+                UserRole(role_row.code),
+                {
+                    "name": role_row.name,
+                    "description": role_row.description or "",
+                    "permissions": config.get("permissions", []),
+                },
             )
-            for role, detail in ROLE_DETAILS.items()
-        ]
+            permissions = [str(item) for item in config.get("permissions", detail["permissions"])]
+            button_permissions = [str(item) for item in config.get("button_permissions", [])]
+            api_permissions = [str(item) for item in config.get("api_permissions", permissions)]
+            menus = [str(item) for item in config.get("menus", ROLE_MENU_DEFAULTS.get(role_row.code, []))]
+            role_code = UserRole(role_row.code)
+            results.append(
+                RoleInfo(
+                    code=role_code,
+                    name=role_row.name or str(detail["name"]),
+                    description=role_row.description or str(detail["description"]),
+                    permissions=permissions,
+                    user_count=role_counts.get(role_code, 0),
+                    menus=menus,
+                    button_permissions=button_permissions,
+                    api_permissions=api_permissions,
+                    data_scope=str(config.get("data_scope", "self")),
+                    is_system=role_row.is_system,
+                )
+            )
+        return results
 
 
 def list_admin_users(keyword: str | None = None, role: UserRole | None = None) -> list[AdminUserItem]:
@@ -266,6 +392,33 @@ def update_admin_user_phone(user_id: str, payload: AdminUserPhoneUpdateRequest) 
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
         user.phone = payload.phone
         return {"status": "phone_updated", "user_id": user.id, "phone": user.phone}
+
+
+def create_role(payload: RoleUpsertRequest) -> RoleInfo:
+    role_code = payload.code.strip()
+    try:
+        user_role = UserRole(role_code)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="角色编码不受支持") from exc
+    with session_scope() as session:
+        if session.scalar(select(Role.id).where(Role.code == role_code)):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="角色已存在")
+        role = Role(code=role_code, name=payload.name, description=payload.description, is_system=False)
+        session.add(role)
+        session.flush()
+        _upsert_role_config(session, role_code, payload)
+    return next(item for item in list_roles() if item.code == user_role)
+
+
+def update_role(role_code: str, payload: RoleUpsertRequest) -> RoleInfo:
+    with session_scope() as session:
+        role = session.scalar(select(Role).where(Role.code == role_code))
+        if not role:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="角色不存在")
+        role.name = payload.name
+        role.description = payload.description
+        _upsert_role_config(session, role_code, payload)
+    return next(item for item in list_roles() if item.code == UserRole(role_code))
 
 
 def list_bindings(user: UserProfile) -> list[BindingItem]:
@@ -485,6 +638,30 @@ def mark_notification_read(notification_id: str, user: UserProfile) -> Notificat
         return NotificationReadResult(id=item.id, is_read=item.is_read, read_at=item.read_at)
 
 
+def update_notification_action(
+    notification_id: str,
+    payload: NotificationActionRequest,
+    user: UserProfile,
+) -> NotificationActionResult:
+    with session_scope() as session:
+        item = session.get(NotificationRecord, notification_id)
+        if not item or item.receiver_user_id != user.user_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通知不存在")
+        item.status = payload.status
+        if payload.note:
+            item.content = f"{item.content}\n跟进备注：{payload.note}"
+        if not item.is_read:
+            item.is_read = True
+            item.read_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        return NotificationActionResult(
+            id=item.id,
+            is_read=item.is_read,
+            read_at=item.read_at,
+            status=item.status,
+            note=payload.note,
+        )
+
+
 def create_help_request(user: UserProfile, payload: HelpRequestCreate) -> HelpRequestResult:
     now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     notification_ids: list[str] = []
@@ -699,6 +876,8 @@ def get_accessibility_settings(user: UserProfile) -> AccessibilitySettings:
             high_contrast=notes.get("high_contrast", "false") == "true",
             voice_assistant=notes.get("voice_assistant", "false") == "true",
             voice_speed=notes.get("voice_speed", "normal"),
+            screen_reader_enabled=notes.get("screen_reader_enabled", "false") == "true",
+            voice_prompt_enabled=notes.get("voice_prompt_enabled", "false") == "true",
         )
 
 
@@ -715,12 +894,16 @@ def update_accessibility_settings(
         notes["high_contrast"] = "true" if payload.high_contrast else "false"
         notes["voice_assistant"] = "true" if payload.voice_assistant else "false"
         notes["voice_speed"] = payload.voice_speed
+        notes["screen_reader_enabled"] = "true" if payload.screen_reader_enabled else "false"
+        notes["voice_prompt_enabled"] = "true" if payload.voice_prompt_enabled else "false"
         current_user.notes = _dump_notes(notes)
         return AccessibilitySettings(
             font_scale=payload.font_scale,
             high_contrast=payload.high_contrast,
             voice_assistant=payload.voice_assistant,
             voice_speed=payload.voice_speed,
+            screen_reader_enabled=payload.screen_reader_enabled,
+            voice_prompt_enabled=payload.voice_prompt_enabled,
         )
 
 
@@ -755,9 +938,34 @@ def list_community_elders(keyword: str | None = None, risk_level: str | None = N
                     follow_up_status=notes.get("follow_up_status", "pending"),
                     assigned_grid_member=notes.get("assigned_grid_member", ""),
                     alert_count_7d=len(alerts),
+                    manual_risk_tag=notes.get("manual_risk_tag"),
+                    visit_records=_load_note_json(notes, "visit_records", []),
                 )
             )
         return results
+
+
+def update_community_elder_followup(elder_user_id: str, payload: CommunityElderFollowupRequest) -> CommunityElderItem:
+    with session_scope() as session:
+        elder = session.get(User, elder_user_id)
+        if not elder:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="老人不存在")
+        notes = _parse_notes(elder.notes)
+        visit_records = _load_note_json(notes, "visit_records", [])
+        visit_records.insert(
+            0,
+            {
+                "record_type": payload.record_type,
+                "note": payload.note,
+                "created_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            },
+        )
+        notes["follow_up_status"] = payload.follow_up_status
+        if payload.manual_risk_tag:
+            notes["manual_risk_tag"] = payload.manual_risk_tag
+        notes["visit_records"] = _dump_note_json(visit_records[:10])
+        elder.notes = _dump_notes(notes)
+    return next(item for item in list_community_elders() if item.elder_user_id == elder_user_id)
 
 
 def list_workorders(status_filter: str | None = None) -> list[WorkorderItem]:
@@ -811,8 +1019,10 @@ def get_workorder_detail(workorder_id: str) -> WorkorderDetail:
                 operator_name=item.operator_user.display_name if item.operator_user else "",
                 from_status=item.from_status,
                 to_status=item.to_status,
-                note=item.note,
+                note=_load_action_note(item.note)[0],
                 created_at=_to_str(item.created_at) or "",
+                attachments=_load_action_note(item.note)[1],
+                collaboration_note=_load_action_note(item.note)[2],
             )
             for item in sorted(workorder.actions, key=lambda action: action.created_at)
         ]
@@ -859,7 +1069,7 @@ def transition_workorder(
                 action_type=payload.action_type,
                 from_status=from_status,
                 to_status=payload.to_status,
-                note=payload.note,
+                note=_dump_action_note(payload.note, payload.attachments, payload.collaboration_note),
             )
         )
         session.flush()
@@ -885,6 +1095,63 @@ def list_risk_rules() -> list[RiskRuleItem]:
             )
             for item in rules
         ]
+
+
+def list_risk_lexicon(scene: str | None = None) -> list[RiskLexiconItem]:
+    with session_scope() as session:
+        query = select(RiskLexiconTerm).order_by(RiskLexiconTerm.scene.asc(), RiskLexiconTerm.term.asc())
+        if scene:
+            query = query.where(RiskLexiconTerm.scene == scene)
+        rows = session.execute(query).scalars().all()
+        return [
+            RiskLexiconItem(
+                id=item.id,
+                term=item.term,
+                category=item.category,
+                scene=item.scene,
+                risk_level=item.risk_level,
+                status=item.status,
+                source=item.source,
+                notes=item.notes,
+            )
+            for item in rows
+        ]
+
+
+def create_risk_lexicon(payload: RiskLexiconUpsertRequest) -> RiskLexiconItem:
+    with session_scope() as session:
+        item = RiskLexiconTerm(**payload.model_dump())
+        session.add(item)
+        session.flush()
+        return RiskLexiconItem(
+            id=item.id,
+            term=item.term,
+            category=item.category,
+            scene=item.scene,
+            risk_level=item.risk_level,
+            status=item.status,
+            source=item.source,
+            notes=item.notes,
+        )
+
+
+def update_risk_lexicon(term_id: str, payload: RiskLexiconUpsertRequest) -> RiskLexiconItem:
+    with session_scope() as session:
+        item = session.get(RiskLexiconTerm, term_id)
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="风险词不存在")
+        for key, value in payload.model_dump().items():
+            setattr(item, key, value)
+        return RiskLexiconItem(
+            id=item.id,
+            term=item.term,
+            category=item.category,
+            scene=item.scene,
+            risk_level=item.risk_level,
+            status=item.status,
+            source=item.source,
+            notes=item.notes,
+        )
 
 
 def create_risk_rule(payload: RiskRuleUpsertRequest) -> RiskRuleItem:
@@ -1185,6 +1452,20 @@ def list_admin_risk_alerts() -> list[AdminRiskAlertItem]:
                 )
             )
         return results
+
+
+def get_admin_risk_alert_detail(alert_id: str) -> AdminRiskAlertDetail:
+    detail = get_risk_alert_detail(alert_id)
+    summary = next((item for item in list_admin_risk_alerts() if item.id == alert_id), None)
+    if not summary:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="告警不存在")
+    return AdminRiskAlertDetail(
+        **summary.model_dump(),
+        reason_detail=detail.reason_detail,
+        suggestion_action=detail.suggestion_action,
+        related_notification_ids=detail.related_notification_ids,
+        related_workorder_ids=detail.related_workorder_ids,
+    )
 
 
 def update_system_config(config_key: str, payload: SystemConfigUpdateRequest) -> SystemConfigItem:

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 
 from app.constants.roles import UserRole
 from app.core.deps import get_current_user, require_roles
-from app.schemas.business import WorkorderTransitionRequest
+from app.schemas.business import CommunityElderFollowupRequest, WorkorderTransitionRequest
 from app.schemas.common import ApiResponse, MetaPayload
 from app.schemas.user import UserProfile
 from app.services.business import (
@@ -15,6 +15,7 @@ from app.services.business import (
     list_community_elders,
     list_workorders,
     transition_workorder,
+    update_community_elder_followup,
 )
 
 router = APIRouter(prefix="/community")
@@ -50,6 +51,17 @@ async def get_workorders(
 ) -> ApiResponse:
     items = list_workorders(status_filter=status)
     return ApiResponse(data=get_paged_payload(items, page, page_size), meta=response_meta(request))
+
+
+@router.post("/elders/{elder_user_id}/follow-up", summary="重点老人跟进记录", response_model=ApiResponse)
+async def post_elder_followup(
+    elder_user_id: str,
+    payload: CommunityElderFollowupRequest,
+    request: Request,
+    _: Annotated[UserProfile, Depends(require_roles(UserRole.COMMUNITY, UserRole.ADMIN))],
+) -> ApiResponse:
+    data = update_community_elder_followup(elder_user_id, payload).model_dump()
+    return ApiResponse(data=data, meta=response_meta(request))
 
 
 @router.get("/workorders/{workorder_id}", summary="社区工单详情", response_model=ApiResponse)

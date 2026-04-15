@@ -4,10 +4,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Request
 
 from app.core.deps import get_current_user
-from app.schemas.business import NotificationReadResult
+from app.schemas.business import NotificationActionRequest, NotificationReadResult
 from app.schemas.common import ApiResponse, MetaPayload
 from app.schemas.user import UserProfile
-from app.services.business import get_paged_payload, list_notifications, mark_notification_read
+from app.services.business import (
+    get_paged_payload,
+    list_notifications,
+    mark_notification_read,
+    update_notification_action,
+)
 
 router = APIRouter(prefix="/notifications")
 
@@ -38,4 +43,15 @@ async def patch_notification_read(
     notification_id: str = Path(),
 ) -> ApiResponse:
     data: NotificationReadResult = mark_notification_read(notification_id, user)
+    return ApiResponse(data=data.model_dump(), meta=response_meta(request))
+
+
+@router.patch("/{notification_id}/action", summary="通知跟进行为", response_model=ApiResponse)
+async def patch_notification_action(
+    payload: NotificationActionRequest,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+    notification_id: str = Path(),
+) -> ApiResponse:
+    data = update_notification_action(notification_id, payload, user)
     return ApiResponse(data=data.model_dump(), meta=response_meta(request))

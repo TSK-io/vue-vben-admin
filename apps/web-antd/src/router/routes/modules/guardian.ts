@@ -270,6 +270,17 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'AdminAlerts',
+        path: '/admin/alerts',
+        component: () =>
+          import('#/views/guardian-shield/admin/alerts/index.vue'),
+        meta: {
+          authority: ['admin'],
+          icon: 'lucide:triangle-alert',
+          title: '告警记录',
+        },
+      },
+      {
         name: 'AdminSystemSettings',
         path: '/admin/system-settings',
         component: () =>

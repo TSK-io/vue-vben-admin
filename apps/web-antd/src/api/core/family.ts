@@ -322,7 +322,12 @@ export async function getFamilyNotificationListApi(
                 ? 'processing'
                 : 'delivered',
           riskLevel: item.alert_title.includes('高风险') ? 'high' : 'medium',
-          status: item.is_read ? 'closed' : 'pending',
+          status:
+            item.status === 'follow_up' || item.status === 'closed'
+              ? item.status
+              : item.is_read
+                ? 'closed'
+                : 'pending',
         }),
       )
       .filter(
@@ -339,6 +344,16 @@ export async function getFamilyNotificationListApi(
 
 export async function markFamilyNotificationReadApi(notificationId: string) {
   return (requestClient as any).patch(`/notifications/${notificationId}/read`);
+}
+
+export async function updateFamilyNotificationActionApi(
+  notificationId: string,
+  payload: { note?: string; status: string },
+) {
+  return (requestClient as any).patch(`/notifications/${notificationId}/action`, {
+    note: payload.note,
+    status: payload.status,
+  });
 }
 
 export async function sendFamilyReminderApi(payload: {

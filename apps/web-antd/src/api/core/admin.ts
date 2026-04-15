@@ -66,6 +66,50 @@ export interface AdminSystemConfigItem {
   description: string;
 }
 
+export interface AdminRoleItem {
+  code: 'admin' | 'community' | 'elder' | 'family';
+  name: string;
+  description: string;
+  permissions: string[];
+  menus: string[];
+  buttonPermissions: string[];
+  apiPermissions: string[];
+  dataScope: string;
+  userCount?: number | null;
+  isSystem: boolean;
+}
+
+export interface AdminRiskAlertItem {
+  id: string;
+  elderUserId: string;
+  elderName: string;
+  title: string;
+  riskLevel: string;
+  sourceType: string;
+  status: string;
+  occurredAt: string;
+  relatedNotifications: number;
+  relatedWorkorders: number;
+}
+
+export interface AdminRiskAlertDetail extends AdminRiskAlertItem {
+  reasonDetail: string;
+  suggestionAction: string;
+  relatedNotificationIds: string[];
+  relatedWorkorderIds: string[];
+}
+
+export interface RiskLexiconItem {
+  id: string;
+  term: string;
+  category: string;
+  scene: string;
+  riskLevel: string;
+  status: string;
+  source?: string | null;
+  notes?: string | null;
+}
+
 export interface RiskRulePayload {
   code: string;
   name: string;
@@ -90,6 +134,27 @@ export interface ContentPayload {
   contentBody: string;
   auditStatus: string;
   assetUrl?: string;
+}
+
+export interface AdminRolePayload {
+  code: AdminRoleItem['code'];
+  name: string;
+  description?: string;
+  permissions: string[];
+  menus: string[];
+  buttonPermissions: string[];
+  apiPermissions: string[];
+  dataScope: string;
+}
+
+export interface RiskLexiconPayload {
+  term: string;
+  category: string;
+  scene: string;
+  riskLevel: string;
+  status: string;
+  source?: string;
+  notes?: string;
 }
 
 function mapRiskLevelFromRoles(roles: string[]): 'high' | 'low' | 'medium' {
@@ -233,6 +298,53 @@ export async function getAdminRuleListApi() {
   );
 }
 
+export async function getAdminRoleListApi() {
+  const rows = await requestClient.get<any[]>('/admin/roles');
+  return rows.map(
+    (item): AdminRoleItem => ({
+      apiPermissions: item.api_permissions || [],
+      buttonPermissions: item.button_permissions || [],
+      code: item.code,
+      dataScope: item.data_scope || 'self',
+      description: item.description,
+      isSystem: item.is_system,
+      menus: item.menus || [],
+      name: item.name,
+      permissions: item.permissions || [],
+      userCount: item.user_count,
+    }),
+  );
+}
+
+export async function createAdminRoleApi(payload: AdminRolePayload) {
+  return requestClient.post('/admin/roles', {
+    api_permissions: payload.apiPermissions,
+    button_permissions: payload.buttonPermissions,
+    code: payload.code,
+    data_scope: payload.dataScope,
+    description: payload.description,
+    menus: payload.menus,
+    name: payload.name,
+    permissions: payload.permissions,
+  });
+}
+
+export async function updateAdminRoleApi(
+  roleCode: string,
+  payload: AdminRolePayload,
+) {
+  return requestClient.put(`/admin/roles/${roleCode}`, {
+    api_permissions: payload.apiPermissions,
+    button_permissions: payload.buttonPermissions,
+    code: payload.code,
+    data_scope: payload.dataScope,
+    description: payload.description,
+    menus: payload.menus,
+    name: payload.name,
+    permissions: payload.permissions,
+  });
+}
+
 export async function createAdminRuleApi(payload: RiskRulePayload) {
   return requestClient.post('/admin/rules', {
     code: payload.code,
@@ -264,6 +376,51 @@ export async function updateAdminRuleApi(
   });
 }
 
+export async function getAdminLexiconListApi(scene?: string) {
+  const rows = await requestClient.get<any[]>('/admin/lexicon', {
+    params: { scene },
+  });
+  return rows.map(
+    (item): RiskLexiconItem => ({
+      category: item.category,
+      id: item.id,
+      notes: item.notes,
+      riskLevel: item.risk_level,
+      scene: item.scene,
+      source: item.source,
+      status: item.status,
+      term: item.term,
+    }),
+  );
+}
+
+export async function createAdminLexiconApi(payload: RiskLexiconPayload) {
+  return requestClient.post('/admin/lexicon', {
+    category: payload.category,
+    notes: payload.notes,
+    risk_level: payload.riskLevel,
+    scene: payload.scene,
+    source: payload.source,
+    status: payload.status,
+    term: payload.term,
+  });
+}
+
+export async function updateAdminLexiconApi(
+  termId: string,
+  payload: RiskLexiconPayload,
+) {
+  return requestClient.put(`/admin/lexicon/${termId}`, {
+    category: payload.category,
+    notes: payload.notes,
+    risk_level: payload.riskLevel,
+    scene: payload.scene,
+    source: payload.source,
+    status: payload.status,
+    term: payload.term,
+  });
+}
+
 export async function getAdminContentListApi() {
   const rows = await requestClient.get<any[]>('/admin/contents');
   return rows.map(
@@ -282,6 +439,44 @@ export async function getAdminContentListApi() {
       assetUrl: item.asset_url,
     }),
   );
+}
+
+export async function getAdminRiskAlertListApi() {
+  const rows = await requestClient.get<any[]>('/admin/risk-alerts');
+  return rows.map(
+    (item): AdminRiskAlertItem => ({
+      elderName: item.elder_name,
+      elderUserId: item.elder_user_id,
+      id: item.id,
+      occurredAt: item.occurred_at,
+      relatedNotifications: item.related_notifications,
+      relatedWorkorders: item.related_workorders,
+      riskLevel: item.risk_level,
+      sourceType: item.source_type,
+      status: item.status,
+      title: item.title,
+    }),
+  );
+}
+
+export async function getAdminRiskAlertDetailApi(alertId: string) {
+  const item = await requestClient.get<any>(`/admin/risk-alerts/${alertId}`);
+  return {
+    elderName: item.elder_name,
+    elderUserId: item.elder_user_id,
+    id: item.id,
+    occurredAt: item.occurred_at,
+    reasonDetail: item.reason_detail,
+    relatedNotificationIds: item.related_notification_ids,
+    relatedNotifications: item.related_notifications,
+    relatedWorkorderIds: item.related_workorder_ids,
+    relatedWorkorders: item.related_workorders,
+    riskLevel: item.risk_level,
+    sourceType: item.source_type,
+    status: item.status,
+    suggestionAction: item.suggestion_action,
+    title: item.title,
+  } satisfies AdminRiskAlertDetail;
 }
 
 export async function createAdminContentApi(payload: ContentPayload) {

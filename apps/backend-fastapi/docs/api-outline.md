@@ -25,20 +25,31 @@
 - `GET /api/v1/risk-alerts`：风险告警分页列表，支持 `risk_level/page/page_size`
 - `GET /api/v1/risk-alerts/{alert_id}`：风险告警详情
 - `GET /api/v1/notifications`：通知记录分页列表，支持 `is_read/page/page_size`
+- `PATCH /api/v1/notifications/{notification_id}/read`：通知已读写回
+- `PATCH /api/v1/notifications/{notification_id}/action`：通知关闭/跟进动作写回
 
 ### 2.3 社区侧
 
 - `GET /api/v1/community/elders`：重点老人分页列表，支持 `keyword/risk_level`
+- `POST /api/v1/community/elders/{elder_user_id}/follow-up`：补录电话回访、走访、宣教与人工风险标记
 - `GET /api/v1/community/workorders`：社区工单分页列表，支持 `status`
 - `GET /api/v1/community/workorders/{workorder_id}`：工单详情
-- `POST /api/v1/community/workorders/{workorder_id}/transition`：工单流转与处置回写
+- `POST /api/v1/community/workorders/{workorder_id}/transition`：工单流转、附件与协同备注回写
 
 ### 2.4 管理侧
 
 - `GET /api/v1/admin/users`：管理端用户管理列表，支持 `keyword/role`
 - `GET /api/v1/admin/roles`：角色权限列表
+- `POST /api/v1/admin/roles`：创建角色权限配置
+- `PUT /api/v1/admin/roles/{role_code}`：更新菜单、按钮、接口与数据范围配置
 - `GET /api/v1/admin/rules`：风险规则列表
+- `POST /api/v1/admin/rules` / `PUT /api/v1/admin/rules/{rule_id}`：规则维护
+- `GET /api/v1/admin/lexicon`：风险词库列表
+- `POST /api/v1/admin/lexicon` / `PUT /api/v1/admin/lexicon/{term_id}`：风险词维护
 - `GET /api/v1/admin/contents`：内容管理列表
+- `POST /api/v1/admin/contents` / `PUT /api/v1/admin/contents/{content_id}`：内容、案例、模板维护
+- `GET /api/v1/admin/risk-alerts`：独立告警记录列表
+- `GET /api/v1/admin/risk-alerts/{alert_id}`：告警详情与闭环追踪
 - `GET /api/v1/admin/system-config`：系统配置列表
 
 ## 3. 统一响应约定
