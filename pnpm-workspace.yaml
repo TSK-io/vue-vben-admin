@@ -125,7 +125,6 @@ catalog:
   is-ci: ^4.1.0
   json-bigint: ^1.0.0
   jsonwebtoken: ^9.0.3
-  lefthook: ^2.1.5
   lodash.clonedeep: ^4.5.0
   lucide-vue-next: ^0.577.0
   medium-zoom: ^1.1.0
