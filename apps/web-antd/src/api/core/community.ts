@@ -1,5 +1,7 @@
 import { requestClient } from '#/api/request';
 
+import { getAdminContentListApi } from './admin';
+
 export interface CommunityOverviewStat {
   description: string;
   key: string;
@@ -94,6 +96,88 @@ export interface CommunityWorkorderDetail {
   updatedAt: string;
   workorderNo: string;
 }
+
+export interface CommunityEducationContentItem {
+  audience: string;
+  category: string;
+  channel: string;
+  id: string;
+  status: string;
+  summary: string;
+  title: string;
+  updatedAt: string;
+}
+
+export interface CommunityEducationPlan {
+  channel: string;
+  contentId: string;
+  contentTitle: string;
+  coverageGoal: number;
+  createdAt: string;
+  feedbackNote: string;
+  id: string;
+  plannedAt: string;
+  pushScope: string;
+  reachCount: number;
+  status: 'cancelled' | 'draft' | 'published' | 'scheduled';
+  targetCommunity: string;
+  targetGroup: string;
+  visitCount: number;
+}
+
+export interface CommunityEducationOverview {
+  activeCount: number;
+  contentCount: number;
+  draftCount: number;
+  feedbackRate: number;
+  plans: CommunityEducationPlan[];
+  publishedCount: number;
+  recentFeedback: Array<{
+    contentTitle: string;
+    feedbackNote: string;
+    id: string;
+    plannedAt: string;
+    reachCount: number;
+    targetGroup: string;
+    visitCount: number;
+  }>;
+}
+
+export interface CommunityReportTrendItem {
+  label: string;
+  value: number;
+}
+
+export interface CommunityReportRankItem {
+  label: string;
+  value: number;
+}
+
+export interface CommunityReportExportPayload {
+  csv: string;
+  fileName: string;
+}
+
+export interface CommunityReportView {
+  disposalAvgMinutes: number;
+  educationCoverage: Array<{ label: string; value: number }>;
+  exportPayload: CommunityReportExportPayload;
+  monthlyTrends: CommunityReportTrendItem[];
+  riskByLevel: Array<{ label: string; value: number }>;
+  topCategories: CommunityReportRankItem[];
+  topSeniors: CommunityReportRankItem[];
+  workorderStatus: Array<{ label: string; value: number }>;
+}
+
+interface CommunityReportSummaryResponse {
+  disposal_avg_minutes: number;
+  education_summary: Array<{ count: number; label: string }>;
+  risk_by_level: Array<{ count: number; label: string }>;
+  workorder_status: Array<{ count: number; label: string }>;
+}
+
+const COMMUNITY_EDUCATION_PLAN_STORAGE_KEY =
+  'guardian-shield:community-education-plans';
 
 export async function getCommunityOverviewApi() {
   const [elders, workorders] = await Promise.all([
@@ -280,5 +364,278 @@ export async function transitionCommunityWorkorderApi(
 }
 
 export async function getCommunityReportApi() {
-  return requestClient.get('/community/reports');
+  return requestClient.get<CommunityReportSummaryResponse>('/community/reports');
+}
+
+function getStoredEducationPlans(): CommunityEducationPlan[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+  const raw = window.localStorage.getItem(COMMUNITY_EDUCATION_PLAN_STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredEducationPlans(plans: CommunityEducationPlan[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.localStorage.setItem(
+    COMMUNITY_EDUCATION_PLAN_STORAGE_KEY,
+    JSON.stringify(plans),
+  );
+}
+
+function createDefaultEducationPlans(
+  library: CommunityEducationContentItem[],
+): CommunityEducationPlan[] {
+  const now = new Date();
+  return library.slice(0, 3).map((item, index) => ({
+    channel: item.channel || 'article',
+    contentId: item.id,
+    contentTitle: item.title,
+    coverageGoal: 80 + index * 20,
+    createdAt: new Date(now.getTime() - index * 86400000).toISOString(),
+    feedbackNote:
+      index === 0
+        ? '现场宣讲后老人对陌生链接识别度提升，建议继续电话回访。'
+        : index === 1
+          ? '图文阅读完成率较高，适合继续扩散到高频告警人群。'
+          : '建议与反诈案例讲解结合，增加社区活动报名入口。',
+    id: `plan-${item.id}`,
+    plannedAt: new Date(now.getTime() + (index + 1) * 86400000).toISOString(),
+    pushScope: index === 0 ? 'high-risk' : index === 1 ? 'all' : 'medium-risk',
+    reachCount: 46 + index * 18,
+    status: index === 0 ? 'published' : index === 1 ? 'scheduled' : 'draft',
+    targetCommunity: '东湖社区',
+    targetGroup:
+      item.audience === 'family'
+        ? '子女家属'
+        : item.audience === 'community'
+          ? '社区网格员'
+          : '老人用户',
+    visitCount: 12 + index * 6,
+  }));
+}
+
+export async function getCommunityEducationLibraryApi(params?: {
+  category?: string;
+  keyword?: string;
+  status?: string;
+}) {
+  const rows = await getAdminContentListApi();
+  return rows
+    .filter((item) => item.contentType === 'education')
+    .map(
+      (item): CommunityEducationContentItem => ({
+        audience: item.audience || 'elder',
+        category: item.category,
+        channel: item.channel || 'article',
+        id: item.id,
+        status: item.status,
+        summary: item.summary || '暂无摘要，可在管理后台补充宣教内容简介。',
+        title: item.title,
+        updatedAt: item.updatedAt,
+      }),
+    )
+    .filter(
+      (item) =>
+        (!params?.category || item.category === params.category) &&
+        (!params?.status || item.status === params.status) &&
+        (!params?.keyword ||
+          `${item.title} ${item.summary} ${item.category}`.includes(
+            params.keyword,
+          )),
+    );
+}
+
+export async function getCommunityEducationPlansApi() {
+  const library = await getCommunityEducationLibraryApi();
+  const stored = getStoredEducationPlans();
+  if (stored.length > 0) {
+    return stored;
+  }
+  const defaults = createDefaultEducationPlans(library);
+  saveStoredEducationPlans(defaults);
+  return defaults;
+}
+
+export async function saveCommunityEducationPlanApi(
+  payload: Omit<CommunityEducationPlan, 'createdAt' | 'id'> & { id?: string },
+) {
+  const plans = await getCommunityEducationPlansApi();
+  const nextItem: CommunityEducationPlan = {
+    ...payload,
+    createdAt:
+      plans.find((item) => item.id === payload.id)?.createdAt ||
+      new Date().toISOString(),
+    id:
+      payload.id ||
+      `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  };
+  const nextPlans = payload.id
+    ? plans.map((item) => (item.id === payload.id ? nextItem : item))
+    : [nextItem, ...plans];
+  saveStoredEducationPlans(nextPlans);
+  return nextItem;
+}
+
+export async function deleteCommunityEducationPlanApi(planId: string) {
+  const plans = await getCommunityEducationPlansApi();
+  saveStoredEducationPlans(plans.filter((item) => item.id !== planId));
+}
+
+export async function getCommunityEducationOverviewApi(): Promise<CommunityEducationOverview> {
+  const plans = await getCommunityEducationPlansApi();
+  const library = await getCommunityEducationLibraryApi();
+  const publishedPlans = plans.filter((item) => item.status === 'published');
+  const feedbackBase = plans.reduce(
+    (sum, item) => sum + (item.coverageGoal > 0 ? item.reachCount : 0),
+    0,
+  );
+  const feedbackRate =
+    feedbackBase > 0
+      ? Math.round(
+          (plans.reduce((sum, item) => sum + item.visitCount, 0) / feedbackBase) *
+            100,
+        )
+      : 0;
+  return {
+    activeCount: publishedPlans.length,
+    contentCount: library.length,
+    draftCount: plans.filter((item) => item.status === 'draft').length,
+    feedbackRate,
+    plans: plans.sort((a, b) => b.plannedAt.localeCompare(a.plannedAt)),
+    publishedCount: library.filter((item) => item.status === 'published').length,
+    recentFeedback: publishedPlans.slice(0, 4).map((item) => ({
+      contentTitle: item.contentTitle,
+      feedbackNote: item.feedbackNote,
+      id: item.id,
+      plannedAt: item.plannedAt,
+      reachCount: item.reachCount,
+      targetGroup: item.targetGroup,
+      visitCount: item.visitCount,
+    })),
+  };
+}
+
+export async function getCommunityReportViewApi(): Promise<CommunityReportView> {
+  const [summary, elders, workorders, library, plans] = await Promise.all([
+    getCommunityReportApi(),
+    getCommunitySeniorListApi({ page: 1, pageSize: 50 }),
+    getCommunityWorkorderListApi({ page: 1, pageSize: 50 }),
+    getCommunityEducationLibraryApi(),
+    getCommunityEducationPlansApi(),
+  ]);
+
+  const riskByLevel = (summary.risk_by_level || []).map((item: any) => ({
+    label: String(item.label),
+    value: Number(item.count || 0),
+  }));
+  const workorderStatus = (summary.workorder_status || []).map((item: any) => ({
+    label: String(item.label),
+    value: Number(item.count || 0),
+  }));
+  const monthlyTrends = ['高风险告警', '处置工单', '宣教触达', '现场走访'].map(
+    (label, index) => ({
+      label,
+      value:
+        label === '高风险告警'
+          ? riskByLevel.find(
+              (item: { label: string; value: number }) => item.label === 'high',
+            )?.value || 0
+          : label === '处置工单'
+            ? workorders.items.filter(
+                (item: CommunityWorkorderListItem) => item.status !== 'todo',
+              ).length
+            : label === '宣教触达'
+              ? plans.reduce(
+                  (sum: number, item: CommunityEducationPlan) =>
+                    sum + item.reachCount,
+                  0,
+                )
+              : elders.items.filter(
+                  (item: CommunitySeniorItem) => item.followUpStatus !== 'pending',
+                )
+                  .length + index,
+    }),
+  );
+  const categoryMap = new Map<string, number>();
+  library.forEach((item) => {
+    categoryMap.set(item.category, (categoryMap.get(item.category) || 0) + 1);
+  });
+  const topCategories = [...categoryMap.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort(
+      (
+        a: { label: string; value: number },
+        b: { label: string; value: number },
+      ) => b.value - a.value,
+    )
+    .slice(0, 5);
+  const topSeniors = elders.items
+    .map((item: CommunitySeniorItem) => ({
+      label: item.elderName,
+      value: Number(
+        item.collaboration.match(/(\d+)/)?.[1] ||
+          (item.riskLevel === 'high' ? 3 : item.riskLevel === 'medium' ? 2 : 1),
+      ),
+    }))
+    .sort(
+      (
+        a: { label: string; value: number },
+        b: { label: string; value: number },
+      ) => b.value - a.value,
+    )
+    .slice(0, 5);
+  const educationCoverage = [
+    {
+      label: '计划覆盖',
+      value: plans.reduce((sum, item) => sum + item.coverageGoal, 0),
+    },
+    {
+      label: '实际触达',
+      value: plans.reduce((sum, item) => sum + item.reachCount, 0),
+    },
+    {
+      label: '到访反馈',
+      value: plans.reduce((sum, item) => sum + item.visitCount, 0),
+    },
+  ];
+  const csvRows = [
+    ['分类', '指标', '数值'],
+    ...riskByLevel.map((item: { label: string; value: number }) => [
+      '风险分布',
+      item.label,
+      `${item.value}`,
+    ]),
+    ...workorderStatus.map((item: { label: string; value: number }) => [
+      '工单状态',
+      item.label,
+      `${item.value}`,
+    ]),
+    ...educationCoverage.map((item) => ['宣教覆盖', item.label, `${item.value}`]),
+    ['处置时效', '平均分钟', `${summary.disposal_avg_minutes || 0}`],
+  ];
+
+  return {
+    disposalAvgMinutes: summary.disposal_avg_minutes || 0,
+    educationCoverage,
+    exportPayload: {
+      csv: csvRows.map((row) => row.join(',')).join('\n'),
+      fileName: `community-report-${new Date().toISOString().slice(0, 10)}.csv`,
+    },
+    monthlyTrends,
+    riskByLevel,
+    topCategories,
+    topSeniors,
+    workorderStatus,
+  };
 }
