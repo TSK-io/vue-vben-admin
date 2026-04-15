@@ -1,5 +1,6 @@
 import os
 import tempfile
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,16 +43,21 @@ def test_auth_login_roles_and_refresh(client: TestClient) -> None:
     refresh_response = client.post("/api/v1/auth/refresh", headers=headers, json={})
     assert refresh_response.status_code == 200
     assert refresh_response.json()["data"]["token_type"] == "bearer"
+    runtime_response = client.get("/api/v1/health/runtime")
+    assert runtime_response.status_code == 200
+    assert runtime_response.json()["data"]["queue_strategy"]["max_concurrent_requests"] >= 1
 
 
 def test_auth_register_and_login(client: TestClient) -> None:
+    username = f"elder_new_user_{uuid.uuid4().hex[:8]}"
+    phone = f"138{uuid.uuid4().hex[:8]}"[:11]
     register_response = client.post(
         "/api/v1/auth/register",
         json={
-            "username": "elder_new_user",
+            "username": username,
             "password": "111",
             "display_name": "新注册老人",
-            "phone": "13800009999",
+            "phone": phone,
             "role": "elder",
             "invite_code": "ELDER-INVITE-001",
         },
@@ -62,7 +68,7 @@ def test_auth_register_and_login(client: TestClient) -> None:
 
     login_response = client.post(
         "/api/v1/auth/login",
-        json={"username": "elder_new_user", "password": "111"},
+        json={"username": username, "password": "111"},
     )
     assert login_response.status_code == 200
     assert login_response.json()["data"]["display_name"] == "新注册老人"
@@ -206,3 +212,54 @@ def test_elder_help_settings_and_family_reminder(client: TestClient) -> None:
     )
     assert reminder_response.status_code == 200
     assert reminder_response.json()["data"]["receiver_name"] == "李阿姨"
+
+
+def test_compliance_consents_export_requests_and_audit_logs(client: TestClient) -> None:
+    headers = auth_headers(client, "family_demo", "111")
+
+    policy_response = client.get("/api/v1/compliance/policy-summary")
+    assert policy_response.status_code == 200
+    assert "privacy_policy" in policy_response.json()["data"]["consent_types"]
+
+    consent_response = client.post(
+        "/api/v1/compliance/consents",
+        headers=headers,
+        json={
+            "consent_type": "privacy_policy",
+            "policy_version": "2026.04",
+        },
+    )
+    assert consent_response.status_code == 200
+    assert consent_response.json()["data"]["status"] == "granted"
+
+    export_response = client.get("/api/v1/compliance/export", headers=headers)
+    assert export_response.status_code == 200
+    assert export_response.json()["data"]["profile"]["phone"] == "139****2001"
+
+    correction_response = client.post(
+        "/api/v1/compliance/corrections",
+        headers=headers,
+        json={
+            "field_name": "phone",
+            "new_value": "13900009999",
+            "reason": "更换联系方式",
+        },
+    )
+    assert correction_response.status_code == 200
+    assert correction_response.json()["data"]["request_type"] == "correction"
+
+    deletion_response = client.post(
+        "/api/v1/compliance/deletions",
+        headers=headers,
+        json={"reason": "申请注销演示账号"},
+    )
+    assert deletion_response.status_code == 200
+    assert deletion_response.json()["data"]["request_type"] == "deletion"
+
+    requests_response = client.get("/api/v1/compliance/requests", headers=headers)
+    assert requests_response.status_code == 200
+    assert len(requests_response.json()["data"]) >= 2
+
+    audit_response = client.get("/api/v1/compliance/audit-logs", headers=headers)
+    assert audit_response.status_code == 200
+    assert len(audit_response.json()["data"]) >= 1

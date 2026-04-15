@@ -8,6 +8,7 @@
 - JWT 鉴权与角色权限依赖
 - OpenAPI 文档与接口目录草案
 - SQLAlchemy 数据模型与 Alembic 迁移底座
+- 隐私授权、审计日志与运行态性能观测
 
 ## 快速启动
 
@@ -92,6 +93,7 @@ docker compose down -v
 - 通知记录：`/api/v1/notifications`
 - 社区重点老人和工单：`/api/v1/community/elders`、`/community/workorders`
 - 管理端：`/api/v1/admin/users`、`/roles`、`/rules`、`/contents`、`/system-config`
+- 合规与非功能：`/api/v1/compliance/*`、`/api/v1/health/runtime`
 
 另外，当前版本已补齐一批直接支撑 1-4 章业务联调的接口动作：
 
@@ -118,6 +120,11 @@ docker compose down -v
 cd apps/backend-fastapi
 .venv/bin/pytest
 ```
+
+前端关键业务测试与多角色验收清单见：
+
+- [docs/non-functional-requirements.md](/workspaces/vue-vben-admin/apps/backend-fastapi/docs/non-functional-requirements.md)
+- [docs/acceptance-checklist.md](/workspaces/vue-vben-admin/apps/backend-fastapi/docs/acceptance-checklist.md)
 
 ## 目录结构
 

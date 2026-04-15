@@ -318,6 +318,76 @@ class EducationContentItem(BaseModel):
 
 class CommunityReportData(BaseModel):
     risk_by_level: list[dict[str, int | str]]
+
+
+class PrivacyPolicySummary(BaseModel):
+    policy_version: str
+    policy_url: str
+    privacy_url: str
+    consent_types: list[str]
+    correction_supported_fields: list[str]
+
+
+class PrivacyConsentItem(BaseModel):
+    id: str
+    consent_type: str
+    policy_version: str
+    status: str
+    granted_at: str | None
+    revoked_at: str | None
+
+
+class PrivacyConsentGrantRequest(BaseModel):
+    consent_type: str = Field(min_length=1, max_length=50)
+    policy_version: str = Field(min_length=1, max_length=30)
+
+
+class PrivacyExportResult(BaseModel):
+    export_id: str
+    generated_at: str
+    profile: dict[str, Any]
+    bindings: list[dict[str, Any]]
+    notifications: list[dict[str, Any]]
+    accessibility_settings: dict[str, Any]
+
+
+class PrivacyCorrectionRequest(BaseModel):
+    field_name: str = Field(min_length=1, max_length=50)
+    new_value: str = Field(min_length=1, max_length=255)
+    reason: str | None = Field(default=None, max_length=255)
+
+
+class PrivacyDeletionRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=255)
+
+
+class PrivacyRequestItem(BaseModel):
+    id: str
+    request_type: str
+    status: str
+    field_name: str | None
+    payload: dict[str, Any]
+    review_comment: str | None
+    submitted_at: str
+    completed_at: str | None
+
+
+class AuditLogItem(BaseModel):
+    id: str
+    request_id: str | None
+    action: str
+    module: str
+    status: str
+    method: str | None
+    path: str | None
+    duration_ms: str | None
+    created_at: str | None
+
+
+class RuntimeQueueStatus(BaseModel):
+    max_concurrent_requests: int
+    queue_timeout_ms: int
+    slow_request_threshold_ms: int
     workorder_status: list[dict[str, int | str]]
     education_summary: list[dict[str, int | str]]
     disposal_avg_minutes: int

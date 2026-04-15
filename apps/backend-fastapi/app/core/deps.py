@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.constants.roles import UserRole
 from app.core.security import decode_access_token
@@ -18,7 +18,10 @@ def get_bearer_token(authorization: Annotated[str | None, Header()] = None) -> s
     return authorization.replace("Bearer ", "", 1).strip()
 
 
-def get_current_user(token: Annotated[str, Depends(get_bearer_token)]) -> UserProfile:
+def get_current_user(
+    request: Request,
+    token: Annotated[str, Depends(get_bearer_token)],
+) -> UserProfile:
     payload = decode_access_token(token)
     user = get_user_by_id(payload.sub)
     if not user:
@@ -26,6 +29,7 @@ def get_current_user(token: Annotated[str, Depends(get_bearer_token)]) -> UserPr
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户不存在或已失效",
         )
+    request.state.current_user = user
     return user
 
 

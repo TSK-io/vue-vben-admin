@@ -37,6 +37,9 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://postgres:postgres@127.0.0.1:5432/guard_silver",
         alias="APP_DATABASE_URL",
     )
+    app_max_concurrent_requests: int = Field(default=32, alias="APP_MAX_CONCURRENT_REQUESTS")
+    app_request_queue_timeout_ms: int = Field(default=1500, alias="APP_REQUEST_QUEUE_TIMEOUT_MS")
+    app_slow_request_threshold_ms: int = Field(default=800, alias="APP_SLOW_REQUEST_THRESHOLD_MS")
 
 
 @lru_cache

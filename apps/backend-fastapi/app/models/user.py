@@ -28,6 +28,15 @@ class User(TimestampMixin, UUIDPrimaryKeyMixin, Base):
         foreign_keys="ElderFamilyBinding.family_user_id",
         back_populates="family_user",
     )
+    privacy_consents: Mapped[list["PrivacyConsentRecord"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    privacy_requests: Mapped[list["PrivacyRequestRecord"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user")
 
 
 class Role(TimestampMixin, UUIDPrimaryKeyMixin, Base):
@@ -54,3 +63,4 @@ class UserRoleLink(TimestampMixin, UUIDPrimaryKeyMixin, Base):
 
 if TYPE_CHECKING:
     from app.models.binding import ElderFamilyBinding
+    from app.models.compliance import AuditLog, PrivacyConsentRecord, PrivacyRequestRecord
