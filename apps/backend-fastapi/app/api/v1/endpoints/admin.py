@@ -16,6 +16,7 @@ from app.schemas.business import (
     SystemConfigUpdateRequest,
 )
 from app.schemas.common import ApiResponse, MetaPayload
+from app.schemas.user import UserProfile
 from app.services.business import (
     create_content,
     create_admin_user,
@@ -266,8 +267,8 @@ async def get_system_config(
 async def put_system_config(
     payload: SystemConfigUpdateRequest,
     request: Request,
-    _: Annotated[object, Depends(require_roles(UserRole.ADMIN))],
+    user: Annotated[UserProfile, Depends(require_roles(UserRole.ADMIN))],
     config_key: str = Path(),
 ) -> ApiResponse:
-    data = update_system_config(config_key, payload).model_dump()
+    data = update_system_config(config_key, payload, user).model_dump()
     return ApiResponse(data=data, meta=response_meta(request))

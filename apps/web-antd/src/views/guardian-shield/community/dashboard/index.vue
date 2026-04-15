@@ -5,8 +5,10 @@ import {
   Card,
   Col,
   Empty,
+  Input,
   List,
   Row,
+  Select,
   Skeleton,
   Space,
   Tag,
@@ -25,6 +27,12 @@ defineOptions({ name: 'CommunityDashboard' });
 
 const loading = ref(false);
 const overview = ref<CommunityOverviewData | null>(null);
+const filters = ref({
+  days: 7 as 7 | 15 | 30,
+  keyword: '',
+  range: 'all',
+  riskLevel: undefined as string | undefined,
+});
 
 const riskColorMap: Record<CommunityOverviewFocusSenior['riskLevel'], string> =
   {
@@ -101,7 +109,12 @@ function getTrendBarStyle(value: number, tone: 'alert' | 'visit') {
 async function loadOverview() {
   loading.value = true;
   try {
-    overview.value = await getCommunityOverviewApi();
+    overview.value = await getCommunityOverviewApi({
+      days: filters.value.days,
+      keyword: filters.value.keyword || undefined,
+      range: filters.value.range,
+      riskLevel: filters.value.riskLevel,
+    });
   } finally {
     loading.value = false;
   }
@@ -131,6 +144,50 @@ onMounted(() => {
     </section>
 
     <Skeleton active :loading="loading" :paragraph="{ rows: 10 }">
+      <Card class="panel-card filter-card" :bordered="false" title="筛选条件">
+        <Space wrap>
+          <Select
+            v-model:value="filters.days"
+            style="width: 120px"
+            :options="[
+              { label: '近 7 天', value: 7 },
+              { label: '近 15 天', value: 15 },
+              { label: '近 30 天', value: 30 },
+            ]"
+            @change="loadOverview"
+          />
+          <Select
+            v-model:value="filters.range"
+            style="width: 160px"
+            :options="[
+              { label: '全部辖区', value: 'all' },
+              { label: '东湖社区', value: '东湖' },
+              { label: '网格走访', value: '走访' },
+            ]"
+            @change="loadOverview"
+          />
+          <Select
+            v-model:value="filters.riskLevel"
+            allow-clear
+            style="width: 140px"
+            :options="[
+              { label: '高风险', value: 'high' },
+              { label: '中风险', value: 'medium' },
+              { label: '低风险', value: 'low' },
+            ]"
+            placeholder="风险类型"
+            @change="loadOverview"
+          />
+          <Input.Search
+            v-model:value="filters.keyword"
+            allow-clear
+            style="width: 220px"
+            placeholder="搜索老人或标签"
+            @search="loadOverview"
+          />
+        </Space>
+      </Card>
+
       <Row :gutter="[16, 16]" class="summary-row">
         <Col
           v-for="item in summaryCards"
@@ -316,6 +373,10 @@ h1 {
 }
 
 .summary-row {
+  margin-bottom: 16px;
+}
+
+.filter-card {
   margin-bottom: 16px;
 }
 

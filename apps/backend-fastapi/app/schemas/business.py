@@ -360,6 +360,7 @@ class RiskRuleItem(BaseModel):
     reason_template: str
     suggestion_template: str
     version: int = 1
+    version_history: list[dict[str, str | int]] = Field(default_factory=list)
 
 
 class RiskRuleUpsertRequest(BaseModel):
@@ -409,6 +410,10 @@ class SystemConfigItem(BaseModel):
     value: str
     group: str
     description: str
+    effective_value: str | None = None
+    last_updated_at: str | None = None
+    last_updated_by: str | None = None
+    audit_count: int = 0
 
 
 class SystemConfigUpdateRequest(BaseModel):

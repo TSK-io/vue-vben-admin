@@ -41,6 +41,12 @@ export interface AdminRuleItem {
   reasonTemplate: string;
   suggestionTemplate: string;
   version: number;
+  versionHistory: Array<{
+    operator: string;
+    status: string;
+    updatedAt: string;
+    version: number;
+  }>;
 }
 
 export interface AdminContentItem {
@@ -64,6 +70,10 @@ export interface AdminSystemConfigItem {
   value: string;
   group: string;
   description: string;
+  effectiveValue?: string | null;
+  lastUpdatedAt?: string | null;
+  lastUpdatedBy?: string | null;
+  auditCount?: number;
 }
 
 export interface AdminRoleItem {
@@ -294,6 +304,12 @@ export async function getAdminRuleListApi() {
       suggestionTemplate: item.suggestion_template,
       triggerExpression: item.trigger_expression,
       version: item.version ?? 1,
+      versionHistory: (item.version_history || []).map((entry: any) => ({
+        operator: entry.operator,
+        status: entry.status,
+        updatedAt: entry.updated_at,
+        version: entry.version,
+      })),
     }),
   );
 }
@@ -515,7 +531,20 @@ export async function updateAdminContentApi(
 }
 
 export async function getAdminSystemConfigListApi() {
-  return requestClient.get<AdminSystemConfigItem[]>('/admin/system-config');
+  const rows = await requestClient.get<any[]>('/admin/system-config');
+  return rows.map(
+    (item): AdminSystemConfigItem => ({
+      auditCount: item.audit_count ?? 0,
+      description: item.description,
+      effectiveValue: item.effective_value,
+      group: item.group,
+      key: item.key,
+      lastUpdatedAt: item.last_updated_at,
+      lastUpdatedBy: item.last_updated_by,
+      name: item.name,
+      value: item.value,
+    }),
+  );
 }
 
 export async function updateAdminSystemConfigApi(key: string, value: string) {

@@ -71,6 +71,18 @@ function getTrendBarStyle(total: number) {
   };
 }
 
+function getTrendSegmentStyle(count: number, tone: 'high' | 'medium' | 'low') {
+  const colors = {
+    high: 'linear-gradient(90deg, #dc2626 0%, #fb7185 100%)',
+    low: 'linear-gradient(90deg, #16a34a 0%, #86efac 100%)',
+    medium: 'linear-gradient(90deg, #d97706 0%, #fbbf24 100%)',
+  };
+  return {
+    background: colors[tone],
+    width: `${Math.max((count / maxTrendTotal.value) * 100, count > 0 ? 10 : 0)}%`,
+  };
+}
+
 function getDistributionBarStyle(count: number) {
   return {
     width: `${Math.max((count / maxDistributionCount.value) * 100, 18)}%`,
@@ -167,14 +179,32 @@ onMounted(() => {
               >
                 <span class="chart-label">{{ item.date }}</span>
                 <div class="chart-track">
-                  <div
-                    class="chart-bar"
-                    :style="getTrendBarStyle(item.total)"
-                  />
+                  <div class="chart-stack" :style="getTrendBarStyle(item.total)">
+                    <div
+                      v-if="item.high"
+                      class="chart-segment"
+                      :style="getTrendSegmentStyle(item.high, 'high')"
+                    />
+                    <div
+                      v-if="item.medium"
+                      class="chart-segment"
+                      :style="getTrendSegmentStyle(item.medium, 'medium')"
+                    />
+                    <div
+                      v-if="item.low"
+                      class="chart-segment"
+                      :style="getTrendSegmentStyle(item.low, 'low')"
+                    />
+                  </div>
                 </div>
                 <strong class="chart-value">{{ item.total }}</strong>
               </div>
             </div>
+            <Space wrap class="trend-legend">
+              <Tag color="red">高风险</Tag>
+              <Tag color="orange">中风险</Tag>
+              <Tag color="green">低风险</Tag>
+            </Space>
           </Card>
 
           <Card
@@ -345,14 +375,21 @@ h1 {
   border-radius: 999px;
 }
 
-.chart-bar,
+.chart-stack,
 .distribution-bar {
   height: 100%;
   border-radius: 999px;
 }
 
-.chart-bar {
-  background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%);
+.chart-stack {
+  display: flex;
+  gap: 2px;
+  align-items: stretch;
+}
+
+.chart-segment {
+  height: 100%;
+  border-radius: 999px;
 }
 
 .distribution-bar {
@@ -360,6 +397,10 @@ h1 {
 }
 
 .distribution-card {
+  margin-top: 16px;
+}
+
+.trend-legend {
   margin-top: 16px;
 }
 

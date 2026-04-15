@@ -11,6 +11,7 @@ from sqlalchemy.orm import aliased, selectinload
 from app.constants.roles import UserRole
 from app.db.session import session_scope
 from app.models import (
+    AuditLog,
     CallRecognitionRecord,
     EducationContent,
     ElderFamilyBinding,
@@ -157,6 +158,91 @@ def _dump_action_note(
         },
         ensure_ascii=False,
     )
+
+
+def _parse_version_history(raw: str | None) -> list[dict[str, str | int]]:
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return []
+    if not isinstance(data, list):
+        return []
+    result: list[dict[str, str | int]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        version = item.get("version")
+        status = item.get("status")
+        updated_at = item.get("updated_at")
+        operator = item.get("operator")
+        if not isinstance(version, int):
+            continue
+        result.append(
+            {
+                "version": version,
+                "status": str(status or ""),
+                "updated_at": str(updated_at or ""),
+                "operator": str(operator or ""),
+            }
+        )
+    return result
+
+
+def _load_rule_version_history(session, rule_id: str) -> list[dict[str, str | int]]:
+    item = session.scalar(select(SystemConfig).where(SystemConfig.key == f"rule.{rule_id}.versions"))
+    if not item:
+        return []
+    return _parse_version_history(item.value)
+
+
+def _save_rule_version_history(
+    session,
+    *,
+    rule_id: str,
+    history: list[dict[str, str | int]],
+) -> None:
+    key = f"rule.{rule_id}.versions"
+    value = json.dumps(history, ensure_ascii=False)
+    item = session.scalar(select(SystemConfig).where(SystemConfig.key == key))
+    if item:
+        item.value = value
+        item.name = f"规则 {rule_id} 版本记录"
+        item.group = "risk-rule"
+        item.description = "风险规则版本快照记录。"
+        return
+    session.add(
+        SystemConfig(
+            key=key,
+            name=f"规则 {rule_id} 版本记录",
+            value=value,
+            group="risk-rule",
+            description="风险规则版本快照记录。",
+        )
+    )
+
+
+def _append_rule_version(
+    session,
+    *,
+    rule_id: str,
+    status: str,
+    operator: str,
+    updated_at: str,
+) -> list[dict[str, str | int]]:
+    history = _load_rule_version_history(session, rule_id)
+    next_version = max((int(item["version"]) for item in history), default=0) + 1
+    history.append(
+        {
+            "version": next_version,
+            "status": status,
+            "updated_at": updated_at,
+            "operator": operator,
+        }
+    )
+    _save_rule_version_history(session, rule_id=rule_id, history=history)
+    return history
 
 
 ROLE_MENU_DEFAULTS: dict[str, list[str]] = {
@@ -1079,22 +1165,34 @@ def transition_workorder(
 def list_risk_rules() -> list[RiskRuleItem]:
     with session_scope() as session:
         rules = session.execute(select(RiskRule).order_by(RiskRule.priority.asc())).scalars().all()
-        return [
-            RiskRuleItem(
-                id=item.id,
-                code=item.code,
-                name=item.name,
-                scene=item.scene,
-                risk_level=item.risk_level,
-                priority=item.priority,
-                status=item.status,
-                trigger_expression=item.trigger_expression,
-                reason_template=item.reason_template or "",
-                suggestion_template=item.suggestion_template or "",
-                version=(2 if item.status != "enabled" else 1),
+        items: list[RiskRuleItem] = []
+        for item in rules:
+            history = _load_rule_version_history(session, item.id)
+            if not history:
+                history = _append_rule_version(
+                    session,
+                    rule_id=item.id,
+                    status=item.status,
+                    operator="system",
+                    updated_at=_to_str(item.updated_at) or _to_str(item.created_at) or "",
+                )
+            items.append(
+                RiskRuleItem(
+                    id=item.id,
+                    code=item.code,
+                    name=item.name,
+                    scene=item.scene,
+                    risk_level=item.risk_level,
+                    priority=item.priority,
+                    status=item.status,
+                    trigger_expression=item.trigger_expression,
+                    reason_template=item.reason_template or "",
+                    suggestion_template=item.suggestion_template or "",
+                    version=max(int(entry["version"]) for entry in history),
+                    version_history=history,
+                )
             )
-            for item in rules
-        ]
+        return items
 
 
 def list_risk_lexicon(scene: str | None = None) -> list[RiskLexiconItem]:
@@ -1159,6 +1257,13 @@ def create_risk_rule(payload: RiskRuleUpsertRequest) -> RiskRuleItem:
         item = RiskRule(**payload.model_dump())
         session.add(item)
         session.flush()
+        history = _append_rule_version(
+            session,
+            rule_id=item.id,
+            status=item.status,
+            operator="admin",
+            updated_at=_to_str(item.updated_at) or _to_str(item.created_at) or "",
+        )
         return RiskRuleItem(
             id=item.id,
             code=item.code,
@@ -1170,7 +1275,8 @@ def create_risk_rule(payload: RiskRuleUpsertRequest) -> RiskRuleItem:
             trigger_expression=item.trigger_expression,
             reason_template=item.reason_template or "",
             suggestion_template=item.suggestion_template or "",
-            version=1,
+            version=max(int(entry["version"]) for entry in history),
+            version_history=history,
         )
 
 
@@ -1181,6 +1287,14 @@ def update_risk_rule(rule_id: str, payload: RiskRuleUpsertRequest) -> RiskRuleIt
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="规则不存在")
         for key, value in payload.model_dump().items():
             setattr(item, key, value)
+        session.flush()
+        history = _append_rule_version(
+            session,
+            rule_id=item.id,
+            status=item.status,
+            operator="admin",
+            updated_at=_to_str(item.updated_at) or _to_str(item.created_at) or "",
+        )
         return RiskRuleItem(
             id=item.id,
             code=item.code,
@@ -1192,7 +1306,8 @@ def update_risk_rule(rule_id: str, payload: RiskRuleUpsertRequest) -> RiskRuleIt
             trigger_expression=item.trigger_expression,
             reason_template=item.reason_template or "",
             suggestion_template=item.suggestion_template or "",
-            version=2,
+            version=max(int(entry["version"]) for entry in history),
+            version_history=history,
         )
 
 
@@ -1409,17 +1524,35 @@ def update_content(content_id: str, payload: ContentUpsertRequest) -> ContentIte
 
 def list_system_configs() -> list[SystemConfigItem]:
     with session_scope() as session:
-        rows = session.execute(select(SystemConfig).order_by(SystemConfig.group.asc(), SystemConfig.key.asc())).scalars().all()
-        return [
-            SystemConfigItem(
-                key=item.key,
-                name=item.name,
-                value=item.value,
-                group=item.group,
-                description=item.description or "",
+        rows = session.execute(
+            select(SystemConfig)
+            .where(SystemConfig.group != "risk-rule")
+            .order_by(SystemConfig.group.asc(), SystemConfig.key.asc())
+        ).scalars().all()
+        items: list[SystemConfigItem] = []
+        for item in rows:
+            latest_audit = session.execute(
+                select(AuditLog)
+                .where(AuditLog.path.like(f"%/admin/system-config/{item.key}%"))
+                .order_by(AuditLog.created_at.desc())
+            ).scalars().first()
+            audit_count = session.scalar(
+                select(func.count(AuditLog.id)).where(AuditLog.path.like(f"%/admin/system-config/{item.key}%"))
+            ) or 0
+            items.append(
+                SystemConfigItem(
+                    key=item.key,
+                    name=item.name,
+                    value=item.value,
+                    effective_value=item.value,
+                    group=item.group,
+                    description=item.description or "",
+                    last_updated_at=_to_str(item.updated_at),
+                    last_updated_by=(latest_audit.user_id if latest_audit else None),
+                    audit_count=audit_count,
+                )
             )
-            for item in rows
-        ]
+        return items
 
 
 def list_admin_risk_alerts() -> list[AdminRiskAlertItem]:
@@ -1468,18 +1601,38 @@ def get_admin_risk_alert_detail(alert_id: str) -> AdminRiskAlertDetail:
     )
 
 
-def update_system_config(config_key: str, payload: SystemConfigUpdateRequest) -> SystemConfigItem:
+def update_system_config(config_key: str, payload: SystemConfigUpdateRequest, user: UserProfile | None = None) -> SystemConfigItem:
     with session_scope() as session:
         item = session.scalar(select(SystemConfig).where(SystemConfig.key == config_key))
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="配置不存在")
         item.value = payload.value
+        session.flush()
+        if user:
+            session.add(
+                AuditLog(
+                    user_id=user.user_id,
+                    action="system_config_update",
+                    module="admin",
+                    target_type="system_config",
+                    target_id=config_key,
+                    status="success",
+                    method="PUT",
+                    path=f"/api/v1/admin/system-config/{config_key}",
+                    duration_ms="0",
+                    details=f"effective_value={payload.value}",
+                )
+            )
         return SystemConfigItem(
             key=item.key,
             name=item.name,
             value=item.value,
+            effective_value=item.value,
             group=item.group,
             description=item.description or "",
+            last_updated_at=_to_str(item.updated_at),
+            last_updated_by=(user.user_id if user else None),
+            audit_count=1,
         )
 
 

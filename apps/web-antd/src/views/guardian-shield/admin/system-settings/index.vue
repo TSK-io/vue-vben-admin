@@ -59,8 +59,15 @@ onMounted(() => {
           </Space>
           <h3>{{ item.name }}</h3>
           <p class="key">{{ item.key }}</p>
+          <Space wrap class="meta-row">
+            <Tag color="geekblue">审计 {{ item.auditCount || 0 }} 次</Tag>
+            <Tag color="purple">生效值 {{ item.effectiveValue || item.value }}</Tag>
+          </Space>
           <Input v-model:value="item.value" />
           <p class="desc">{{ item.description }}</p>
+          <p class="desc">
+            最近更新：{{ item.lastUpdatedAt || '未记录' }} / {{ item.lastUpdatedBy || 'system' }}
+          </p>
           <Button
             type="primary"
             size="small"
@@ -121,6 +128,10 @@ h1 {
 
 .list-row {
   margin-top: 18px;
+}
+
+.meta-row {
+  margin: 12px 0;
 }
 
 @media (max-width: 768px) {

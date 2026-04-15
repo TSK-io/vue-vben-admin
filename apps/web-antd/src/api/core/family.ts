@@ -11,6 +11,9 @@ export interface FamilyOverviewStat {
 
 export interface FamilyOverviewAlertTrendItem {
   date: string;
+  high: number;
+  low: number;
+  medium: number;
   total: number;
 }
 
@@ -119,6 +122,25 @@ export async function getFamilyOverviewApi() {
     requestClient.get<any[]>('/bindings'),
     getRiskAlertListApi({ page: 1, pageSize: 50 }),
   ]);
+  const trendMap = new Map<
+    string,
+    { date: string; high: number; low: number; medium: number; total: number }
+  >();
+  for (const item of alerts.items) {
+    const date = item.occurredAt.slice(5, 10);
+    const current = trendMap.get(date) || {
+      date,
+      high: 0,
+      low: 0,
+      medium: 0,
+      total: 0,
+    };
+    current.total += 1;
+    if (item.riskLevel === 'high') current.high += 1;
+    if (item.riskLevel === 'medium') current.medium += 1;
+    if (item.riskLevel === 'low') current.low += 1;
+    trendMap.set(date, current);
+  }
   const riskDistribution = [
     {
       count: alerts.items.filter(
@@ -144,10 +166,10 @@ export async function getFamilyOverviewApi() {
   return {
     alertTrend: alerts.items
       .slice(0, 7)
-      .map((item: { occurredAt: string }) => ({
-        date: item.occurredAt.slice(5, 10),
-        total: 1,
-      })),
+      .map((item: { occurredAt: string }) => item.occurredAt.slice(5, 10))
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .map((date) => trendMap.get(date)!)
+      .filter(Boolean),
     focusList: alerts.items.slice(0, 5).map((item: FamilyAlertItem | any) => ({
       currentStatus: item.status === 'pending' ? '待跟进' : '已处理',
       elderName: item.elderName,

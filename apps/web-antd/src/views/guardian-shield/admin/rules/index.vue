@@ -8,6 +8,7 @@ import {
   Input,
   Modal,
   Select,
+  Space,
   Table,
   Tabs,
   Tag,
@@ -30,8 +31,10 @@ const rows = ref<any[]>([]);
 const lexiconRows = ref<any[]>([]);
 const visible = ref(false);
 const lexiconVisible = ref(false);
+const historyVisible = ref(false);
 const editingId = ref<string>();
 const editingLexiconId = ref<string>();
+const selectedRuleHistory = ref<any[]>([]);
 
 const formState = reactive({
   code: '',
@@ -80,6 +83,20 @@ function openEdit(item: any) {
   editingId.value = item.id;
   Object.assign(formState, item);
   visible.value = true;
+}
+
+function openHistory(item: any) {
+  selectedRuleHistory.value = item.versionHistory || [];
+  historyVisible.value = true;
+}
+
+async function toggleRuleStatus(item: any) {
+  await updateAdminRuleApi(item.id, {
+    ...item,
+    status: item.status === 'enabled' ? 'disabled' : 'enabled',
+  });
+  message.success(item.status === 'enabled' ? '规则已停用' : '规则已启用');
+  await loadData();
 }
 
 function openLexiconCreate() {
@@ -153,9 +170,20 @@ onMounted(() => {
               <template #default="{ record }"><Tag color="red">{{ record.riskLevel }}</Tag></template>
             </Table.Column>
             <Table.Column title="状态" data-index="status" key="status" />
+            <Table.Column title="版本" key="version">
+              <template #default="{ record }">
+                <Tag color="blue">v{{ record.version }}</Tag>
+              </template>
+            </Table.Column>
             <Table.Column title="操作" key="actions">
               <template #default="{ record }">
-                <Button type="link" size="small" @click="openEdit(record)">编辑</Button>
+                <Space>
+                  <Button type="link" size="small" @click="openEdit(record)">编辑</Button>
+                  <Button type="link" size="small" @click="toggleRuleStatus(record)">
+                    {{ record.status === 'enabled' ? '停用' : '启用' }}
+                  </Button>
+                  <Button type="link" size="small" @click="openHistory(record)">版本</Button>
+                </Space>
               </template>
             </Table.Column>
           </Table>
@@ -211,6 +239,20 @@ onMounted(() => {
         </Form.Item>
         <Form.Item label="备注"><Input.TextArea v-model:value="lexiconState.notes" :rows="2" /></Form.Item>
       </Form>
+    </Modal>
+
+    <Modal v-model:open="historyVisible" title="规则版本记录" :footer="null">
+      <Table
+        :data-source="selectedRuleHistory"
+        :pagination="false"
+        row-key="version"
+        size="small"
+      >
+        <Table.Column title="版本" data-index="version" key="version" />
+        <Table.Column title="状态" data-index="status" key="status" />
+        <Table.Column title="更新时间" data-index="updatedAt" key="updatedAt" />
+        <Table.Column title="操作人" data-index="operator" key="operator" />
+      </Table>
     </Modal>
   </div>
 </template>

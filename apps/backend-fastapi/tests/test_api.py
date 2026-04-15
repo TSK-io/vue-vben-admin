@@ -151,6 +151,7 @@ def test_admin_management_endpoints(client: TestClient) -> None:
     assert contents_response.status_code == 200
     assert configs_response.status_code == 200
     assert users_response.json()["data"][0]["user_id"].startswith("u-")
+    assert "version_history" in rules_response.json()["data"][0]
 
     role_update_response = client.put(
         "/api/v1/admin/roles/family",
@@ -184,12 +185,47 @@ def test_admin_management_endpoints(client: TestClient) -> None:
     )
     assert lexicon_create_response.status_code == 200
 
+    rule_id = rules_response.json()["data"][0]["id"]
+    rule_update_response = client.put(
+        f"/api/v1/admin/rules/{rule_id}",
+        headers=headers,
+        json={
+            "code": rules_response.json()["data"][0]["code"],
+            "name": rules_response.json()["data"][0]["name"],
+            "scene": rules_response.json()["data"][0]["scene"],
+            "risk_level": rules_response.json()["data"][0]["risk_level"],
+            "priority": rules_response.json()["data"][0]["priority"],
+            "status": "disabled",
+            "trigger_expression": rules_response.json()["data"][0]["trigger_expression"],
+            "reason_template": rules_response.json()["data"][0]["reason_template"],
+            "suggestion_template": rules_response.json()["data"][0]["suggestion_template"],
+        },
+    )
+    assert rule_update_response.status_code == 200
+    assert rule_update_response.json()["data"]["status"] == "disabled"
+    assert rule_update_response.json()["data"]["version"] >= 2
+
     admin_alerts_response = client.get("/api/v1/admin/risk-alerts", headers=headers)
     assert admin_alerts_response.status_code == 200
     alert_id = admin_alerts_response.json()["data"][0]["id"]
     admin_alert_detail_response = client.get(f"/api/v1/admin/risk-alerts/{alert_id}", headers=headers)
     assert admin_alert_detail_response.status_code == 200
     assert "reason_detail" in admin_alert_detail_response.json()["data"]
+
+    config_key = configs_response.json()["data"][0]["key"]
+    config_update_response = client.put(
+        f"/api/v1/admin/system-config/{config_key}",
+        headers=headers,
+        json={"value": "true"},
+    )
+    assert config_update_response.status_code == 200
+    assert config_update_response.json()["data"]["effective_value"] == "true"
+    refreshed_configs_response = client.get("/api/v1/admin/system-config", headers=headers)
+    assert refreshed_configs_response.status_code == 200
+    refreshed_item = next(
+        item for item in refreshed_configs_response.json()["data"] if item["key"] == config_key
+    )
+    assert refreshed_item["audit_count"] >= 1
 
 
 def test_risk_recognition_sms_creates_alert_notifications_and_workorder(client: TestClient) -> None:
@@ -212,6 +248,7 @@ def test_risk_recognition_sms_creates_alert_notifications_and_workorder(client: 
     assert len(data["notification_ids"]) >= 2
     assert data["workorder_id"] is not None
     assert data["link_analysis"]["urls"]
+    assert "suspicious_reasons" in data["link_analysis"]
 
 
 def test_risk_recognition_call_creates_structured_result(client: TestClient) -> None:

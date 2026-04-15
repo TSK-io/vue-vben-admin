@@ -406,6 +406,10 @@ def _analyze_links(text: str) -> dict[str, object]:
     normalized_urls: list[str] = []
     suspicious_domains: list[str] = []
     short_link_detected = False
+    suspicious_reasons: list[str] = []
+    ip_host_detected = False
+    uncommon_tld_detected = False
+    punycode_detected = False
     for item in urls:
         url = item if item.startswith("http") else f"https://{item}"
         parsed = urlparse(url)
@@ -414,15 +418,34 @@ def _analyze_links(text: str) -> dict[str, object]:
         if any(domain.endswith(suffix) for suffix in ("t.cn", "bit.ly", "url.cn", "dwz.cn")):
             short_link_detected = True
             suspicious_domains.append(domain)
+            suspicious_reasons.append(f"{domain}: 短链接域名")
         if any(flag in domain for flag in ("refund", "bonus", "gift", "verify", "safe")):
             suspicious_domains.append(domain)
+            suspicious_reasons.append(f"{domain}: 含诱导性英文关键词")
+        if re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", domain):
+            ip_host_detected = True
+            suspicious_domains.append(domain)
+            suspicious_reasons.append(f"{domain}: 使用 IP 地址承载链接")
+        if "xn--" in domain:
+            punycode_detected = True
+            suspicious_domains.append(domain)
+            suspicious_reasons.append(f"{domain}: 疑似同形异义域名")
+        if any(domain.endswith(suffix) for suffix in (".top", ".vip", ".xyz", ".cc")):
+            uncommon_tld_detected = True
+            suspicious_domains.append(domain)
+            suspicious_reasons.append(f"{domain}: 命中高风险后缀")
     if not normalized_urls and ("点击链接" in text or "短链" in text):
         normalized_urls.append("embedded-link-indicator")
         short_link_detected = True
+        suspicious_reasons.append("短信内容提示点击链接，但未给出完整 URL")
     return {
         "urls": normalized_urls,
         "short_link_detected": short_link_detected,
         "suspicious_domains": sorted(set(suspicious_domains)),
+        "ip_host_detected": ip_host_detected,
+        "uncommon_tld_detected": uncommon_tld_detected,
+        "punycode_detected": punycode_detected,
+        "suspicious_reasons": suspicious_reasons,
     }
 
 
@@ -430,12 +453,22 @@ def recognize_sms(*, elder_user_id: str, message_text: str, sender: str | None =
     occurred_at = occurred_at or _now_iso()
     risk_level, risk_score, hit_terms, hit_rules, reason_detail, suggestion_action = _analyze_text("sms", message_text)
     link_analysis = _analyze_links(message_text)
-    if link_analysis["short_link_detected"] or link_analysis["suspicious_domains"]:
-        risk_score = min(99, risk_score + 6)
+    if (
+        link_analysis["short_link_detected"]
+        or link_analysis["suspicious_domains"]
+        or link_analysis["ip_host_detected"]
+        or link_analysis["uncommon_tld_detected"]
+        or link_analysis["punycode_detected"]
+    ):
+        risk_score = min(99, risk_score + 8)
         risk_level = "high" if risk_score >= 85 else risk_level
         if link_analysis["suspicious_domains"]:
             reason_detail = (
                 f"{reason_detail} 额外识别到可疑域名：{'、'.join(link_analysis['suspicious_domains'][:3])}。"
+            )
+        if link_analysis["suspicious_reasons"]:
+            reason_detail = (
+                f"{reason_detail} 链接特征命中：{'；'.join(link_analysis['suspicious_reasons'][:3])}。"
             )
 
     with session_scope() as session:
