@@ -28,7 +28,7 @@ def auth_headers(client: TestClient, username: str, password: str) -> dict[str, 
 def test_auth_login_roles_and_refresh(client: TestClient) -> None:
     login_response = client.post(
         "/api/v1/auth/login",
-        json={"username": "admin_demo", "password": "Admin123!"},
+        json={"username": "admin_demo", "password": "111"},
     )
     assert login_response.status_code == 200
     body = login_response.json()["data"]
@@ -49,7 +49,7 @@ def test_auth_register_and_login(client: TestClient) -> None:
         "/api/v1/auth/register",
         json={
             "username": "elder_new_user",
-            "password": "Elder123!",
+            "password": "111",
             "display_name": "新注册老人",
             "phone": "13800009999",
             "role": "elder",
@@ -62,14 +62,14 @@ def test_auth_register_and_login(client: TestClient) -> None:
 
     login_response = client.post(
         "/api/v1/auth/login",
-        json={"username": "elder_new_user", "password": "Elder123!"},
+        json={"username": "elder_new_user", "password": "111"},
     )
     assert login_response.status_code == 200
     assert login_response.json()["data"]["display_name"] == "新注册老人"
 
 
 def test_family_bindings_alerts_and_notifications(client: TestClient) -> None:
-    headers = auth_headers(client, "family_demo", "Family123!")
+    headers = auth_headers(client, "family_demo", "111")
 
     bindings_response = client.get("/api/v1/bindings", headers=headers)
     assert bindings_response.status_code == 200
@@ -85,7 +85,7 @@ def test_family_bindings_alerts_and_notifications(client: TestClient) -> None:
 
 
 def test_community_workorder_transition(client: TestClient) -> None:
-    headers = auth_headers(client, "community_demo", "Community123!")
+    headers = auth_headers(client, "community_demo", "111")
 
     elders_response = client.get("/api/v1/community/elders", headers=headers)
     assert elders_response.status_code == 200
@@ -107,7 +107,7 @@ def test_community_workorder_transition(client: TestClient) -> None:
 
 
 def test_admin_management_endpoints(client: TestClient) -> None:
-    headers = auth_headers(client, "admin_demo", "Admin123!")
+    headers = auth_headers(client, "admin_demo", "111")
 
     users_response = client.get("/api/v1/admin/users", headers=headers)
     roles_response = client.get("/api/v1/admin/roles", headers=headers)
@@ -124,7 +124,7 @@ def test_admin_management_endpoints(client: TestClient) -> None:
 
 
 def test_risk_recognition_sms_creates_alert_notifications_and_workorder(client: TestClient) -> None:
-    headers = auth_headers(client, "admin_demo", "Admin123!")
+    headers = auth_headers(client, "admin_demo", "111")
 
     response = client.post(
         "/api/v1/risk-recognition/sms",
@@ -145,7 +145,7 @@ def test_risk_recognition_sms_creates_alert_notifications_and_workorder(client: 
 
 
 def test_risk_recognition_call_creates_structured_result(client: TestClient) -> None:
-    headers = auth_headers(client, "community_demo", "Community123!")
+    headers = auth_headers(client, "community_demo", "111")
 
     response = client.post(
         "/api/v1/risk-recognition/call",
@@ -166,8 +166,8 @@ def test_risk_recognition_call_creates_structured_result(client: TestClient) -> 
 
 
 def test_elder_help_settings_and_family_reminder(client: TestClient) -> None:
-    elder_headers = auth_headers(client, "elder_demo", "Elder123!")
-    family_headers = auth_headers(client, "family_demo", "Family123!")
+    elder_headers = auth_headers(client, "elder_demo", "111")
+    family_headers = auth_headers(client, "family_demo", "111")
 
     help_response = client.post(
         "/api/v1/elder/help-requests",

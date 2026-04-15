@@ -49,7 +49,7 @@ SEED_USERS = [
     {
         "id": "u-elder-001",
         "username": "elder_demo",
-        "password_hash": "Elder123!",
+        "password_hash": "111",
         "display_name": "李阿姨",
         "phone": "13800001001",
         "status": "active",
@@ -60,7 +60,7 @@ SEED_USERS = [
     {
         "id": "u-elder-002",
         "username": "elder_demo_2",
-        "password_hash": "Elder123!",
+        "password_hash": "111",
         "display_name": "周叔叔",
         "phone": "13800001002",
         "status": "active",
@@ -71,7 +71,7 @@ SEED_USERS = [
     {
         "id": "u-family-001",
         "username": "family_demo",
-        "password_hash": "Family123!",
+        "password_hash": "111",
         "display_name": "王女士",
         "phone": "13900002001",
         "status": "active",
@@ -81,7 +81,7 @@ SEED_USERS = [
     {
         "id": "u-family-002",
         "username": "family_demo_2",
-        "password_hash": "Family123!",
+        "password_hash": "111",
         "display_name": "李先生",
         "phone": "13900002002",
         "status": "active",
@@ -91,7 +91,7 @@ SEED_USERS = [
     {
         "id": "u-community-001",
         "username": "community_demo",
-        "password_hash": "Community123!",
+        "password_hash": "111",
         "display_name": "社区网格员张强",
         "phone": "13700003001",
         "status": "active",
@@ -101,7 +101,7 @@ SEED_USERS = [
     {
         "id": "u-community-002",
         "username": "community_demo_2",
-        "password_hash": "Community123!",
+        "password_hash": "111",
         "display_name": "社区社工陈敏",
         "phone": "13700003002",
         "status": "active",
@@ -111,7 +111,7 @@ SEED_USERS = [
     {
         "id": "u-admin-001",
         "username": "admin_demo",
-        "password_hash": "Admin123!",
+        "password_hash": "111",
         "display_name": "系统管理员",
         "phone": "13600004001",
         "status": "active",

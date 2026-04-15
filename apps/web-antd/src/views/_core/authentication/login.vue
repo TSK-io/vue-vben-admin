@@ -16,19 +16,19 @@ const authStore = useAuthStore();
 const MOCK_USER_OPTIONS: BasicOption[] = [
   {
     label: '老年用户',
-    value: 'elder',
+    value: 'elder_demo',
   },
   {
     label: '子女用户',
-    value: 'family',
+    value: 'family_demo',
   },
   {
     label: '社区工作人员',
-    value: 'community',
+    value: 'community_demo',
   },
   {
     label: '系统管理员',
-    value: 'admin',
+    value: 'admin_demo',
   },
 ];
 
@@ -46,7 +46,7 @@ const formSchema = computed((): VbenFormSchema[] => {
         .string()
         .min(1, { message: $t('authentication.selectAccount') })
         .optional()
-        .default('elder'),
+        .default('elder_demo'),
     },
     {
       component: 'VbenInput',
@@ -61,7 +61,7 @@ const formSchema = computed((): VbenFormSchema[] => {
             );
             if (findUser) {
               form.setValues({
-                password: '123456',
+                password: '111',
                 username: findUser.value,
               });
             }

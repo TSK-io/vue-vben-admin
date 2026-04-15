@@ -78,10 +78,10 @@ docker compose down -v
 
 当前已进入 3.4 真实业务 API 联调阶段，内置演示账号用于验证鉴权、角色权限和业务接口：
 
-- `elder_demo / Elder123!`
-- `family_demo / Family123!`
-- `community_demo / Community123!`
-- `admin_demo / Admin123!`
+- `elder_demo / 111`
+- `family_demo / 111`
+- `community_demo / 111`
+- `admin_demo / 111`
 
 ## 已落地的业务 API
 
