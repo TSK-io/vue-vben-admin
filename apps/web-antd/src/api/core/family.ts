@@ -92,6 +92,28 @@ export interface FamilyNotificationListParams {
   status?: string;
 }
 
+export interface FamilyReminderTemplateItem {
+  id: string;
+  code: string;
+  name: string;
+  channel: string;
+  content: string;
+  status: string;
+  isDefault: boolean;
+  notes?: string | null;
+}
+
+export interface FamilyReminderReceiptItem {
+  notificationId: string;
+  elderUserId: string;
+  elderName: string;
+  channel: 'app' | 'sms' | 'voice';
+  content: string;
+  sentAt: string;
+  receiptStatus: string;
+  readAt?: string | null;
+}
+
 export async function getFamilyOverviewApi() {
   const [bindings, alerts] = await Promise.all([
     requestClient.get<any[]>('/bindings'),
@@ -329,4 +351,65 @@ export async function sendFamilyReminderApi(payload: {
     content: payload.content,
     elder_user_id: payload.elderUserId,
   });
+}
+
+export async function getFamilyReminderTemplatesApi() {
+  const rows = await requestClient.get<any[]>('/family/reminder-templates');
+  return rows.map(
+    (item): FamilyReminderTemplateItem => ({
+      channel: item.channel,
+      code: item.code,
+      content: item.content,
+      id: item.id,
+      isDefault: item.is_default,
+      name: item.name,
+      notes: item.notes,
+      status: item.status,
+    }),
+  );
+}
+
+export async function createFamilyReminderTemplateApi(
+  payload: Omit<FamilyReminderTemplateItem, 'id'>,
+) {
+  return requestClient.post('/family/reminder-templates', {
+    channel: payload.channel,
+    code: payload.code,
+    content: payload.content,
+    is_default: payload.isDefault,
+    name: payload.name,
+    notes: payload.notes,
+    status: payload.status,
+  });
+}
+
+export async function updateFamilyReminderTemplateApi(
+  templateId: string,
+  payload: Omit<FamilyReminderTemplateItem, 'id'>,
+) {
+  return requestClient.put(`/family/reminder-templates/${templateId}`, {
+    channel: payload.channel,
+    code: payload.code,
+    content: payload.content,
+    is_default: payload.isDefault,
+    name: payload.name,
+    notes: payload.notes,
+    status: payload.status,
+  });
+}
+
+export async function getFamilyReminderReceiptsApi() {
+  const rows = await requestClient.get<any[]>('/family/reminder-receipts');
+  return rows.map(
+    (item): FamilyReminderReceiptItem => ({
+      channel: item.channel,
+      content: item.content,
+      elderName: item.elder_name,
+      elderUserId: item.elder_user_id,
+      notificationId: item.notification_id,
+      readAt: item.read_at,
+      receiptStatus: item.receipt_status,
+      sentAt: item.sent_at,
+    }),
+  );
 }

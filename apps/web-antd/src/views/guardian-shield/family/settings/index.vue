@@ -1,31 +1,50 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import {
   Button,
   Card,
   Col,
+  Form,
   Input,
+  Modal,
   Row,
   Select,
   Space,
+  Table,
   message,
 } from 'ant-design-vue';
 
-import { getBindingListApi, sendFamilyReminderApi } from '#/api';
+import {
+  createFamilyReminderTemplateApi,
+  getBindingListApi,
+  getFamilyReminderReceiptsApi,
+  getFamilyReminderTemplatesApi,
+  sendFamilyReminderApi,
+  updateFamilyReminderTemplateApi,
+} from '#/api';
+import type { FamilyReminderReceiptItem, FamilyReminderTemplateItem } from '#/api';
 
 defineOptions({ name: 'FamilySettings' });
 
-const templates = ref([
-  '先别转账，我马上给你回电话。',
-  '验证码不要告诉别人，等我核实后再处理。',
-  '先挂电话，确认是官方号码再联系。',
-]);
 const selectedElderId = ref<string>();
 const reminderText = ref('');
 const sendChannel = ref<'app' | 'sms' | 'voice'>('app');
 const sending = ref(false);
 const bindings = ref<any[]>([]);
+const templates = ref<FamilyReminderTemplateItem[]>([]);
+const receipts = ref<FamilyReminderReceiptItem[]>([]);
+const editorVisible = ref(false);
+const editingId = ref<string>();
+const formState = reactive<Omit<FamilyReminderTemplateItem, 'id'>>({
+  channel: 'app',
+  code: '',
+  content: '',
+  isDefault: false,
+  name: '',
+  notes: '',
+  status: 'enabled',
+});
 
 const elderOptions = computed(() =>
   bindings.value.map((item) => ({
@@ -39,8 +58,49 @@ async function loadBindings() {
   selectedElderId.value = bindings.value[0]?.elderUserId;
 }
 
-function useTemplate(value: string) {
-  reminderText.value = value;
+async function loadTemplates() {
+  templates.value = await getFamilyReminderTemplatesApi();
+}
+
+async function loadReceipts() {
+  receipts.value = await getFamilyReminderReceiptsApi();
+}
+
+function useTemplate(item: FamilyReminderTemplateItem) {
+  reminderText.value = item.content;
+  sendChannel.value = item.channel as 'app' | 'sms' | 'voice';
+}
+
+function openCreateTemplate() {
+  editingId.value = undefined;
+  Object.assign(formState, {
+    channel: 'app',
+    code: '',
+    content: '',
+    isDefault: false,
+    name: '',
+    notes: '',
+    status: 'enabled',
+  });
+  editorVisible.value = true;
+}
+
+function openEditTemplate(item: FamilyReminderTemplateItem) {
+  editingId.value = item.id;
+  Object.assign(formState, item);
+  editorVisible.value = true;
+}
+
+async function submitTemplate() {
+  if (editingId.value) {
+    await updateFamilyReminderTemplateApi(editingId.value, formState);
+    message.success('模板已更新');
+  } else {
+    await createFamilyReminderTemplateApi(formState);
+    message.success('模板已新增');
+  }
+  editorVisible.value = false;
+  await loadTemplates();
 }
 
 async function submitReminder() {
@@ -48,26 +108,23 @@ async function submitReminder() {
     message.warning('请选择老人并填写提醒内容');
     return;
   }
-  const targetBinding = bindings.value.find(
-    (item) => item.elderUserId === selectedElderId.value,
-  );
-  if (!targetBinding) return;
   sending.value = true;
   try {
     await sendFamilyReminderApi({
       channel: sendChannel.value,
       content: reminderText.value.trim(),
-      elderUserId: targetBinding.elderUserId,
+      elderUserId: selectedElderId.value,
     });
     message.success('远程提醒已发送');
     reminderText.value = '';
+    await loadReceipts();
   } finally {
     sending.value = false;
   }
 }
 
 onMounted(() => {
-  void loadBindings();
+  void Promise.all([loadBindings(), loadTemplates(), loadReceipts()]);
 });
 </script>
 
@@ -78,7 +135,7 @@ onMounted(() => {
         <p class="eyebrow">子女端 / 监护设置</p>
         <h1>监护设置</h1>
         <p class="description">
-          当前已接入真实提醒发送能力，可选老人、渠道和提醒文案后直接下发。
+          已支持模板新增编辑、真实发送和发送回执，常用文案可以直接沉淀复用。
         </p>
       </div>
       <div class="hero-note">
@@ -109,30 +166,81 @@ onMounted(() => {
               :rows="5"
               placeholder="请输入提醒内容"
             />
-            <Button type="primary" :loading="sending" @click="submitReminder"
-              >发送提醒</Button
-            >
+            <Button type="primary" :loading="sending" @click="submitReminder">
+              发送提醒
+            </Button>
           </Space>
         </Card>
       </Col>
       <Col :lg="14" :span="24">
-        <Card class="template-card" :bordered="false" title="常用提醒文案">
+        <Card class="template-card" :bordered="false" title="常用提醒模板">
+          <template #extra>
+            <Button size="small" @click="openCreateTemplate">新增模板</Button>
+          </template>
           <Space direction="vertical" style="width: 100%">
             <div
-              v-for="(item, index) in templates"
-              :key="item"
+              v-for="item in templates"
+              :key="item.id"
               class="template-item"
             >
               <div class="template-head">
-                <span>模板 {{ index + 1 }}</span>
-                <Button size="small" @click="useTemplate(item)">使用</Button>
+                <span>{{ item.name }}</span>
+                <Space>
+                  <Button size="small" @click="useTemplate(item)">使用</Button>
+                  <Button size="small" @click="openEditTemplate(item)">编辑</Button>
+                </Space>
               </div>
-              <p>{{ item }}</p>
+              <p>{{ item.content }}</p>
             </div>
           </Space>
         </Card>
       </Col>
     </Row>
+
+    <Card class="receipt-card" :bordered="false" title="发送回执">
+      <Table
+        :data-source="receipts"
+        :columns="[
+          { title: '老人', dataIndex: 'elderName', key: 'elderName' },
+          { title: '渠道', dataIndex: 'channel', key: 'channel' },
+          { title: '内容', dataIndex: 'content', key: 'content' },
+          { title: '发送时间', dataIndex: 'sentAt', key: 'sentAt' },
+          { title: '状态', dataIndex: 'receiptStatus', key: 'receiptStatus' },
+        ]"
+        :pagination="false"
+        row-key="notificationId"
+      />
+    </Card>
+
+    <Modal
+      v-model:open="editorVisible"
+      title="提醒模板"
+      ok-text="保存"
+      cancel-text="关闭"
+      @ok="submitTemplate"
+    >
+      <Form layout="vertical">
+        <Form.Item label="模板编码">
+          <Input v-model:value="formState.code" />
+        </Form.Item>
+        <Form.Item label="模板名称">
+          <Input v-model:value="formState.name" />
+        </Form.Item>
+        <Form.Item label="发送渠道">
+          <Select
+            v-model:value="formState.channel"
+            :options="[
+              { label: '站内提醒', value: 'app' },
+              { label: '短信提醒', value: 'sms' },
+              { label: '语音提醒', value: 'voice' },
+            ]"
+          />
+        </Form.Item>
+        <Form.Item label="模板内容">
+          <Input.TextArea v-model:value="formState.content" :rows="4" />
+        </Form.Item>
+      </Form>
+    </Modal>
   </div>
 </template>
 
@@ -145,7 +253,8 @@ onMounted(() => {
 
 .hero-panel,
 .setting-card,
-.template-card {
+.template-card,
+.receipt-card {
   background: rgb(255 255 255 / 96%);
   border: 1px solid rgb(244 63 94 / 14%);
   border-radius: 24px;
@@ -187,7 +296,8 @@ h1 {
   border-radius: 20px;
 }
 
-.content-row {
+.content-row,
+.receipt-card {
   margin-top: 18px;
 }
 

@@ -36,6 +36,8 @@ const formState = reactive({
   status: 'draft',
   summary: '',
   contentBody: '',
+  auditStatus: 'approved',
+  assetUrl: '',
 });
 
 async function loadRows() {
@@ -54,6 +56,8 @@ function openCreate() {
     status: 'draft',
     summary: '',
     contentBody: '',
+    auditStatus: 'approved',
+    assetUrl: '',
   });
   visible.value = true;
 }
@@ -70,6 +74,8 @@ function openEdit(item: any) {
     status: item.status,
     summary: item.summary || '',
     contentBody: item.summary || item.title,
+    auditStatus: item.auditStatus || 'approved',
+    assetUrl: item.assetUrl || '',
   });
   visible.value = true;
 }

@@ -26,6 +26,11 @@ from app.models import (
 )
 from app.schemas.business import (
     AdminUserItem,
+    AdminUserDetail,
+    AdminUserPasswordResetRequest,
+    AdminUserPhoneUpdateRequest,
+    AdminUserUpsertRequest,
+    AdminRiskAlertItem,
     AccessibilitySettings,
     AccessibilitySettingsUpdateRequest,
     BindingCreateRequest,
@@ -38,6 +43,9 @@ from app.schemas.business import (
     EducationContentItem,
     FamilyReminderCreateRequest,
     FamilyReminderResult,
+    FamilyReminderReceiptItem,
+    FamilyReminderTemplateItem,
+    FamilyReminderTemplateUpsertRequest,
     HelpRequestCreate,
     HelpRequestResult,
     NotificationItem,
@@ -140,6 +148,17 @@ def list_admin_users(keyword: str | None = None, role: UserRole | None = None) -
             permissions: list[str] = []
             for role_item in roles:
                 permissions.extend(str(item) for item in ROLE_DETAILS[role_item]["permissions"])
+            latest_alert = session.scalar(
+                select(RiskAlert).where(RiskAlert.elder_user_id == user.id).order_by(RiskAlert.occurred_at.desc())
+            )
+            bind_count = session.scalar(
+                select(func.count(ElderFamilyBinding.id)).where(
+                    or_(
+                        ElderFamilyBinding.elder_user_id == user.id,
+                        ElderFamilyBinding.family_user_id == user.id,
+                    )
+                )
+            )
             result.append(
                 AdminUserItem(
                     user_id=user.id,
@@ -150,9 +169,103 @@ def list_admin_users(keyword: str | None = None, role: UserRole | None = None) -
                     roles=roles,
                     permissions=list(dict.fromkeys(permissions)),
                     last_login_at=user.last_login_at,
+                    bind_count=bind_count or 0,
+                    latest_alert_at=latest_alert.occurred_at if latest_alert else None,
+                    latest_risk_level=latest_alert.risk_level if latest_alert else "low",
+                    notes=_parse_notes(user.notes),
                 )
             )
         return result
+
+
+def get_admin_user_detail(user_id: str) -> AdminUserDetail:
+    base_item = next((item for item in list_admin_users() if item.user_id == user_id), None)
+    if not base_item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    with session_scope() as session:
+        user = session.execute(
+            select(User).options(selectinload(User.roles).selectinload(UserRoleLink.role)).where(User.id == user_id)
+        ).scalar_one()
+        binding_ids = session.scalars(
+            select(ElderFamilyBinding.id).where(
+                or_(
+                    ElderFamilyBinding.elder_user_id == user.id,
+                    ElderFamilyBinding.family_user_id == user.id,
+                )
+            )
+        ).all()
+        latest_alert = session.scalar(
+            select(RiskAlert).where(RiskAlert.elder_user_id == user.id).order_by(RiskAlert.occurred_at.desc())
+        )
+        roles = [UserRole(link.role.code) for link in user.roles]
+        return AdminUserDetail(
+            **base_item.model_dump(),
+            role_descriptions=[str(ROLE_DETAILS[role]["description"]) for role in roles],
+            binding_ids=list(binding_ids),
+            latest_alert_title=latest_alert.title if latest_alert else None,
+        )
+
+
+def create_admin_user(payload: AdminUserUpsertRequest) -> AdminUserDetail:
+    with session_scope() as session:
+        if session.scalar(select(User.id).where(User.username == payload.username)):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户名已存在")
+        if session.scalar(select(User.id).where(User.phone == payload.phone)):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="手机号已存在")
+        user = User(
+            username=payload.username,
+            password_hash=payload.password or "111",
+            display_name=payload.display_name,
+            phone=payload.phone,
+            status=payload.status,
+            notes=_dump_notes(payload.notes),
+        )
+        session.add(user)
+        session.flush()
+        roles = session.execute(select(Role).where(Role.code.in_([item.value for item in payload.roles]))).scalars().all()
+        for role_item in roles:
+            session.add(UserRoleLink(user_id=user.id, role_id=role_item.id))
+        session.flush()
+        created_id = user.id
+    return get_admin_user_detail(created_id)
+
+
+def update_admin_user(user_id: str, payload: AdminUserUpsertRequest) -> AdminUserDetail:
+    with session_scope() as session:
+        user = session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        user.username = payload.username
+        user.display_name = payload.display_name
+        user.phone = payload.phone
+        user.status = payload.status
+        user.notes = _dump_notes(payload.notes)
+        if payload.password:
+            user.password_hash = payload.password
+        session.query(UserRoleLink).where(UserRoleLink.user_id == user_id).delete()
+        roles = session.execute(select(Role).where(Role.code.in_([item.value for item in payload.roles]))).scalars().all()
+        for role_item in roles:
+            session.add(UserRoleLink(user_id=user.id, role_id=role_item.id))
+        session.flush()
+    return get_admin_user_detail(user_id)
+
+
+def reset_admin_user_password(user_id: str, payload: AdminUserPasswordResetRequest) -> dict[str, str]:
+    with session_scope() as session:
+        user = session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        user.password_hash = payload.password
+        return {"status": "password_reset", "user_id": user.id}
+
+
+def update_admin_user_phone(user_id: str, payload: AdminUserPhoneUpdateRequest) -> dict[str, str]:
+    with session_scope() as session:
+        user = session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        user.phone = payload.phone
+        return {"status": "phone_updated", "user_id": user.id, "phone": user.phone}
 
 
 def list_bindings(user: UserProfile) -> list[BindingItem]:
@@ -463,7 +576,116 @@ def send_family_reminder(user: UserProfile, payload: FamilyReminderCreateRequest
             sent_at=now,
             receiver_name=elder.display_name,
             content=payload.content,
+            receipt_status="delivered",
         )
+
+
+def list_family_reminder_templates() -> list[FamilyReminderTemplateItem]:
+    with session_scope() as session:
+        rows = session.execute(
+            select(PromptTemplate)
+            .where(PromptTemplate.category == "family_reminder")
+            .order_by(PromptTemplate.updated_at.desc())
+        ).scalars().all()
+        return [
+            FamilyReminderTemplateItem(
+                id=item.id,
+                code=item.code,
+                name=item.name,
+                channel=item.channel,
+                content=item.content,
+                status=item.status,
+                is_default=item.is_default,
+                notes=item.notes,
+            )
+            for item in rows
+        ]
+
+
+def create_family_reminder_template(
+    payload: FamilyReminderTemplateUpsertRequest,
+) -> FamilyReminderTemplateItem:
+    with session_scope() as session:
+        item = PromptTemplate(
+            code=payload.code,
+            name=payload.name,
+            category="family_reminder",
+            channel=payload.channel,
+            content=payload.content,
+            status=payload.status,
+            is_default=payload.is_default,
+            notes=payload.notes,
+        )
+        session.add(item)
+        session.flush()
+        return FamilyReminderTemplateItem(
+            id=item.id,
+            code=item.code,
+            name=item.name,
+            channel=item.channel,
+            content=item.content,
+            status=item.status,
+            is_default=item.is_default,
+            notes=item.notes,
+        )
+
+
+def update_family_reminder_template(
+    template_id: str,
+    payload: FamilyReminderTemplateUpsertRequest,
+) -> FamilyReminderTemplateItem:
+    with session_scope() as session:
+        item = session.get(PromptTemplate, template_id)
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="提醒模板不存在")
+        item.code = payload.code
+        item.name = payload.name
+        item.channel = payload.channel
+        item.content = payload.content
+        item.status = payload.status
+        item.is_default = payload.is_default
+        item.notes = payload.notes
+        return FamilyReminderTemplateItem(
+            id=item.id,
+            code=item.code,
+            name=item.name,
+            channel=item.channel,
+            content=item.content,
+            status=item.status,
+            is_default=item.is_default,
+            notes=item.notes,
+        )
+
+
+def list_family_reminder_receipts(user: UserProfile) -> list[FamilyReminderReceiptItem]:
+    with session_scope() as session:
+        elder_ids = session.scalars(
+            select(ElderFamilyBinding.elder_user_id).where(ElderFamilyBinding.family_user_id == user.user_id)
+        ).all()
+        if not elder_ids:
+            return []
+        rows = session.execute(
+            select(NotificationRecord, User.display_name)
+            .join(User, NotificationRecord.receiver_user_id == User.id)
+            .where(
+                NotificationRecord.receiver_user_id.in_(elder_ids),
+                NotificationRecord.notification_type == "family_reminder",
+            )
+            .order_by(NotificationRecord.sent_at.desc())
+        ).all()
+        return [
+            FamilyReminderReceiptItem(
+                notification_id=item.id,
+                elder_user_id=item.receiver_user_id,
+                elder_name=elder_name,
+                channel=item.channel,
+                content=item.content,
+                sent_at=item.sent_at or "",
+                receipt_status="read" if item.is_read else "delivered",
+                read_at=item.read_at,
+            )
+            for item, elder_name in rows
+        ]
 
 
 def get_accessibility_settings(user: UserProfile) -> AccessibilitySettings:
@@ -659,6 +881,7 @@ def list_risk_rules() -> list[RiskRuleItem]:
                 trigger_expression=item.trigger_expression,
                 reason_template=item.reason_template or "",
                 suggestion_template=item.suggestion_template or "",
+                version=(2 if item.status != "enabled" else 1),
             )
             for item in rules
         ]
@@ -680,6 +903,7 @@ def create_risk_rule(payload: RiskRuleUpsertRequest) -> RiskRuleItem:
             trigger_expression=item.trigger_expression,
             reason_template=item.reason_template or "",
             suggestion_template=item.suggestion_template or "",
+            version=1,
         )
 
 
@@ -701,6 +925,7 @@ def update_risk_rule(rule_id: str, payload: RiskRuleUpsertRequest) -> RiskRuleIt
             trigger_expression=item.trigger_expression,
             reason_template=item.reason_template or "",
             suggestion_template=item.suggestion_template or "",
+            version=2,
         )
 
 
@@ -720,6 +945,8 @@ def list_contents() -> list[ContentItem]:
                 status=item.status,
                 summary=item.notes,
                 updated_at=_to_str(item.updated_at) or "",
+                audit_status="approved",
+                asset_url=None,
             )
             for item in templates
         ]
@@ -735,6 +962,8 @@ def list_contents() -> list[ContentItem]:
                 status=item.publish_status,
                 summary=item.summary,
                 updated_at=_to_str(item.updated_at) or "",
+                audit_status="approved",
+                asset_url=item.cover_image_url,
             )
             for item in educations
         )
@@ -744,6 +973,7 @@ def list_contents() -> list[ContentItem]:
 def list_education_contents(
     audience: str | None = None,
     category: str | None = None,
+    keyword: str | None = None,
     publish_status: str | None = "published",
 ) -> list[EducationContentItem]:
     with session_scope() as session:
@@ -752,6 +982,15 @@ def list_education_contents(
             query = query.where(EducationContent.audience == audience)
         if category:
             query = query.where(EducationContent.category == category)
+        if keyword:
+            pattern = f"%{keyword}%"
+            query = query.where(
+                or_(
+                    EducationContent.title.ilike(pattern),
+                    EducationContent.summary.ilike(pattern),
+                    EducationContent.content_body.ilike(pattern),
+                )
+            )
         if publish_status:
             query = query.where(EducationContent.publish_status == publish_status)
         rows = session.execute(query.order_by(EducationContent.updated_at.desc())).scalars().all()
@@ -765,9 +1004,28 @@ def list_education_contents(
                 content_body=item.content_body,
                 publish_status=item.publish_status,
                 published_at=item.published_at,
+                cover_image_url=item.cover_image_url,
             )
             for item in rows
         ]
+
+
+def get_education_content_detail(content_id: str) -> EducationContentItem:
+    with session_scope() as session:
+        item = session.get(EducationContent, content_id)
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="知识内容不存在")
+        return EducationContentItem(
+            id=item.id,
+            title=item.title,
+            category=item.category,
+            audience=item.audience,
+            summary=item.summary,
+            content_body=item.content_body,
+            publish_status=item.publish_status,
+            published_at=item.published_at,
+            cover_image_url=item.cover_image_url,
+        )
 
 
 def create_content(payload: ContentUpsertRequest) -> ContentItem:
@@ -796,12 +1054,15 @@ def create_content(payload: ContentUpsertRequest) -> ContentItem:
                 status=item.status,
                 summary=item.notes,
                 updated_at=now,
+                audit_status=payload.audit_status,
+                asset_url=payload.asset_url,
             )
         item = EducationContent(
             title=payload.title,
             category=payload.category,
             audience=payload.audience or "elder",
             summary=payload.summary,
+            cover_image_url=payload.asset_url,
             content_body=payload.content_body,
             publish_status=payload.status,
             published_at=now if payload.status == "published" else None,
@@ -819,6 +1080,8 @@ def create_content(payload: ContentUpsertRequest) -> ContentItem:
             status=item.publish_status,
             summary=item.summary,
             updated_at=now,
+            audit_status=payload.audit_status,
+            asset_url=item.cover_image_url,
         )
 
 
@@ -847,6 +1110,8 @@ def update_content(content_id: str, payload: ContentUpsertRequest) -> ContentIte
                 status=item.status,
                 summary=item.notes,
                 updated_at=now,
+                audit_status=payload.audit_status,
+                asset_url=payload.asset_url,
             )
         item = session.get(EducationContent, content_id)
         if not item:
@@ -855,6 +1120,7 @@ def update_content(content_id: str, payload: ContentUpsertRequest) -> ContentIte
         item.category = payload.category
         item.audience = payload.audience or item.audience
         item.summary = payload.summary
+        item.cover_image_url = payload.asset_url
         item.content_body = payload.content_body
         item.publish_status = payload.status
         item.published_at = now if payload.status == "published" else item.published_at
@@ -869,6 +1135,8 @@ def update_content(content_id: str, payload: ContentUpsertRequest) -> ContentIte
             status=item.publish_status,
             summary=item.summary,
             updated_at=now,
+            audit_status=payload.audit_status,
+            asset_url=item.cover_image_url,
         )
 
 
@@ -885,6 +1153,38 @@ def list_system_configs() -> list[SystemConfigItem]:
             )
             for item in rows
         ]
+
+
+def list_admin_risk_alerts() -> list[AdminRiskAlertItem]:
+    with session_scope() as session:
+        rows = session.execute(
+            select(RiskAlert, User.display_name)
+            .join(User, RiskAlert.elder_user_id == User.id)
+            .order_by(RiskAlert.occurred_at.desc())
+        ).all()
+        results: list[AdminRiskAlertItem] = []
+        for item, elder_name in rows:
+            results.append(
+                AdminRiskAlertItem(
+                    id=item.id,
+                    elder_user_id=item.elder_user_id,
+                    elder_name=elder_name,
+                    title=item.title,
+                    risk_level=item.risk_level,
+                    source_type=item.source_type,
+                    status=item.status,
+                    occurred_at=item.occurred_at,
+                    related_notifications=session.scalar(
+                        select(func.count(NotificationRecord.id)).where(NotificationRecord.alert_id == item.id)
+                    )
+                    or 0,
+                    related_workorders=session.scalar(
+                        select(func.count(Workorder.id)).where(Workorder.alert_id == item.id)
+                    )
+                    or 0,
+                )
+            )
+        return results
 
 
 def update_system_config(config_key: str, payload: SystemConfigUpdateRequest) -> SystemConfigItem:

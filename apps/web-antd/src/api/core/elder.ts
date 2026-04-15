@@ -28,6 +28,7 @@ export interface KnowledgeItem {
   contentBody: string;
   publishStatus: string;
   publishedAt?: string | null;
+  coverImageUrl?: string | null;
 }
 
 export async function getBindingListApi() {
@@ -115,15 +116,19 @@ export async function updateAccessibilitySettingsApi(
   });
 }
 
-export async function getElderKnowledgeListApi(category?: string) {
+export async function getElderKnowledgeListApi(params?: {
+  category?: string;
+  keyword?: string;
+}) {
   const rows = await requestClient.get<any[]>('/elder/knowledge', {
-    params: { category },
+    params: { category: params?.category, keyword: params?.keyword },
   });
   return rows.map(
     (item): KnowledgeItem => ({
       audience: item.audience,
       category: item.category,
       contentBody: item.content_body,
+      coverImageUrl: item.cover_image_url,
       id: item.id,
       publishStatus: item.publish_status,
       publishedAt: item.published_at,
@@ -131,4 +136,19 @@ export async function getElderKnowledgeListApi(category?: string) {
       title: item.title,
     }),
   );
+}
+
+export async function getElderKnowledgeDetailApi(contentId: string) {
+  const item = await requestClient.get<any>(`/elder/knowledge/${contentId}`);
+  return {
+    audience: item.audience,
+    category: item.category,
+    contentBody: item.content_body,
+    coverImageUrl: item.cover_image_url,
+    id: item.id,
+    publishStatus: item.publish_status,
+    publishedAt: item.published_at,
+    summary: item.summary,
+    title: item.title,
+  } satisfies KnowledgeItem;
 }

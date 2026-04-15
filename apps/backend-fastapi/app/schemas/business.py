@@ -160,6 +160,39 @@ class FamilyReminderResult(BaseModel):
     sent_at: str
     receiver_name: str
     content: str
+    receipt_status: str = "delivered"
+
+
+class FamilyReminderTemplateItem(BaseModel):
+    id: str
+    code: str
+    name: str
+    channel: str
+    content: str
+    status: str
+    is_default: bool
+    notes: str | None = None
+
+
+class FamilyReminderTemplateUpsertRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=50)
+    name: str = Field(min_length=1, max_length=100)
+    channel: str = Field(min_length=1, max_length=20)
+    content: str = Field(min_length=1, max_length=1000)
+    status: str = Field(default="enabled", min_length=1, max_length=20)
+    is_default: bool = False
+    notes: str | None = Field(default=None, max_length=255)
+
+
+class FamilyReminderReceiptItem(BaseModel):
+    notification_id: str
+    elder_user_id: str
+    elder_name: str
+    channel: str
+    content: str
+    sent_at: str
+    receipt_status: str
+    read_at: str | None = None
 
 
 class AccessibilitySettings(BaseModel):
@@ -241,6 +274,34 @@ class AdminUserItem(BaseModel):
     roles: list[UserRole]
     permissions: list[str]
     last_login_at: str | None
+    bind_count: int = 0
+    latest_alert_at: str | None = None
+    latest_risk_level: str = "low"
+    notes: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdminUserDetail(AdminUserItem):
+    role_descriptions: list[str]
+    binding_ids: list[str]
+    latest_alert_title: str | None = None
+
+
+class AdminUserUpsertRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+    display_name: str = Field(min_length=1, max_length=100)
+    phone: str = Field(min_length=1, max_length=20)
+    roles: list[UserRole] = Field(min_length=1)
+    status: str = Field(default="active", min_length=1, max_length=20)
+    password: str | None = Field(default=None, min_length=1, max_length=100)
+    notes: dict[str, str] = Field(default_factory=dict)
+
+
+class AdminUserPasswordResetRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=100)
+
+
+class AdminUserPhoneUpdateRequest(BaseModel):
+    phone: str = Field(min_length=1, max_length=20)
 
 
 class RiskRuleItem(BaseModel):
@@ -254,6 +315,7 @@ class RiskRuleItem(BaseModel):
     trigger_expression: str
     reason_template: str
     suggestion_template: str
+    version: int = 1
 
 
 class RiskRuleUpsertRequest(BaseModel):
@@ -279,6 +341,8 @@ class ContentItem(BaseModel):
     status: str
     summary: str | None = None
     updated_at: str
+    audit_status: str = "approved"
+    asset_url: str | None = None
 
 
 class ContentUpsertRequest(BaseModel):
@@ -291,6 +355,8 @@ class ContentUpsertRequest(BaseModel):
     status: str = Field(default="draft", min_length=1, max_length=20)
     summary: str | None = Field(default=None, max_length=255)
     content_body: str = Field(min_length=1, max_length=5000)
+    audit_status: str = Field(default="approved", min_length=1, max_length=20)
+    asset_url: str | None = Field(default=None, max_length=255)
 
 
 class SystemConfigItem(BaseModel):
@@ -314,6 +380,20 @@ class EducationContentItem(BaseModel):
     content_body: str
     publish_status: str
     published_at: str | None
+    cover_image_url: str | None = None
+
+
+class AdminRiskAlertItem(BaseModel):
+    id: str
+    elder_user_id: str
+    elder_name: str
+    title: str
+    risk_level: str
+    source_type: str
+    status: str
+    occurred_at: str
+    related_notifications: int
+    related_workorders: int
 
 
 class CommunityReportData(BaseModel):

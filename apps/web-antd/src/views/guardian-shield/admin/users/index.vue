@@ -9,22 +9,38 @@ import {
   Button,
   Card,
   Col,
-  Empty,
+  Descriptions,
+  Drawer,
+  Form,
   Input,
+  Modal,
   Row,
   Select,
   Space,
   Table,
   Tag,
+  message,
 } from 'ant-design-vue';
 
-import { getAdminUserListApi } from '#/api';
+import {
+  createAdminUserApi,
+  getAdminUserDetailApi,
+  getAdminUserListApi,
+  resetAdminUserPasswordApi,
+  updateAdminUserApi,
+  updateAdminUserPhoneApi,
+} from '#/api';
 
 defineOptions({ name: 'AdminUsers' });
 
 const loading = ref(false);
 const rows = ref<AdminUserListItem[]>([]);
 const total = ref(0);
+const drawerVisible = ref(false);
+const editorVisible = ref(false);
+const resetVisible = ref(false);
+const currentUser = ref<AdminUserListItem | null>(null);
+const editingId = ref<string>();
 
 const filters = reactive({
   keyword: '',
@@ -33,6 +49,18 @@ const filters = reactive({
   role: undefined as string | undefined,
   status: undefined as string | undefined,
 });
+
+const formState = reactive({
+  username: '',
+  displayName: '',
+  phone: '',
+  roles: ['elder'] as string[],
+  status: 'enabled',
+  password: '',
+  notesText: '',
+});
+
+const resetPassword = ref('');
 
 const roleTextMap: Record<AdminUserListItem['role'], string> = {
   admin: '管理员',
@@ -47,124 +75,46 @@ const riskColorMap: Record<AdminUserListItem['riskLevel'], string> = {
   medium: 'orange',
 };
 
-const riskTextMap: Record<AdminUserListItem['riskLevel'], string> = {
-  high: '高风险',
-  low: '低风险',
-  medium: '中风险',
-};
-
 const statusColorMap: Record<AdminUserListItem['status'], string> = {
   disabled: 'default',
   enabled: 'success',
 };
 
-const statusTextMap: Record<AdminUserListItem['status'], string> = {
-  disabled: '停用',
-  enabled: '启用',
-};
-
-const summaryCards = computed(() => {
-  const elderCount = rows.value.filter((item) => item.role === 'elder').length;
-  const highRiskCount = rows.value.filter(
-    (item) => item.riskLevel === 'high',
-  ).length;
-  const enabledCount = rows.value.filter(
-    (item) => item.status === 'enabled',
-  ).length;
-
-  return [
-    {
-      title: '当前列表人数',
-      value: `${total.value}`,
-      description: '结合筛选条件统计当前可见用户总数。',
-    },
-    {
-      title: '老年用户',
-      value: `${elderCount}`,
-      description: '第一阶段重点关注适老页面和风险提醒闭环。',
-    },
-    {
-      title: '高风险对象',
-      value: `${highRiskCount}`,
-      description: '为后续重点关注、工单流转提供基础口径。',
-    },
-    {
-      title: '启用账号',
-      value: `${enabledCount}`,
-      description: '便于后续叠加停用、重置和审计操作。',
-    },
-  ];
-});
+const summaryCards = computed(() => [
+  { title: '当前列表人数', value: `${total.value}`, description: '结合筛选条件统计当前可见用户总数。' },
+  { title: '老年用户', value: `${rows.value.filter((item) => item.role === 'elder').length}`, description: '用于跟进风险提醒与家属绑定。' },
+  { title: '高风险对象', value: `${rows.value.filter((item) => item.riskLevel === 'high').length}`, description: '便于联动告警与工单。' },
+  { title: '启用账号', value: `${rows.value.filter((item) => item.status === 'enabled').length}`, description: '支持继续停用、重置密码与换绑手机号。' },
+]);
 
 const columns: TableColumnsType<AdminUserListItem> = [
-  {
-    dataIndex: 'name',
-    key: 'name',
-    title: '用户信息',
-  },
-  {
-    dataIndex: 'role',
-    key: 'role',
-    title: '角色',
-  },
-  {
-    dataIndex: 'communityName',
-    key: 'communityName',
-    title: '所属社区',
-  },
-  {
-    dataIndex: 'riskLevel',
-    key: 'riskLevel',
-    title: '风险状态',
-  },
-  {
-    dataIndex: 'bindCount',
-    key: 'bindCount',
-    title: '绑定关系',
-  },
-  {
-    dataIndex: 'lastAlertAt',
-    key: 'lastAlertAt',
-    title: '最近告警',
-  },
-  {
-    dataIndex: 'status',
-    key: 'status',
-    title: '账号状态',
-  },
+  { dataIndex: 'name', key: 'name', title: '用户信息' },
+  { dataIndex: 'role', key: 'role', title: '角色' },
+  { dataIndex: 'communityName', key: 'communityName', title: '所属社区' },
+  { dataIndex: 'riskLevel', key: 'riskLevel', title: '风险状态' },
+  { dataIndex: 'bindCount', key: 'bindCount', title: '绑定关系' },
+  { dataIndex: 'lastAlertAt', key: 'lastAlertAt', title: '最近告警' },
+  { dataIndex: 'status', key: 'status', title: '账号状态' },
+  { key: 'actions', title: '操作' },
 ];
 
-function getRoleLabel(role: AdminUserListItem['role']) {
-  return roleTextMap[role];
-}
-
-function getRiskColor(level: AdminUserListItem['riskLevel']) {
-  return riskColorMap[level];
-}
-
-function getRiskLabel(level: AdminUserListItem['riskLevel']) {
-  return riskTextMap[level];
-}
-
-function getStatusColor(status: AdminUserListItem['status']) {
-  return statusColorMap[status];
-}
-
-function getStatusLabel(status: AdminUserListItem['status']) {
-  return statusTextMap[status];
+function parseNotes(text: string) {
+  return Object.fromEntries(
+    text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [key, ...rest] = line.split('=');
+        return [key.trim(), rest.join('=').trim()];
+      }),
+  );
 }
 
 async function loadUsers() {
   loading.value = true;
   try {
-    const data = await getAdminUserListApi({
-      keyword: filters.keyword || undefined,
-      page: filters.page,
-      pageSize: filters.pageSize,
-      role: filters.role,
-      status: filters.status,
-    });
-
+    const data = await getAdminUserListApi(filters);
     rows.value = data.items;
     total.value = data.total;
   } finally {
@@ -172,24 +122,74 @@ async function loadUsers() {
   }
 }
 
-function handleSearch() {
-  filters.page = 1;
-  void loadUsers();
+async function openDetail(item: AdminUserListItem) {
+  currentUser.value = await getAdminUserDetailApi(item.id);
+  drawerVisible.value = true;
 }
 
-function handleReset() {
-  filters.keyword = '';
-  filters.page = 1;
-  filters.pageSize = 5;
-  filters.role = undefined;
-  filters.status = undefined;
-  void loadUsers();
+function openCreate() {
+  editingId.value = undefined;
+  Object.assign(formState, {
+    username: '',
+    displayName: '',
+    phone: '',
+    roles: ['elder'],
+    status: 'enabled',
+    password: '111',
+    notesText: '',
+  });
+  editorVisible.value = true;
 }
 
-function handleTableChange(page: number, pageSize: number) {
-  filters.page = page;
-  filters.pageSize = pageSize;
-  void loadUsers();
+function openEdit(item: AdminUserListItem) {
+  editingId.value = item.id;
+  Object.assign(formState, {
+    username: item.username,
+    displayName: item.name,
+    phone: item.phone,
+    roles: item.roles || [item.role],
+    status: item.status,
+    password: '',
+    notesText: Object.entries(item.notes || {})
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n'),
+  });
+  editorVisible.value = true;
+}
+
+function openReset(item: AdminUserListItem) {
+  editingId.value = item.id;
+  resetPassword.value = '111';
+  resetVisible.value = true;
+}
+
+async function submitEditor() {
+  const payload = {
+    displayName: formState.displayName,
+    notes: parseNotes(formState.notesText),
+    password: formState.password || undefined,
+    phone: formState.phone,
+    roles: formState.roles,
+    status: formState.status,
+    username: formState.username,
+  };
+  if (editingId.value) {
+    await updateAdminUserApi(editingId.value, payload);
+    await updateAdminUserPhoneApi(editingId.value, formState.phone);
+    message.success('用户已更新');
+  } else {
+    await createAdminUserApi(payload);
+    message.success('用户已新增');
+  }
+  editorVisible.value = false;
+  await loadUsers();
+}
+
+async function submitResetPassword() {
+  if (!editingId.value) return;
+  await resetAdminUserPasswordApi(editingId.value, resetPassword.value);
+  resetVisible.value = false;
+  message.success('密码已重置');
 }
 
 onMounted(() => {
@@ -204,24 +204,14 @@ onMounted(() => {
         <p class="eyebrow">管理后台 / 第一阶段</p>
         <h1>用户管理</h1>
         <p class="description">
-          当前页面已接入真实用户接口，可按角色、状态和关键词筛选账号，用于支撑账号、角色与权限联调。
+          当前页已补齐新增、编辑、详情、重置密码和换绑手机号，账号运维链路可以直接联调。
         </p>
       </div>
-      <div class="hero-tip">
-        <span
-          >本页下一步可继续接入新增用户、角色分配、绑定关系详情和审计记录。</span
-        >
-      </div>
+      <Button type="primary" @click="openCreate">新增用户</Button>
     </section>
 
     <Row :gutter="[16, 16]" class="summary-row">
-      <Col
-        v-for="item in summaryCards"
-        :key="item.title"
-        :lg="6"
-        :md="12"
-        :span="24"
-      >
+      <Col v-for="item in summaryCards" :key="item.title" :lg="6" :md="12" :span="24">
         <Card class="summary-card" :bordered="false">
           <p class="summary-title">{{ item.title }}</p>
           <strong class="summary-value">{{ item.value }}</strong>
@@ -232,37 +222,18 @@ onMounted(() => {
 
     <Card class="filter-card" :bordered="false">
       <Space :size="12" wrap>
-        <Input
-          v-model:value="filters.keyword"
-          allow-clear
-          placeholder="搜索姓名、手机号、社区或编号"
-          style="width: 260px"
-          @press-enter="handleSearch"
-        />
-        <Select
-          v-model:value="filters.role"
-          allow-clear
-          placeholder="角色"
-          style="width: 180px"
-          :options="[
-            { label: '老年用户', value: 'elder' },
-            { label: '子女用户', value: 'family' },
-            { label: '社区工作人员', value: 'community' },
-            { label: '管理员', value: 'admin' },
-          ]"
-        />
-        <Select
-          v-model:value="filters.status"
-          allow-clear
-          placeholder="状态"
-          style="width: 140px"
-          :options="[
-            { label: '启用', value: 'enabled' },
-            { label: '停用', value: 'disabled' },
-          ]"
-        />
-        <Button type="primary" @click="handleSearch">查询</Button>
-        <Button @click="handleReset">重置</Button>
+        <Input v-model:value="filters.keyword" allow-clear placeholder="搜索姓名、手机号或账号" style="width: 260px" />
+        <Select v-model:value="filters.role" allow-clear placeholder="角色" style="width: 180px" :options="[
+          { label: '老年用户', value: 'elder' },
+          { label: '子女用户', value: 'family' },
+          { label: '社区工作人员', value: 'community' },
+          { label: '管理员', value: 'admin' },
+        ]" />
+        <Select v-model:value="filters.status" allow-clear placeholder="状态" style="width: 140px" :options="[
+          { label: '启用', value: 'enabled' },
+          { label: '停用', value: 'disabled' },
+        ]" />
+        <Button type="primary" @click="loadUsers">查询</Button>
       </Space>
     </Card>
 
@@ -271,56 +242,78 @@ onMounted(() => {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
-        :pagination="{
-          current: filters.page,
-          pageSize: filters.pageSize,
-          showSizeChanger: true,
-          total,
-          onChange: handleTableChange,
-          onShowSizeChange: handleTableChange,
-        }"
+        :pagination="{ current: filters.page, pageSize: filters.pageSize, total }"
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
-            <div class="user-cell">
-              <strong>{{ record.name }}</strong>
-              <span>{{ record.id }} · {{ record.phone }}</span>
-              <span>
-                {{ record.age ?? '--' }} 岁 · {{ record.createdAt || '-' }} 注册
-              </span>
-            </div>
+            <strong>{{ record.name }}</strong>
+            <div>{{ record.username }} · {{ record.phone }}</div>
           </template>
-
           <template v-else-if="column.key === 'role'">
-            <Tag color="blue">{{ getRoleLabel(record.role) }}</Tag>
+            {{ roleTextMap[record.role] }}
           </template>
-
           <template v-else-if="column.key === 'riskLevel'">
-            <div class="risk-cell">
-              <Tag :color="getRiskColor(record.riskLevel)">
-                {{ getRiskLabel(record.riskLevel) }}
-              </Tag>
-              <span>风险分 {{ record.riskScore }}</span>
-            </div>
+            <Tag :color="riskColorMap[record.riskLevel]">{{ record.riskLevel }}</Tag>
           </template>
-
-          <template v-else-if="column.key === 'bindCount'">
-            <span>{{ record.bindCount }} 个关联对象</span>
-          </template>
-
           <template v-else-if="column.key === 'status'">
-            <Tag :color="getStatusColor(record.status)">
-              {{ getStatusLabel(record.status) }}
-            </Tag>
+            <Tag :color="statusColorMap[record.status]">{{ record.status }}</Tag>
           </template>
-        </template>
-
-        <template #emptyText>
-          <Empty description="当前筛选条件下暂无用户数据" />
+          <template v-else-if="column.key === 'actions'">
+            <Space>
+              <Button size="small" @click="openDetail(record)">详情</Button>
+              <Button size="small" @click="openEdit(record)">编辑</Button>
+              <Button size="small" @click="openReset(record)">重置密码</Button>
+            </Space>
+          </template>
         </template>
       </Table>
     </Card>
+
+    <Drawer v-model:open="drawerVisible" title="用户详情" width="560">
+      <Descriptions v-if="currentUser" bordered :column="1">
+        <Descriptions.Item label="姓名">{{ currentUser.name }}</Descriptions.Item>
+        <Descriptions.Item label="账号">{{ currentUser.username }}</Descriptions.Item>
+        <Descriptions.Item label="手机号">{{ currentUser.phone }}</Descriptions.Item>
+        <Descriptions.Item label="角色">{{ (currentUser.roles || []).join(', ') }}</Descriptions.Item>
+        <Descriptions.Item label="最近告警">{{ currentUser.latestAlertTitle || '-' }}</Descriptions.Item>
+        <Descriptions.Item label="绑定关系">{{ currentUser.bindingIds?.join(', ') || '-' }}</Descriptions.Item>
+      </Descriptions>
+    </Drawer>
+
+    <Modal v-model:open="editorVisible" title="用户配置" ok-text="保存" cancel-text="关闭" @ok="submitEditor">
+      <Form layout="vertical">
+        <Form.Item label="账号"><Input v-model:value="formState.username" /></Form.Item>
+        <Form.Item label="姓名"><Input v-model:value="formState.displayName" /></Form.Item>
+        <Form.Item label="手机号"><Input v-model:value="formState.phone" /></Form.Item>
+        <Form.Item label="角色">
+          <Select
+            v-model:value="formState.roles"
+            mode="multiple"
+            :options="[
+              { label: '老年用户', value: 'elder' },
+              { label: '子女用户', value: 'family' },
+              { label: '社区工作人员', value: 'community' },
+              { label: '管理员', value: 'admin' },
+            ]"
+          />
+        </Form.Item>
+        <Form.Item label="状态">
+          <Select v-model:value="formState.status" :options="[
+            { label: '启用', value: 'enabled' },
+            { label: '停用', value: 'disabled' },
+          ]" />
+        </Form.Item>
+        <Form.Item label="密码"><Input v-model:value="formState.password" /></Form.Item>
+        <Form.Item label="画像备注">
+          <Input.TextArea v-model:value="formState.notesText" :rows="4" placeholder="每行一个 key=value" />
+        </Form.Item>
+      </Form>
+    </Modal>
+
+    <Modal v-model:open="resetVisible" title="重置密码" ok-text="确认" cancel-text="关闭" @ok="submitResetPassword">
+      <Input v-model:value="resetPassword" />
+    </Modal>
   </div>
 </template>
 
@@ -328,26 +321,29 @@ onMounted(() => {
 .admin-users-page {
   min-height: 100%;
   padding: 24px;
-  background:
-    radial-gradient(circle at top right, rgb(37 99 235 / 12%), transparent 28%),
-    linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
 }
 
 .hero-panel,
+.summary-card,
 .filter-card,
-.table-card,
-.summary-card {
-  background: rgb(255 255 255 / 94%);
-  border: 1px solid rgb(59 130 246 / 12%);
+.table-card {
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(59 130 246 / 14%);
   border-radius: 24px;
-  box-shadow: 0 16px 40px rgb(15 23 42 / 6%);
+  box-shadow: 0 16px 36px rgb(30 64 175 / 8%);
 }
 
 .hero-panel {
   display: flex;
-  gap: 24px;
   justify-content: space-between;
   padding: 28px 30px;
+}
+
+.summary-row,
+.filter-card,
+.table-card {
+  margin-top: 18px;
 }
 
 .eyebrow {
@@ -360,94 +356,24 @@ onMounted(() => {
 
 h1 {
   margin: 0;
-  font-size: 32px;
-  color: #0f172a;
+  font-size: 34px;
+  color: #1d4ed8;
 }
 
-.description {
-  max-width: 720px;
-  margin: 16px 0 0;
-  font-size: 15px;
+.description,
+.summary-desc {
   line-height: 1.8;
   color: #475569;
 }
 
-.hero-tip {
-  display: flex;
-  align-items: flex-start;
-  max-width: 320px;
-  padding: 16px 18px;
-  line-height: 1.7;
-  color: #1e3a8a;
-  background: rgb(37 99 235 / 8%);
-  border-radius: 18px;
-}
-
-.summary-row {
-  margin-top: 18px;
-}
-
-.summary-title,
-.summary-desc {
-  margin: 0;
-}
-
 .summary-title {
-  font-size: 14px;
-  color: #64748b;
+  color: #1d4ed8;
 }
 
 .summary-value {
   display: block;
   margin-top: 10px;
   font-size: 30px;
-  color: #0f172a;
-}
-
-.summary-desc {
-  margin-top: 12px;
-  line-height: 1.7;
-  color: #475569;
-}
-
-.filter-card,
-.table-card {
-  margin-top: 18px;
-}
-
-.user-cell,
-.risk-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.user-cell strong {
-  color: #0f172a;
-}
-
-.user-cell span,
-.risk-cell span {
-  font-size: 13px;
-  color: #64748b;
-}
-
-@media (max-width: 768px) {
-  .admin-users-page {
-    padding: 16px;
-  }
-
-  .hero-panel {
-    flex-direction: column;
-    padding: 22px;
-  }
-
-  h1 {
-    font-size: 28px;
-  }
-
-  .hero-tip {
-    max-width: none;
-  }
+  color: #172554;
 }
 </style>

@@ -1,7 +1,7 @@
 import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from app.constants.roles import UserRole
 from app.core.deps import get_current_user, require_roles
@@ -10,6 +10,7 @@ from app.schemas.common import ApiResponse, MetaPayload
 from app.schemas.user import UserProfile
 from app.services.business import (
     create_help_request,
+    get_education_content_detail,
     get_accessibility_settings,
     list_education_contents,
     update_accessibility_settings,
@@ -59,6 +60,17 @@ async def get_elder_knowledge(
     request: Request,
     _: Annotated[UserProfile, Depends(get_current_user)],
     category: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
 ) -> ApiResponse:
-    data = [item.model_dump() for item in list_education_contents(audience="elder", category=category)]
+    data = [item.model_dump() for item in list_education_contents(audience="elder", category=category, keyword=keyword)]
     return ApiResponse(data=data, meta=response_meta(request))
+
+
+@router.get("/knowledge/{content_id}", summary="防骗知识详情", response_model=ApiResponse)
+async def get_elder_knowledge_detail(
+    request: Request,
+    _: Annotated[UserProfile, Depends(get_current_user)],
+    content_id: str = Path(),
+) -> ApiResponse:
+    data = get_education_content_detail(content_id)
+    return ApiResponse(data=data.model_dump(), meta=response_meta(request))
