@@ -2,9 +2,9 @@
 import type { VbenFormSchema } from '@vben/common-ui';
 import type { BasicOption } from '@vben/types';
 
-import { computed, markRaw } from 'vue';
+import { computed, defineAsyncComponent, markRaw } from 'vue';
 
-import { AuthenticationLogin, SliderCaptcha, z } from '@vben/common-ui';
+import { AuthenticationLogin, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
 import { useAuthStore } from '#/store';
@@ -12,6 +12,11 @@ import { useAuthStore } from '#/store';
 defineOptions({ name: 'Login' });
 
 const authStore = useAuthStore();
+
+const SliderCaptcha = defineAsyncComponent(async () => {
+  const { SliderCaptcha } = await import('@vben/common-ui');
+  return SliderCaptcha;
+});
 
 const MOCK_USER_OPTIONS: BasicOption[] = [
   {

@@ -4,9 +4,10 @@ import { LOGIN_PATH } from '@vben/constants';
 import { preferences } from '@vben/preferences';
 
 import { $t } from '#/locales';
+import AuthPageLayout from '#/layouts/auth.vue';
+import LoginView from '#/views/_core/authentication/login.vue';
 
 const BasicLayout = () => import('#/layouts/basic.vue');
-const AuthPageLayout = () => import('#/layouts/auth.vue');
 /** 全局404页面 */
 const fallbackNotFoundRoute: RouteRecordRaw = {
   component: () => import('#/views/_core/fallback/not-found.vue'),
@@ -51,7 +52,7 @@ const coreRoutes: RouteRecordRaw[] = [
       {
         name: 'Login',
         path: 'login',
-        component: () => import('#/views/_core/authentication/login.vue'),
+        component: LoginView,
         meta: {
           title: $t('page.auth.login'),
         },

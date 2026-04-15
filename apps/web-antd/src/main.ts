@@ -24,9 +24,10 @@ async function initApplication() {
   // vue应用主要逻辑及视图
   const { bootstrap } = await import('./bootstrap');
   await bootstrap(namespace);
-
-  // 移除并销毁loading
-  unmountGlobalLoading();
 }
 
-initApplication();
+initApplication().catch((error) => {
+  // 首屏失败时也避免一直卡在全局 loading
+  unmountGlobalLoading();
+  throw error;
+});

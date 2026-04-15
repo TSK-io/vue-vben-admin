@@ -29,6 +29,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `http://127.0.0.1:8000/docs`
 - `http://127.0.0.1:8000/redoc`
 - `http://127.0.0.1:8000/api/v1/health`
+- `http://127.0.0.1:8000/api/v1/health/ready`
 
 ## Codespace / Docker 推荐方式
 
@@ -61,6 +62,29 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```env
 APP_DATABASE_URL="postgresql+psycopg://postgres:postgres@127.0.0.1:5432/guard_silver"
+```
+
+## Docker Compose 一键启动
+
+现在仓库根目录的 `compose.yaml` 已经同时包含 PostgreSQL、FastAPI 后端和 Adminer。
+
+直接在仓库根目录执行：
+
+```bash
+docker compose up --build
+```
+
+启动后默认地址：
+
+- FastAPI 文档：`http://127.0.0.1:8000/docs`
+- 健康检查：`http://127.0.0.1:8000/api/v1/health`
+- 就绪检查：`http://127.0.0.1:8000/api/v1/health/ready`
+- Adminer：`http://127.0.0.1:18080`
+
+如果只想单独启动数据库：
+
+```bash
+docker compose up -d postgres
 ```
 
 停止数据库：

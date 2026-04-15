@@ -1,4 +1,4 @@
-import { createApp, watchEffect } from 'vue';
+import { createApp, nextTick, watchEffect } from 'vue';
 
 import { registerAccessDirective } from '@vben/access';
 import { registerLoadingDirective } from '@vben/common-ui/es/loading';
@@ -6,6 +6,7 @@ import { preferences } from '@vben/preferences';
 import { initStores } from '@vben/stores';
 import '@vben/styles';
 import '@vben/styles/antd';
+import { unmountGlobalLoading } from '@vben/utils';
 
 import { useTitle } from '@vueuse/core';
 
@@ -15,6 +16,19 @@ import { initComponentAdapter } from './adapter/component';
 import { initSetupVbenForm } from './adapter/form';
 import App from './app.vue';
 import { router } from './router';
+
+function deferNonCriticalTask(task: () => Promise<void> | void) {
+  const runner = () => {
+    void Promise.resolve(task());
+  };
+
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    window.requestIdleCallback(() => runner());
+    return;
+  }
+
+  globalThis.setTimeout(runner, 0);
+}
 
 async function bootstrap(namespace: string) {
   // 初始化组件适配器
@@ -49,14 +63,10 @@ async function bootstrap(namespace: string) {
   // 安装权限指令
   registerAccessDirective(app);
 
-  // 初始化 tippy
-  const { initTippy } = await import('@vben/common-ui/es/tippy');
-  initTippy(app);
-
   // 配置路由及路由守卫
   app.use(router);
 
-  // 配置Motion插件
+  // Motion 对模板内的指令/组件有依赖，仍保留在挂载前安装。
   const { MotionPlugin } = await import('@vben/plugins/motion');
   app.use(MotionPlugin);
 
@@ -71,6 +81,16 @@ async function bootstrap(namespace: string) {
   });
 
   app.mount('#app');
+
+  // 等待首屏完成一次渲染后再移除注入 loading，避免登录页出现前长时间卡住。
+  await router.isReady();
+  await nextTick();
+  unmountGlobalLoading();
+
+  deferNonCriticalTask(async () => {
+    const { initTippy } = await import('@vben/common-ui/es/tippy');
+    initTippy(app);
+  });
 }
 
 export { bootstrap };

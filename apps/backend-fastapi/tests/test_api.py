@@ -43,6 +43,11 @@ def test_auth_login_roles_and_refresh(client: TestClient) -> None:
     refresh_response = client.post("/api/v1/auth/refresh", headers=headers, json={})
     assert refresh_response.status_code == 200
     assert refresh_response.json()["data"]["token_type"] == "bearer"
+
+    readiness_response = client.get("/api/v1/health/ready")
+    assert readiness_response.status_code == 200
+    assert readiness_response.json()["data"]["database"] == "ok"
+
     runtime_response = client.get("/api/v1/health/runtime")
     assert runtime_response.status_code == 200
     assert runtime_response.json()["data"]["queue_strategy"]["max_concurrent_requests"] >= 1
