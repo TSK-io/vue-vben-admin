@@ -15,19 +15,19 @@ const authStore = useAuthStore();
 
 const MOCK_USER_OPTIONS: BasicOption[] = [
   {
-    label: '老年用户',
+    label: '老年端演示账号',
     value: 'elder_demo',
   },
   {
-    label: '子女用户',
+    label: '子女端演示账号',
     value: 'family_demo',
   },
   {
-    label: '社区工作人员',
+    label: '社区端演示账号',
     value: 'community_demo',
   },
   {
-    label: '系统管理员',
+    label: '管理后台演示账号',
     value: 'admin_demo',
   },
 ];
@@ -76,7 +76,7 @@ const formSchema = computed((): VbenFormSchema[] => {
     {
       component: 'VbenInputPassword',
       componentProps: {
-        placeholder: $t('authentication.password'),
+        placeholder: `${$t('authentication.password')}（演示默认 111）`,
       },
       fieldName: 'password',
       label: $t('authentication.password'),
