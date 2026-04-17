@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 import {
   Button,
@@ -13,8 +13,8 @@ import {
 } from 'ant-design-vue';
 import { useRouter } from 'vue-router';
 
-import { getRiskAlertListApi } from '#/api';
-import type { RiskAlertItem } from '#/api';
+import { getAccessibilitySettingsApi, getRiskAlertListApi } from '#/api';
+import type { AccessibilitySettings, RiskAlertItem } from '#/api';
 
 defineOptions({ name: 'ElderAlerts' });
 
@@ -22,6 +22,8 @@ const router = useRouter();
 const loading = ref(false);
 const alerts = ref<RiskAlertItem[]>([]);
 const total = ref(0);
+const accessibility = ref<AccessibilitySettings | null>(null);
+const speaking = ref(false);
 
 const filters = reactive({
   page: 1,
@@ -54,6 +56,18 @@ const statusTextMap: Record<RiskAlertItem['status'], string> = {
 };
 
 const primaryAlert = computed(() => alerts.value[0] ?? null);
+const pageClassName = computed(() =>
+  [
+    accessibility.value?.highContrast ? 'is-high-contrast' : '',
+    accessibility.value?.fontScale === 'x-large'
+      ? 'font-xl'
+      : accessibility.value?.fontScale === 'large'
+        ? 'font-lg'
+        : 'font-normal',
+  ].join(' '),
+);
+const voiceAvailable =
+  typeof window !== 'undefined' && 'speechSynthesis' in window;
 
 const summaryCards = computed(() => {
   const highRiskCount = alerts.value.filter(
@@ -109,16 +123,20 @@ const quickActions = computed(() => {
 async function loadAlerts() {
   loading.value = true;
   try {
-    const data = await getRiskAlertListApi({
-      page: filters.page,
-      pageSize: filters.pageSize,
-      riskLevel: filters.riskLevel,
-      sourceType: filters.sourceType,
-      status: filters.status,
-    });
+    const [data, settings] = await Promise.all([
+      getRiskAlertListApi({
+        page: filters.page,
+        pageSize: filters.pageSize,
+        riskLevel: filters.riskLevel,
+        sourceType: filters.sourceType,
+        status: filters.status,
+      }),
+      getAccessibilitySettingsApi(),
+    ]);
 
     alerts.value = data.items;
     total.value = data.total;
+    accessibility.value = settings;
   } finally {
     loading.value = false;
   }
@@ -168,13 +186,45 @@ function goToFamilyBindingPage() {
   void router.push('/elder/family-binding');
 }
 
+function stopSpeaking() {
+  if (!voiceAvailable) return;
+  window.speechSynthesis.cancel();
+  speaking.value = false;
+}
+
+function speakAlert() {
+  if (!voiceAvailable || !accessibility.value?.voiceAssistant || !primaryAlert.value) {
+    return;
+  }
+  stopSpeaking();
+  const utterance = new SpeechSynthesisUtterance(
+    `${getRiskLabel(primaryAlert.value.riskLevel)}。${primaryAlert.value.hitReason}。建议：${primaryAlert.value.advice}`,
+  );
+  utterance.lang = 'zh-CN';
+  utterance.rate =
+    accessibility.value.voiceSpeed === 'slow'
+      ? 0.85
+      : accessibility.value.voiceSpeed === 'fast'
+        ? 1.2
+        : 1;
+  utterance.onend = () => {
+    speaking.value = false;
+  };
+  speaking.value = true;
+  window.speechSynthesis.speak(utterance);
+}
+
 onMounted(() => {
   void loadAlerts();
+});
+
+onBeforeUnmount(() => {
+  stopSpeaking();
 });
 </script>
 
 <template>
-  <div class="elder-alerts-page">
+  <div class="elder-alerts-page" :class="pageClassName">
     <section class="hero-panel">
       <div>
         <p class="eyebrow">老年端 / 核心业务</p>
@@ -186,6 +236,14 @@ onMounted(() => {
       <div class="hero-note">
         <strong>适老提示</strong>
         <span>看到“高风险”时，请不要转账，不要点链接，先联系家人或社区。</span>
+        <Button
+          v-if="accessibility?.voiceAssistant && primaryAlert"
+          class="voice-button"
+          size="large"
+          @click="speaking ? stopSpeaking() : speakAlert()"
+        >
+          {{ speaking ? '停止朗读' : '朗读当前提醒' }}
+        </Button>
       </div>
     </section>
 
@@ -219,6 +277,15 @@ onMounted(() => {
               <div class="focus-block reason-block">
                 <p class="focus-block-label">为什么提醒您</p>
                 <p class="focus-block-text">{{ primaryAlert.hitReason }}</p>
+                <p class="focus-block-tip">
+                  {{
+                    primaryAlert.riskLevel === 'high'
+                      ? '这类情况通常需要马上停止继续操作。'
+                      : primaryAlert.riskLevel === 'medium'
+                        ? '建议先联系家人确认，再决定下一步。'
+                        : '当前风险较低，但仍建议保持警惕。'
+                  }}
+                </p>
               </div>
             </Col>
             <Col :md="8" :span="24">
@@ -437,6 +504,11 @@ h1 {
   border-radius: 20px;
 }
 
+.voice-button {
+  align-self: flex-start;
+  border-radius: 14px;
+}
+
 .summary-row,
 .focus-row,
 .filter-card,
@@ -516,9 +588,42 @@ h1 {
   color: #7c4a2d;
 }
 
+.focus-block-tip {
+  margin: 12px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #b45309;
+}
+
 .action-card {
   height: 100%;
   padding: 8px;
+}
+
+.font-lg {
+  font-size: 18px;
+}
+
+.font-xl {
+  font-size: 20px;
+}
+
+.is-high-contrast {
+  color: #2f1300;
+  background:
+    radial-gradient(circle at top right, rgb(146 64 14 / 20%), transparent 28%),
+    linear-gradient(180deg, #fff5d6 0%, #ffe6a9 100%);
+}
+
+.is-high-contrast .hero-panel,
+.is-high-contrast .focus-card,
+.is-high-contrast .action-card,
+.is-high-contrast .summary-card,
+.is-high-contrast .filter-card,
+.is-high-contrast .list-card,
+.is-high-contrast .info-card {
+  border-color: rgb(146 64 14 / 35%);
+  box-shadow: 0 18px 40px rgb(120 53 15 / 12%);
 }
 
 .action-list {

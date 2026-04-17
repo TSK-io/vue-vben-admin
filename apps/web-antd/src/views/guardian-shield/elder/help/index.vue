@@ -21,11 +21,35 @@ const bindings = ref<any[]>([]);
 const actionVisible = ref(false);
 const selectedAction = ref('');
 const submitting = ref(false);
+const recentRecords = ref<
+  Array<{ action: string; createdAt: string; summary: string }>
+>([]);
+const STORAGE_KEY = 'guardian-shield:elder-help-records';
 
 const familyContacts = computed(() => bindings.value);
 
 async function loadBindings() {
   bindings.value = await getBindingListApi();
+}
+
+function loadRecentRecords() {
+  if (typeof window === 'undefined') return;
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    recentRecords.value = [];
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    recentRecords.value = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    recentRecords.value = [];
+  }
+}
+
+function saveRecentRecords() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(recentRecords.value));
 }
 
 async function openAction(title: string) {
@@ -36,12 +60,21 @@ async function openAction(title: string) {
 async function submitAction() {
   submitting.value = true;
   try {
-    await createHelpRequestApi({
+    const result = await createHelpRequestApi({
       actionType: selectedAction.value,
       note: `老人发起求助：${selectedAction.value}`,
       notifyCommunity: true,
       notifyFamily: true,
     });
+    recentRecords.value = [
+      {
+        action: selectedAction.value,
+        createdAt: result.created_at || new Date().toISOString(),
+        summary: result.summary || '已向家属和社区发出求助提醒。',
+      },
+      ...recentRecords.value,
+    ].slice(0, 5);
+    saveRecentRecords();
     message.success('求助已发送，家属和社区会收到通知');
     actionVisible.value = false;
   } finally {
@@ -51,6 +84,7 @@ async function submitAction() {
 
 onMounted(() => {
   void loadBindings();
+  loadRecentRecords();
 });
 </script>
 
@@ -144,6 +178,19 @@ onMounted(() => {
             <span>会保留本次求助记录时间</span>
           </Space>
         </Card>
+        <Card class="tips-card recent-card" :bordered="false" title="最近求助记录">
+          <List :data-source="recentRecords" :locale="{ emptyText: '暂无求助记录' }">
+            <template #renderItem="{ item }">
+              <List.Item>
+                <div class="recent-item">
+                  <strong>{{ item.action }}</strong>
+                  <span>{{ item.createdAt }}</span>
+                  <p>{{ item.summary }}</p>
+                </div>
+              </List.Item>
+            </template>
+          </List>
+        </Card>
       </Col>
     </Row>
 
@@ -218,6 +265,10 @@ h1 {
   margin-top: 18px;
 }
 
+.recent-card {
+  margin-top: 18px;
+}
+
 .contact-main,
 .contact-head {
   display: flex;
@@ -225,6 +276,13 @@ h1 {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+}
+
+.recent-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #7c4a2d;
 }
 
 @media (max-width: 768px) {

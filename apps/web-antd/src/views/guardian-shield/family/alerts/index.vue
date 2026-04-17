@@ -6,13 +6,15 @@ import {
   Card,
   Col,
   List,
+  Modal,
   Row,
   Select,
   Space,
   Tag,
+  message,
 } from 'ant-design-vue';
 
-import { getFamilyAlertListApi } from '#/api';
+import { getBindingListApi, getFamilyAlertListApi, sendFamilyReminderApi } from '#/api';
 import type { FamilyAlertItem } from '#/api';
 
 defineOptions({ name: 'FamilyAlerts' });
@@ -20,8 +22,15 @@ defineOptions({ name: 'FamilyAlerts' });
 const loading = ref(false);
 const alerts = ref<FamilyAlertItem[]>([]);
 const total = ref(0);
+const elderOptions = ref<Array<{ label: string; value: string }>>([]);
+const reminderVisible = ref(false);
+const reminderSubmitting = ref(false);
+const selectedAlert = ref<FamilyAlertItem | null>(null);
+const reminderChannel = ref<'app' | 'sms' | 'voice'>('app');
+const reminderText = ref('');
 
 const filters = reactive({
+  elderName: undefined as string | undefined,
   page: 1,
   pageSize: 5,
   readStatus: undefined as string | undefined,
@@ -78,14 +87,24 @@ const summaryCards = computed(() => [
 async function loadAlerts() {
   loading.value = true;
   try {
-    const data = await getFamilyAlertListApi({
-      page: filters.page,
-      pageSize: filters.pageSize,
-      readStatus: filters.readStatus,
-      riskLevel: filters.riskLevel,
-      status: filters.status,
-    });
-    alerts.value = data.items;
+    const [data, bindings] = await Promise.all([
+      getFamilyAlertListApi({
+        page: filters.page,
+        pageSize: filters.pageSize,
+        readStatus: filters.readStatus,
+        riskLevel: filters.riskLevel,
+        status: filters.status,
+      }),
+      getBindingListApi(),
+    ]);
+    elderOptions.value = bindings.map((item: any) => ({
+      label: item.elderName,
+      value: item.elderName,
+    }));
+    alerts.value = data.items.filter(
+      (item: FamilyAlertItem) =>
+        !filters.elderName || item.elderName === filters.elderName,
+    );
     total.value = data.total;
   } finally {
     loading.value = false;
@@ -114,6 +133,7 @@ function handleSearch() {
 }
 
 function handleReset() {
+  filters.elderName = undefined;
   filters.page = 1;
   filters.pageSize = 5;
   filters.readStatus = undefined;
@@ -126,6 +146,40 @@ function handlePageChange(page: number, pageSize: number) {
   filters.page = page;
   filters.pageSize = pageSize;
   void loadAlerts();
+}
+
+function openReminder(item: FamilyAlertItem) {
+  selectedAlert.value = item;
+  reminderChannel.value = 'app';
+  reminderText.value = item.remoteMessage;
+  reminderVisible.value = true;
+}
+
+async function submitReminder() {
+  if (!selectedAlert.value || !reminderText.value.trim()) {
+    message.warning('请先确认提醒内容');
+    return;
+  }
+  const bindings = await getBindingListApi();
+  const target = bindings.find(
+    (item) => item.elderName === selectedAlert.value?.elderName,
+  );
+  if (!target) {
+    message.warning('未找到对应绑定关系，暂时无法发送');
+    return;
+  }
+  reminderSubmitting.value = true;
+  try {
+    await sendFamilyReminderApi({
+      channel: reminderChannel.value,
+      content: reminderText.value.trim(),
+      elderUserId: target.elderUserId,
+    });
+    message.success('远程提醒已发送');
+    reminderVisible.value = false;
+  } finally {
+    reminderSubmitting.value = false;
+  }
 }
 
 onMounted(() => {
@@ -170,6 +224,13 @@ onMounted(() => {
 
     <Card class="filter-card" :bordered="false">
       <Space wrap :size="12">
+        <Select
+          v-model:value="filters.elderName"
+          allow-clear
+          placeholder="老人姓名"
+          style="width: 170px"
+          :options="elderOptions"
+        />
         <Select
           v-model:value="filters.riskLevel"
           allow-clear
@@ -256,6 +317,9 @@ onMounted(() => {
                 <div class="info-card callout-card">
                   <p class="info-label">推荐提醒文案</p>
                   <p class="info-text">{{ item.remoteMessage }}</p>
+                  <Button type="primary" @click="openReminder(item)">
+                    发送远程提醒
+                  </Button>
                 </div>
               </Col>
               <Col :lg="12" :span="24">
@@ -272,6 +336,30 @@ onMounted(() => {
         </template>
       </List>
     </Card>
+
+    <Modal
+      v-model:open="reminderVisible"
+      title="发送远程提醒"
+      ok-text="立即发送"
+      cancel-text="取消"
+      :confirm-loading="reminderSubmitting"
+      @ok="submitReminder"
+    >
+      <Space direction="vertical" style="width: 100%">
+        <p v-if="selectedAlert">
+          当前对象：{{ selectedAlert.elderName }} · {{ selectedAlert.title }}
+        </p>
+        <Select
+          v-model:value="reminderChannel"
+          :options="[
+            { label: '站内提醒', value: 'app' },
+            { label: '短信提醒', value: 'sms' },
+            { label: '语音提醒', value: 'voice' },
+          ]"
+        />
+        <textarea v-model="reminderText" class="reminder-textarea" rows="5" />
+      </Space>
+    </Modal>
   </div>
 </template>
 
@@ -391,6 +479,17 @@ h3 {
 
 .callout-card {
   background: #fff1f2;
+}
+
+.reminder-textarea {
+  width: 100%;
+  padding: 12px;
+  font: inherit;
+  color: #7f1d1d;
+  resize: vertical;
+  background: #fff7f8;
+  border: 1px solid rgb(244 63 94 / 18%);
+  border-radius: 14px;
 }
 
 @media (max-width: 768px) {
