@@ -1,8 +1,9 @@
-import { env, isRemoteQwenEnabled } from '../config/env.js';
+import { getEnv, isRemoteQwenEnabled } from '../config/env.js';
 import { buildFraudDetectionPrompt } from '../prompts/fraud-detect.js';
 import { safeJsonParse } from '../utils/json.js';
 
 function getChatUrl() {
+  const env = getEnv();
   return new URL(env.qwenChatPath, env.qwenBaseUrl).toString();
 }
 
@@ -14,6 +15,7 @@ export async function detectFraudWithQwen(input) {
     };
   }
 
+  const env = getEnv();
   const response = await fetch(getChatUrl(), {
     body: JSON.stringify({
       messages: [

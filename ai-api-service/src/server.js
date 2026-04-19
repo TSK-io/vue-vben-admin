@@ -1,7 +1,8 @@
-import { env } from './config/env.js';
+import { getEnv } from './config/env.js';
 import { createApp } from './app/create-app.js';
 
 const app = createApp();
+const env = getEnv();
 
 try {
   await app.listen({

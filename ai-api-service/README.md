@@ -160,6 +160,9 @@ ai-api-service/
 - `Qwen` 优先的小模型配置入口，默认模型为 `Qwen2.5-1.5B-Instruct`
 - 未配置远程 Qwen 接口时的本地规则兜底
 - 统一的 JSON 响应结构和基础参数校验
+- 基于内存的轻量限流能力
+- 可选的 Bearer Token 鉴权预留
+- 基于 `node:test` 的接口测试
 
 ## 快速启动
 
@@ -186,6 +189,12 @@ npm run dev
 
 ```bash
 npm run build
+```
+
+运行测试：
+
+```bash
+npm test
 ```
 
 ## 接口示例
@@ -233,3 +242,18 @@ curl -X POST http://127.0.0.1:3001/api/fraud-detect \
 - 如果没有配置远程接口，则自动退回本地规则识别
 
 这套策略适合当前 Codespaces 阶段的轻量开发与联调。
+
+## 访问控制
+
+当前版本提供两种轻量保护手段：
+
+- `API_TOKEN`
+  设置后，除 `/health` 之外的接口都需要携带 `Authorization: Bearer <token>`
+- `RATE_LIMIT_WINDOW_MS` 与 `RATE_LIMIT_MAX_REQUESTS`
+  用于启用基于内存的基础限流，适合当前 Codespaces 开发环境
+
+示例：
+
+```bash
+API_TOKEN=demo-token RATE_LIMIT_MAX_REQUESTS=10 npm start
+```

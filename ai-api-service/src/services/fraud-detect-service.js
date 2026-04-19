@@ -1,4 +1,4 @@
-import { env } from '../config/env.js';
+import { getEnv } from '../config/env.js';
 import { FRAUD_CATEGORIES, RISK_LEVELS } from '../config/constants.js';
 import { analyzeTextWithRules } from './fraud-rules.js';
 import { detectFraudWithQwen } from './qwen-client.js';
@@ -34,6 +34,7 @@ function normalizeModelResult(modelResult, ruleResult) {
 }
 
 export async function detectFraud(input) {
+  const env = getEnv();
   const ruleResult = analyzeTextWithRules(input.text);
   const qwenResult = await detectFraudWithQwen(input);
 
@@ -51,6 +52,6 @@ export async function detectFraud(input) {
     fallbackUsed: true,
     model: env.qwenModel,
     provider: 'rules-fallback',
-    providerReason: qwenResult.reason
+      providerReason: qwenResult.reason
   };
 }
