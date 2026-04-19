@@ -68,6 +68,12 @@
   输入待识别文本，返回诈骗风险分析结果
 - `POST /api/fraud-detect/batch`
   输入多条文本，返回批量识别结果
+- `POST /api/fraud-detect/chat-log`
+  输入聊天记录数组，返回整体风险和逐条分析
+- `POST /api/fraud-detect/link`
+  输入单个链接，返回链接辅助风险判断
+- `POST /api/review`
+  提交人工复核结果并记录审计日志
 
 建议返回字段包括：
 
@@ -78,6 +84,8 @@
 - `evidence`: 命中的可疑内容片段
 - `suggestion`: 给用户的处理建议
 - `model`: 当前使用的模型名称
+- `traceId`: 当前分析请求的唯一标识
+- `promptVersion`: 当前提示词版本
 
 ## 目录约定
 
@@ -98,6 +106,7 @@ ai-api-service/
 ├── package.json
 ├── .gitignore
 ├── .env.example
+├── .dockerignore
 ├── src/
 │   ├── app/
 │   ├── config/
@@ -157,11 +166,16 @@ ai-api-service/
 - `GET /health` 健康检查接口
 - `POST /api/fraud-detect` 单条文本诈骗识别接口
 - `POST /api/fraud-detect/batch` 批量识别接口
+- `POST /api/fraud-detect/chat-log` 聊天记录批量分析接口
+- `POST /api/fraud-detect/link` 链接风险辅助分析接口
+- `POST /api/review` 人工复核接口
 - `Qwen` 优先的小模型配置入口，默认模型为 `Qwen2.5-1.5B-Instruct`
 - 未配置远程 Qwen 接口时的本地规则兜底
 - 统一的 JSON 响应结构和基础参数校验
 - 基于内存的轻量限流能力
 - 可选的 Bearer Token 鉴权预留
+- 提示词版本标识与联合判定模式字段
+- 审计日志写入能力
 - 基于 `node:test` 的接口测试
 
 ## 快速启动
@@ -197,6 +211,12 @@ npm run build
 npm test
 ```
 
+环境变量可以参考：
+
+```bash
+cp .env.example .env
+```
+
 ## 接口示例
 
 请求：
@@ -226,10 +246,33 @@ curl -X POST http://127.0.0.1:3001/api/fraud-detect \
     "suggestion": "请勿转账、勿点击陌生链接、勿透露验证码，必要时联系官方渠道核实。",
     "fallbackUsed": true,
     "model": "Qwen2.5-1.5B-Instruct",
+    "promptVersion": "fraud-detect/v1",
     "provider": "rules-fallback",
-    "providerReason": "Remote Qwen endpoint is not configured."
+    "providerReason": "Remote Qwen endpoint is not configured.",
+    "traceId": "generated-uuid"
   }
 }
+```
+
+聊天记录分析请求：
+
+```bash
+curl -X POST http://127.0.0.1:3001/api/fraud-detect/chat-log \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "messages": [
+      { "role": "user", "text": "你好" },
+      { "role": "agent", "text": "我是平台客服，请点击链接并提供验证码完成解冻。" }
+    ]
+  }'
+```
+
+链接分析请求：
+
+```bash
+curl -X POST http://127.0.0.1:3001/api/fraud-detect/link \
+  -H 'Content-Type: application/json' \
+  -d '{ "link": "http://198.51.100.12/login?redirect=bank" }'
 ```
 
 ## 当前模型策略
@@ -257,3 +300,92 @@ curl -X POST http://127.0.0.1:3001/api/fraud-detect \
 ```bash
 API_TOKEN=demo-token RATE_LIMIT_MAX_REQUESTS=10 npm start
 ```
+
+## 环境变量说明
+
+当前支持的主要环境变量如下：
+
+- `PORT`
+  服务监听端口，默认 `3001`
+- `HOST`
+  服务监听地址，默认 `0.0.0.0`
+- `LOG_LEVEL`
+  日志级别，默认 `info`
+- `QWEN_MODEL`
+  展示与默认使用的模型名，默认 `Qwen2.5-1.5B-Instruct`
+- `QWEN_BASE_URL`
+  远程 Qwen 兼容接口的基础地址
+- `QWEN_API_KEY`
+  远程 Qwen 接口的访问密钥
+- `QWEN_CHAT_PATH`
+  聊天补全接口路径，默认 `/chat/completions`
+- `API_TOKEN`
+  可选的 Bearer Token 鉴权密钥
+- `RATE_LIMIT_WINDOW_MS`
+  限流时间窗口，默认 `60000`
+- `RATE_LIMIT_MAX_REQUESTS`
+  时间窗口内允许的最大请求数，默认 `30`
+
+## Docker 部署
+
+构建镜像：
+
+```bash
+docker build -t ai-api-service .
+```
+
+也可以直接使用：
+
+```bash
+docker compose up --build
+```
+
+运行容器：
+
+```bash
+docker run --rm -p 3001:3001 \
+  -e API_TOKEN=demo-token \
+  -e RATE_LIMIT_MAX_REQUESTS=30 \
+  ai-api-service
+```
+
+如果需要接入远程 Qwen 兼容接口，可以继续传入：
+
+```bash
+-e QWEN_BASE_URL=https://your-qwen-endpoint.example.com \
+-e QWEN_API_KEY=your-api-key \
+-e QWEN_MODEL=Qwen2.5-1.5B-Instruct
+```
+
+## 部署建议
+
+当前部署建议如下：
+
+- 在 Codespaces 阶段继续使用“远程 Qwen + 本地规则兜底”的模式
+- 不建议在 Codespaces 内直接拉取过大的本地模型文件
+- 如果后续迁移到独立服务器，再评估是否改成本地模型推理
+- 上线时建议在反向代理层补充 HTTPS、来源限制和更稳定的限流策略
+
+## 模型下载与缓存评估
+
+当前实现默认不在本地下载模型文件，而是优先通过远程 Qwen 兼容接口调用模型；未配置时退回本地规则识别。
+
+这样做的原因是：
+
+- Codespaces 磁盘和内存资源有限
+- 大模型下载和冷启动时间不稳定
+- 当前阶段目标是优先完成接口联调和业务验证
+
+如果后续要切换为本地模型部署，再单独评估：
+
+- 模型文件体积
+- 首次下载耗时
+- 容器镜像大小
+- 推理启动时间
+- CPU 与内存占用
+
+基于当前 Codespaces 环境的结论：
+
+- 当前阶段不建议在本地容器内预置 Qwen 模型文件
+- 模型下载、缓存和启动时间的主评估结论是“优先远程调用，避免本地冷启动成本”
+- 只有在迁移到独立服务器并确认磁盘、内存和启动预算后，才适合继续评估本地模型部署

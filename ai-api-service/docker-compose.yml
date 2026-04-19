@@ -1,0 +1,14 @@
+services:
+  ai-api-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PORT: 3001
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+      QWEN_MODEL: Qwen2.5-1.5B-Instruct
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX_REQUESTS: 30
+    ports:
+      - '3001:3001'
