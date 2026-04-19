@@ -147,4 +147,89 @@ ai-api-service/
 
 ## 当前状态
 
-当前目录作为独立诈骗识别 API 服务模块的初始化占位，现阶段不参与现有项目构建与运行。详细开发拆解见 [TODO.md](/workspaces/vue-vben-admin/ai-api-service/TODO.md)。
+当前目录已经完成 `P0` 最小版本，可作为独立诈骗识别 API 服务启动运行，现阶段仍不参与现有项目构建与运行。详细开发拆解见 [TODO.md](/workspaces/vue-vben-admin/ai-api-service/TODO.md)。
+
+## 当前已实现内容
+
+当前版本已经具备以下能力：
+
+- 独立 `Node.js + Fastify` 服务骨架
+- `GET /health` 健康检查接口
+- `POST /api/fraud-detect` 单条文本诈骗识别接口
+- `POST /api/fraud-detect/batch` 批量识别接口
+- `Qwen` 优先的小模型配置入口，默认模型为 `Qwen2.5-1.5B-Instruct`
+- 未配置远程 Qwen 接口时的本地规则兜底
+- 统一的 JSON 响应结构和基础参数校验
+
+## 快速启动
+
+在 `ai-api-service` 目录内运行：
+
+```bash
+npm install
+npm start
+```
+
+默认监听：
+
+```text
+http://127.0.0.1:3001
+```
+
+开发模式：
+
+```bash
+npm run dev
+```
+
+构建命令：
+
+```bash
+npm run build
+```
+
+## 接口示例
+
+请求：
+
+```bash
+curl -X POST http://127.0.0.1:3001/api/fraud-detect \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "您好，我是平台客服，您的账户异常需要立即点击链接验证并提供短信验证码完成解冻。",
+    "scene": "chat",
+    "source": "demo"
+  }'
+```
+
+示例响应：
+
+```json
+{
+  "data": {
+    "category": "impersonation-support",
+    "categoryLabel": "冒充客服或官方",
+    "evidence": ["客服", "账户异常", "点击链接", "验证码"],
+    "isFraud": true,
+    "reason": "文本出现冒充客服或平台官方处理问题的话术。",
+    "riskLevel": "high",
+    "score": 9,
+    "suggestion": "请勿转账、勿点击陌生链接、勿透露验证码，必要时联系官方渠道核实。",
+    "fallbackUsed": true,
+    "model": "Qwen2.5-1.5B-Instruct",
+    "provider": "rules-fallback",
+    "providerReason": "Remote Qwen endpoint is not configured."
+  }
+}
+```
+
+## 当前模型策略
+
+当前默认策略如下：
+
+- 展示模型固定为 `Qwen`
+- 默认模型名为 `Qwen2.5-1.5B-Instruct`
+- 如果配置了兼容 OpenAI 风格的远程 Qwen 接口，则优先调用模型
+- 如果没有配置远程接口，则自动退回本地规则识别
+
+这套策略适合当前 Codespaces 阶段的轻量开发与联调。
