@@ -13,6 +13,7 @@ class ChatConversation(TimestampMixin, UUIDPrimaryKeyMixin, Base):
     conversation_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="direct", server_default="direct"
     )
+    pair_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
     title: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_message_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     last_message_preview: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -42,6 +43,7 @@ class ChatConversationMember(TimestampMixin, UUIDPrimaryKeyMixin, Base):
     user_id: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    role_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     joined_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     last_read_message_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     last_read_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
@@ -61,11 +63,15 @@ class ChatMessage(TimestampMixin, UUIDPrimaryKeyMixin, Base):
     sender_user_id: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    receiver_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     message_type: Mapped[str] = mapped_column(String(20), nullable=False, default="text", server_default="text")
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_text: Mapped[str] = mapped_column(Text, nullable=False)
     content_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="sent", server_default="sent")
     delivered_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    read_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    client_message_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     read_by_all_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     risk_level: Mapped[str] = mapped_column(String(20), nullable=False, default="low", server_default="low")
     risk_category: Mapped[str | None] = mapped_column(String(50), nullable=True)

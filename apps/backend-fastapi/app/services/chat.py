@@ -35,6 +35,10 @@ def _message_preview(text: str) -> str:
     return " ".join(text.split())[:80]
 
 
+def _pair_key(user_ids: list[str]) -> str:
+    return ":".join(sorted(user_ids))
+
+
 def _analyze_risk(text: str) -> dict[str, str]:
     rules = [
         (r"https?://|www\.", "medium", "risk_link", "消息中包含链接，需谨慎核验来源。"),
@@ -135,11 +139,22 @@ def create_or_get_conversation(user: UserProfile, payload: CreateConversationReq
                 return get_conversation_detail(user, conversation.id)
 
         now = _now()
-        conversation = ChatConversation(conversation_type="direct", title=payload.title)
+        conversation = ChatConversation(
+            conversation_type="direct",
+            pair_key=_pair_key(participant_ids),
+            title=payload.title,
+        )
         session.add(conversation)
         session.flush()
         for participant_id in participant_ids:
-            session.add(ChatConversationMember(conversation_id=conversation.id, user_id=participant_id, joined_at=now))
+            session.add(
+                ChatConversationMember(
+                    conversation_id=conversation.id,
+                    user_id=participant_id,
+                    role_code="member",
+                    joined_at=now,
+                )
+            )
         session.flush()
         conversation_id = conversation.id
     return get_conversation_detail(user, conversation_id)
@@ -244,12 +259,15 @@ def send_message(user: UserProfile, conversation_id: str, payload: ChatSendMessa
             .options(selectinload(ChatConversation.members))
         )
         assert conversation is not None
+        peer_member = next((item for item in conversation.members if item.user_id != user.user_id), None)
         now = _now()
         risk = _analyze_risk(payload.content_text)
         message = ChatMessage(
             conversation_id=conversation_id,
             sender_user_id=user.user_id,
+            receiver_user_id=peer_member.user_id if peer_member else user.user_id,
             message_type=payload.message_type,
+            content=payload.content_text,
             content_text=payload.content_text,
             content_json=json.dumps(payload.content_json, ensure_ascii=False) if payload.content_json else None,
             status="sent",
@@ -284,6 +302,7 @@ def mark_messages_read(user: UserProfile, conversation_id: str, payload: MarkMes
         member.unread_count = 0
         latest_message = session.get(ChatMessage, payload.last_read_message_id)
         if latest_message:
+            latest_message.read_at = now
             latest_message.read_by_all_at = now
         session.flush()
         total_unread = session.scalar(

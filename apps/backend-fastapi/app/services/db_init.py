@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from sqlalchemy import inspect, text
 from sqlalchemy import select
 
 from app.constants.roles import UserRole
@@ -121,8 +122,60 @@ SEED_USERS = [
 ]
 
 
+def ensure_chat_schema_compatibility() -> None:
+    engine = get_engine()
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+    if "chat_conversations" not in table_names:
+        return
+
+    expected_columns: dict[str, list[tuple[str, str]]] = {
+        "chat_conversations": [
+            ("pair_key", "VARCHAR(120)"),
+            ("title", "VARCHAR(100)"),
+            ("last_message_preview", "VARCHAR(255)"),
+            ("last_message_at", "VARCHAR(40)"),
+        ],
+        "chat_conversation_members": [
+            ("role_code", "VARCHAR(20)"),
+            ("joined_at", "VARCHAR(40)"),
+            ("last_read_at", "VARCHAR(40)"),
+            ("is_muted", "BOOLEAN DEFAULT false NOT NULL"),
+        ],
+        "chat_messages": [
+            ("receiver_user_id", "VARCHAR(36)"),
+            ("content", "TEXT"),
+            ("content_text", "TEXT"),
+            ("content_json", "TEXT"),
+            ("read_at", "VARCHAR(40)"),
+            ("client_message_id", "VARCHAR(64)"),
+            ("read_by_all_at", "VARCHAR(40)"),
+            ("risk_level", "VARCHAR(20) DEFAULT 'low' NOT NULL"),
+            ("risk_category", "VARCHAR(50)"),
+            ("risk_reason", "TEXT"),
+            ("risk_suggestion", "TEXT"),
+        ],
+    }
+
+    with engine.begin() as connection:
+        for table_name, columns in expected_columns.items():
+            existing = {column["name"] for column in inspect(connection).get_columns(table_name)}
+            for column_name, column_type in columns:
+                if column_name not in existing:
+                    connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+
+        message_columns = {column["name"] for column in inspect(connection).get_columns("chat_messages")}
+        if "content" in message_columns and "content_text" in message_columns:
+            connection.execute(text("UPDATE chat_messages SET content_text = content WHERE content_text IS NULL"))
+        if "read_at" in message_columns and "read_by_all_at" in message_columns:
+            connection.execute(
+                text("UPDATE chat_messages SET read_by_all_at = read_at WHERE read_by_all_at IS NULL AND read_at IS NOT NULL")
+            )
+
+
 def ensure_database_ready() -> None:
     Base.metadata.create_all(bind=get_engine())
+    ensure_chat_schema_compatibility()
     with session_scope() as session:
         existing_user = session.scalar(select(User.id).limit(1))
         if existing_user:
