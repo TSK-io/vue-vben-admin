@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = Field(default="守护桑榆后端服务", alias="APP_NAME")
+    app_name: str = Field(default="桑榆智盾后端服务", alias="APP_NAME")
     app_env: Literal["development", "testing", "production"] = Field(
         default="development",
         alias="APP_ENV",

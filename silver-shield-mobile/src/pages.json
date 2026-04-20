@@ -3,7 +3,7 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "守护桑榆",
+        "navigationBarTitleText": "桑榆智盾",
         "navigationStyle": "custom"
       }
     },
@@ -150,7 +150,7 @@
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "守护桑榆",
+    "navigationBarTitleText": "桑榆智盾",
     "navigationBarBackgroundColor": "#F6F3EA",
     "backgroundColor": "#F6F3EA"
   }
