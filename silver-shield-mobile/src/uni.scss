@@ -1,12 +1,14 @@
-$ss-color-primary: #0f766e;
-$ss-color-primary-soft: #dff7f2;
+$ss-color-primary: #2563eb;
+$ss-color-primary-soft: #e7f0ff;
 $ss-color-accent: #f59e0b;
 $ss-color-danger: #dc2626;
-$ss-color-bg: #f6f3ea;
-$ss-color-surface: #fffdf8;
-$ss-color-text: #16302b;
-$ss-color-subtext: #5f6f68;
-$ss-color-border: #d7d4c9;
+$ss-color-success: #16a34a;
+$ss-color-bg: #f3f6fb;
+$ss-color-surface: rgba(255, 255, 255, 0.78);
+$ss-color-surface-strong: #ffffff;
+$ss-color-text: #14213d;
+$ss-color-subtext: #60708f;
+$ss-color-border: rgba(148, 163, 184, 0.22);
 $ss-color-contrast-bg: #fffbea;
 $ss-color-contrast-surface: #ffffff;
 $ss-color-contrast-text: #111827;
@@ -19,27 +21,39 @@ page {
   --ss-color-primary-soft: #{$ss-color-primary-soft};
   --ss-color-accent: #{$ss-color-accent};
   --ss-color-danger: #{$ss-color-danger};
+  --ss-color-success: #{$ss-color-success};
   --ss-color-bg: #{$ss-color-bg};
   --ss-color-surface: #{$ss-color-surface};
+  --ss-color-surface-strong: #{$ss-color-surface-strong};
   --ss-color-text: #{$ss-color-text};
   --ss-color-subtext: #{$ss-color-subtext};
   --ss-color-border: #{$ss-color-border};
   --ss-font-scale: 1.18;
   --ss-font-size-caption: calc(22rpx * var(--ss-font-scale));
   --ss-font-size-body: calc(28rpx * var(--ss-font-scale));
-  --ss-font-size-subtitle: calc(32rpx * var(--ss-font-scale));
-  --ss-font-size-title: calc(40rpx * var(--ss-font-scale));
-  --ss-font-size-hero: calc(52rpx * var(--ss-font-scale));
+  --ss-font-size-subtitle: calc(34rpx * var(--ss-font-scale));
+  --ss-font-size-title: calc(42rpx * var(--ss-font-scale));
+  --ss-font-size-hero: calc(58rpx * var(--ss-font-scale));
+  --ss-letter-spacing-tight: -0.02em;
   --ss-touch-height: 104rpx;
-  --ss-button-radius: 24rpx;
-  --ss-card-radius: 30rpx;
-  --ss-shadow-soft: 0 18rpx 40rpx rgba(22, 48, 43, 0.08);
-  --ss-shadow-strong: 0 24rpx 56rpx rgba(153, 27, 27, 0.2);
+  --ss-button-radius: 28rpx;
+  --ss-pill-radius: 999rpx;
+  --ss-card-radius: 32rpx;
+  --ss-page-padding: 28rpx;
+  --ss-shadow-soft: 0 18rpx 48rpx rgba(15, 23, 42, 0.08);
+  --ss-shadow-card: 0 24rpx 60rpx rgba(15, 23, 42, 0.08);
+  --ss-shadow-strong: 0 28rpx 72rpx rgba(153, 27, 27, 0.18);
+  --ss-glass-border: 1.5rpx solid rgba(255, 255, 255, 0.72);
+  --ss-backdrop-blur: blur(22rpx);
+  --ss-duration-fast: 180ms;
+  --ss-duration-base: 260ms;
+  --ss-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 :root[data-ss-contrast='true'] {
   --ss-color-bg: #{$ss-color-contrast-bg};
   --ss-color-surface: #{$ss-color-contrast-surface};
+  --ss-color-surface-strong: #{$ss-color-contrast-surface};
   --ss-color-text: #{$ss-color-contrast-text};
   --ss-color-subtext: #{$ss-color-contrast-subtext};
   --ss-color-border: #{$ss-color-contrast-border};
@@ -59,14 +73,161 @@ textarea {
   box-sizing: border-box;
 }
 
+page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.88), transparent 30%),
+    linear-gradient(180deg, #f8fbff 0%, var(--ss-color-bg) 46%, #edf3fb 100%);
+  color: var(--ss-color-text);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
 button {
   min-height: var(--ss-touch-height);
+  transition:
+    transform var(--ss-duration-fast) var(--ss-ease-standard),
+    opacity var(--ss-duration-fast) var(--ss-ease-standard),
+    box-shadow var(--ss-duration-fast) var(--ss-ease-standard),
+    background var(--ss-duration-fast) var(--ss-ease-standard);
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 .ss-voice-anchor {
-  border: 2rpx dashed rgba(15, 118, 110, 0.3);
+  border: 2rpx dashed rgba(37, 99, 235, 0.24);
 }
 
 :root[data-ss-contrast='true'] .ss-voice-anchor {
   border-color: rgba(15, 23, 42, 0.4);
+}
+
+.ss-page {
+  min-height: 100vh;
+  padding: 24rpx var(--ss-page-padding) 40rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.ss-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top right, rgba(191, 219, 254, 0.42), transparent 25%),
+    radial-gradient(circle at 10% 30%, rgba(255, 255, 255, 0.7), transparent 18%);
+}
+
+.ss-glass-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--ss-color-surface);
+  border: var(--ss-glass-border);
+  border-radius: var(--ss-card-radius);
+  box-shadow: var(--ss-shadow-card);
+  backdrop-filter: var(--ss-backdrop-blur);
+}
+
+.ss-list-group {
+  overflow: hidden;
+  border-radius: 30rpx;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1.5rpx solid var(--ss-color-border);
+  box-shadow: var(--ss-shadow-soft);
+  backdrop-filter: blur(18rpx);
+}
+
+.ss-list-cell {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 26rpx 28rpx;
+}
+
+.ss-list-cell + .ss-list-cell {
+  border-top: 1rpx solid rgba(148, 163, 184, 0.16);
+}
+
+.ss-hairline {
+  height: 1rpx;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.ss-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46rpx;
+  padding: 0 18rpx;
+  border-radius: var(--ss-pill-radius);
+  background: rgba(231, 240, 255, 0.9);
+  color: var(--ss-color-primary);
+  font-size: var(--ss-font-size-caption);
+  font-weight: 700;
+}
+
+.ss-chip-danger {
+  background: rgba(254, 226, 226, 0.94);
+  color: #b91c1c;
+}
+
+.ss-chip-warn {
+  background: rgba(255, 243, 205, 0.96);
+  color: #9a6700;
+}
+
+.ss-chip-success {
+  background: rgba(220, 252, 231, 0.96);
+  color: var(--ss-color-success);
+}
+
+.ss-primary-button,
+.ss-secondary-button,
+.ss-danger-button {
+  border: none;
+  border-radius: var(--ss-button-radius);
+  font-size: var(--ss-font-size-body);
+  font-weight: 700;
+}
+
+.ss-primary-button {
+  background: linear-gradient(180deg, #3b82f6 0%, var(--ss-color-primary) 100%);
+  color: #fff;
+  box-shadow: 0 18rpx 38rpx rgba(37, 99, 235, 0.24);
+}
+
+.ss-secondary-button {
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ss-color-text);
+  border: 1.5rpx solid rgba(148, 163, 184, 0.22);
+}
+
+.ss-danger-button {
+  background: linear-gradient(180deg, #fb7185 0%, var(--ss-color-danger) 100%);
+  color: #fff;
+  box-shadow: 0 18rpx 38rpx rgba(220, 38, 38, 0.24);
+}
+
+.ss-fade-up {
+  animation: ss-fade-up var(--ss-duration-base) var(--ss-ease-standard);
+}
+
+@keyframes ss-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

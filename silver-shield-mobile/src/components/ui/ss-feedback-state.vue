@@ -73,25 +73,28 @@ const descriptionText = computed(() => {
 
 <style scoped lang="scss">
 .state-card {
-  padding: 32rpx 28rpx;
-  border-radius: 28rpx;
+  padding: 36rpx 30rpx;
+  border-radius: 30rpx;
   display: flex;
   flex-direction: column;
   gap: 14rpx;
-  background: #fffdf8;
-  border: 2rpx dashed rgba(15, 118, 110, 0.18);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1.5rpx solid rgba(148, 163, 184, 0.18);
+  box-shadow: var(--ss-shadow-soft);
+  backdrop-filter: blur(18rpx);
 }
 .state-card.mode-error {
-  background: #fff5f5;
-  border-color: rgba(185, 28, 28, 0.2);
+  background: rgba(255, 245, 245, 0.86);
+  border-color: rgba(185, 28, 28, 0.16);
 }
 .state-card.mode-weak {
-  background: #fff8eb;
-  border-color: rgba(180, 83, 9, 0.22);
+  background: rgba(255, 248, 235, 0.9);
+  border-color: rgba(180, 83, 9, 0.16);
 }
 .state-title {
   font-size: var(--ss-font-size-subtitle);
   font-weight: 700;
+  letter-spacing: var(--ss-letter-spacing-tight);
 }
 .state-desc,
 .state-hint {
@@ -105,9 +108,10 @@ const descriptionText = computed(() => {
 .state-button {
   margin-top: 8rpx;
   border: none;
-  border-radius: 18rpx;
-  background: var(--ss-color-primary);
+  border-radius: var(--ss-button-radius);
+  background: linear-gradient(180deg, #3b82f6 0%, var(--ss-color-primary) 100%);
   color: #fff;
   font-size: var(--ss-font-size-body);
+  font-weight: 700;
 }
 </style>

@@ -1,10 +1,14 @@
 <template>
-  <view class="page-shell">
-    <ss-topbar title="最近消息" subtitle="只保留最近联系的人，点一下直接进入聊天。" show-back />
+  <view class="ss-page conversations-page">
+    <ss-topbar title="最近消息" subtitle="像 iMessage 一样，只把最近联系的人清楚地列出来。" show-back />
     <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" text="这里可以读出最近消息和联系人名字。" />
 
-    <view class="page-note">
-      <text class="page-note-text">陌生内容看不懂时，不要急着回，先点开家人的聊天。</text>
+    <view class="filter-bar ss-glass-card">
+      <text class="filter-title">会话</text>
+      <view class="segmented">
+        <text class="segment active">全部</text>
+        <text class="segment">重点</text>
+      </view>
     </view>
 
     <ss-feedback-state
@@ -14,31 +18,32 @@
       empty-description="和家人聊过天以后，这里会显示最近联系的人。"
     />
 
-    <ss-card v-for="session in sessions" :key="session.contactId">
-      <view class="session-row" @click="openChat(session.contactId)">
+    <view v-else class="conversation-group ss-list-group ss-fade-up">
+      <view v-for="session in sessions" :key="session.contactId" class="conversation-cell ss-list-cell" @click="openChat(session.contactId)">
         <view class="avatar">{{ session.avatarText }}</view>
-        <view class="session-main">
-          <view class="name-row">
+        <view class="main">
+          <view class="row-top">
             <text class="name">{{ session.name }}</text>
-            <text v-if="session.hasRisk" class="risk-tag">先确认</text>
+            <text class="time">{{ session.lastMessageTime }}</text>
           </view>
-          <text class="relation">{{ session.relation }}</text>
-          <text class="preview">{{ messageTypeLabel(session.messageType) }}{{ session.lastMessage }}</text>
-        </view>
-        <view class="session-side">
-          <text class="time">{{ session.lastMessageTime }}</text>
-          <text v-if="session.unreadCount" class="unread">{{ session.unreadCount }}</text>
+          <view class="row-middle">
+            <text class="relation">{{ session.relation }}</text>
+            <text v-if="session.hasRisk" class="ss-chip ss-chip-warn">先确认</text>
+          </view>
+          <view class="row-bottom">
+            <text class="preview">{{ messageTypeLabel(session.messageType) }}{{ session.lastMessage }}</text>
+            <text v-if="session.unreadCount" class="unread">{{ session.unreadCount }}</text>
+          </view>
         </view>
       </view>
-    </ss-card>
+    </view>
 
-    <button class="back-home-btn" @click="openPage('/pages/elder/home')">回到首页</button>
+    <button class="ss-secondary-button bottom-button" @click="openPage('/pages/elder/home')">回到首页</button>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import SsCard from '@/components/ui/ss-card.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
 import SsTopbar from '@/components/ui/ss-topbar.vue'
 import SsVoiceBar from '@/components/ui/ss-voice-bar.vue'
@@ -68,97 +73,114 @@ function messageTypeLabel(type: MessageType) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
+.filter-bar {
   display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background:
-    radial-gradient(circle at top left, rgba(255, 233, 193, 0.45), transparent 24%),
-    #f7f3e9;
-}
-.page-note {
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
   padding: 20rpx 24rpx;
-  border-radius: 22rpx;
-  background: rgba(255, 255, 255, 0.82);
 }
-.page-note-text {
-  font-size: var(--ss-font-size-body);
-  line-height: 1.6;
-  color: var(--ss-color-subtext);
-}
-.session-row {
-  display: flex;
-  gap: 18rpx;
-  align-items: flex-start;
-}
-.avatar {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 50%;
-  background: #dff7f2;
-  color: var(--ss-color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30rpx;
-  font-weight: 700;
-}
-.session-main {
-  flex: 1;
-}
-.name-row {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  flex-wrap: wrap;
-}
-.name {
+
+.filter-title {
   font-size: var(--ss-font-size-subtitle);
   font-weight: 700;
 }
-.risk-tag {
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
+
+.segmented {
+  display: inline-flex;
+  gap: 8rpx;
+  padding: 8rpx;
+  border-radius: var(--ss-pill-radius);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.segment {
+  min-height: 52rpx;
+  padding: 0 22rpx;
+  border-radius: var(--ss-pill-radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--ss-font-size-caption);
-}
-.risk-tag {
-  background: #fff0d2;
-  color: #8a5a00;
-}
-.relation,
-.preview,
-.time {
-  display: block;
-  margin-top: 8rpx;
-  font-size: var(--ss-font-size-body);
-  line-height: 1.6;
   color: var(--ss-color-subtext);
 }
-.session-side {
-  min-width: 110rpx;
-  text-align: right;
+
+.segment.active {
+  background: #fff;
+  color: var(--ss-color-text);
+  font-weight: 700;
+  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.08);
 }
+
+.avatar {
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  color: var(--ss-color-primary);
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-top,
+.row-middle,
+.row-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14rpx;
+}
+
+.row-middle,
+.row-bottom {
+  margin-top: 8rpx;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ss-font-size-subtitle);
+  font-weight: 700;
+}
+
+.time,
+.relation {
+  flex-shrink: 0;
+  font-size: var(--ss-font-size-caption);
+  color: var(--ss-color-subtext);
+}
+
+.preview {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ss-font-size-body);
+  color: var(--ss-color-subtext);
+  line-height: 1.5;
+}
+
 .unread {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36rpx;
-  height: 36rpx;
-  margin-top: 12rpx;
+  min-width: 42rpx;
+  height: 42rpx;
   padding: 0 10rpx;
-  border-radius: 999rpx;
-  background: var(--ss-color-danger);
+  border-radius: var(--ss-pill-radius);
+  background: var(--ss-color-primary);
   color: #fff;
   font-size: var(--ss-font-size-caption);
+  font-weight: 700;
 }
-.back-home-btn {
-  border: none;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.84);
-  color: var(--ss-color-text);
-  font-size: var(--ss-font-size-body);
-  box-shadow: 0 12rpx 24rpx rgba(22, 48, 43, 0.06);
+
+.bottom-button {
+  margin-top: auto;
 }
 </style>

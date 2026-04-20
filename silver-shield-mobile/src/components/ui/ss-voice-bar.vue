@@ -30,8 +30,10 @@ function announce() {
   justify-content: space-between;
   gap: 20rpx;
   padding: 22rpx 24rpx;
-  border-radius: 24rpx;
-  background: rgba(223, 247, 242, 0.55);
+  border-radius: 28rpx;
+  background: rgba(231, 240, 255, 0.7);
+  box-shadow: 0 12rpx 28rpx rgba(37, 99, 235, 0.08);
+  backdrop-filter: blur(14rpx);
 }
 
 .voice-copy {
@@ -56,10 +58,11 @@ function announce() {
 .voice-button {
   min-width: 148rpx;
   border: none;
-  border-radius: 20rpx;
-  background: var(--ss-color-primary);
+  border-radius: 22rpx;
+  background: linear-gradient(180deg, #60a5fa 0%, var(--ss-color-primary) 100%);
   color: #fff;
   font-size: var(--ss-font-size-body);
   font-weight: 700;
+  box-shadow: 0 12rpx 24rpx rgba(37, 99, 235, 0.18);
 }
 </style>

@@ -1,52 +1,84 @@
 <template>
-  <view class="page-shell">
-    <ss-topbar title="您好，{{ displayName }}" subtitle="常用功能放前面，重要提醒一句话说清楚。" />
+  <view class="ss-page home-page">
+    <ss-topbar :title="`您好，${displayName}`" subtitle="把重要的人和重要的事放在最前面。" />
 
-    <ss-card>
-      <view class="alert-banner" :class="{ danger: hasHighRisk }" @click="openPage('/pages/elder/risk-alert')">
-        <view class="banner-main">
-          <text class="banner-tag">{{ hasHighRisk ? '重要提醒' : '今日提醒' }}</text>
-          <text class="banner-title">{{ topRisk?.title || '今天暂时没有新的风险提醒' }}</text>
-          <text class="banner-desc">{{ topRisk?.summary || '遇到转账、验证码、陌生链接，先不要操作，先问家人。' }}</text>
-        </view>
-        <view class="banner-side">
-          <text class="banner-action">{{ hasHighRisk ? '查看提醒' : '查看详情' }}</text>
-          <text v-if="hasHighRisk" class="banner-pulse">先别操作</text>
-        </view>
+    <view class="hero ss-glass-card ss-fade-up">
+      <view class="hero-copy">
+        <text class="eyebrow">今天优先看这里</text>
+        <text class="hero-title">{{ topRisk ? topRisk.title : '今天整体平稳，可以安心联系家人' }}</text>
+        <text class="hero-desc">{{ topRisk?.summary || '最近会话、风险提醒和求助入口都已经放到首页，少找一步。' }}</text>
       </view>
-    </ss-card>
+      <view class="hero-side">
+        <text class="hero-pill" :class="hasHighRisk ? 'danger' : 'safe'">{{ hasHighRisk ? '高风险提醒' : '状态平稳' }}</text>
+        <button class="hero-action" @click="openPage('/pages/elder/risk-alert')">{{ hasHighRisk ? '立即查看' : '查看提醒' }}</button>
+      </view>
+    </view>
 
     <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" :text="voiceSummary" />
 
-    <ss-card>
-      <ss-section-title title="常用操作" subtitle="平时最常用的几件事，都放在这里。" />
-      <view class="action-grid">
-        <button class="action-button action-primary" @click="chatWithGuardian">给女儿发消息</button>
-        <button class="action-button action-soft" @click="callGuardian">给女儿打电话</button>
-        <button class="action-button action-warm" @click="openPage('/pages/elder/contacts')">看家人电话</button>
-        <button v-if="!store.elderSettings.simplifyMode" class="action-button action-neutral" @click="openPage('/pages/elder/conversations')">看最近消息</button>
-        <button class="action-button action-danger" @click="submitSos">一键求助</button>
-        <button class="action-button action-muted" @click="openPage('/pages/elder/settings')">页面设置</button>
+    <ss-card class="section-card ss-fade-up">
+      <ss-section-title title="最近会话" subtitle="先看最近联系的人，减少来回找入口。">
+        <template #action>
+          <text class="action-link" @click="openPage('/pages/elder/conversations')">全部</text>
+        </template>
+      </ss-section-title>
+      <view v-if="recentSessions.length" class="recent-list">
+        <view v-for="session in recentSessions" :key="session.contactId" class="recent-item" @click="openChat(session.contactId)">
+          <view class="recent-avatar">{{ session.avatarText }}</view>
+          <view class="recent-main">
+            <view class="recent-row">
+              <text class="recent-name">{{ session.name }}</text>
+              <text v-if="session.hasRisk" class="ss-chip ss-chip-warn">先确认</text>
+            </view>
+            <text class="recent-preview">{{ messageTypeLabel(session.messageType) }}{{ session.lastMessage }}</text>
+          </view>
+          <view class="recent-side">
+            <text class="recent-time">{{ session.lastMessageTime }}</text>
+            <text v-if="session.unreadCount" class="recent-unread">{{ session.unreadCount }}</text>
+          </view>
+        </view>
+      </view>
+      <view v-else class="empty-inline">
+        <text class="empty-inline-text">和家人聊过天以后，这里会自动显示最近消息。</text>
       </view>
     </ss-card>
 
-    <ss-card>
-      <ss-section-title title="今天情况" />
-      <view class="summary-list">
-        <view class="summary-item">
-          <text class="summary-num">{{ contactsCount }}</text>
-          <text class="summary-label">常用联系人</text>
-        </view>
-        <view class="summary-item">
-          <text class="summary-num">{{ riskCount }}</text>
-          <text class="summary-label">风险提醒</text>
-        </view>
-        <view class="summary-item">
-          <text class="summary-num">{{ sosCount }}</text>
-          <text class="summary-label">求助次数</text>
-        </view>
+    <ss-card class="section-card ss-fade-up">
+      <ss-section-title title="常用操作" subtitle="常用功能只保留 4 个最关键入口。" />
+      <view class="quick-grid">
+        <button class="quick-button primary" @click="chatWithGuardian">
+          <text class="quick-title">发消息</text>
+          <text class="quick-desc">直接联系女儿</text>
+        </button>
+        <button class="quick-button soft" @click="callGuardian">
+          <text class="quick-title">打电话</text>
+          <text class="quick-desc">一键语音联系</text>
+        </button>
+        <button class="quick-button warm" @click="openPage('/pages/elder/contacts')">
+          <text class="quick-title">联系人</text>
+          <text class="quick-desc">查看家人电话</text>
+        </button>
+        <button class="quick-button danger" @click="submitSos">
+          <text class="quick-title">一键求助</text>
+          <text class="quick-desc">紧急情况快速求助</text>
+        </button>
       </view>
     </ss-card>
+
+    <view class="summary-row ss-fade-up">
+      <view class="summary-card ss-glass-card">
+        <text class="summary-value">{{ contactsCount }}</text>
+        <text class="summary-label">联系人</text>
+      </view>
+      <view class="summary-card ss-glass-card">
+        <text class="summary-value">{{ riskCount }}</text>
+        <text class="summary-label">提醒</text>
+      </view>
+      <view class="summary-card ss-glass-card">
+        <text class="summary-value">{{ sosCount }}</text>
+        <text class="summary-label">求助</text>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -58,6 +90,7 @@ import SsTopbar from '@/components/ui/ss-topbar.vue'
 import SsVoiceBar from '@/components/ui/ss-voice-bar.vue'
 import { useAppStore } from '@/store/app'
 import { openPage } from '@/utils/navigation'
+import type { MessageType } from '@/types/app'
 
 const store = useAppStore()
 void store.loadUserProfile()
@@ -69,7 +102,8 @@ const hasHighRisk = computed(() => topRisk.value?.level === 'high')
 const contactsCount = computed(() => store.contacts.length)
 const riskCount = computed(() => store.riskRecords.length)
 const sosCount = computed(() => store.sosCount)
-const voiceSummary = computed(() => topRisk.value?.summary || '首页可以语音读出提醒内容，听不清时可以点播报。')
+const recentSessions = computed(() => store.chatSessions.filter((item) => !item.contactId.startsWith('elder-')).slice(0, 3))
+const voiceSummary = computed(() => topRisk.value?.summary || '首页可以直接查看最近消息、风险提醒和一键求助。')
 
 async function submitSos() {
   await store.submitSos()
@@ -86,140 +120,275 @@ function callGuardian() {
   store.startCall('guardian-li', 'elder', 'outgoing')
   openPage('/pages/elder/call')
 }
+
+function openChat(contactId: string) {
+  store.selectContact(contactId)
+  openPage('/pages/elder/chat')
+}
+
+function messageTypeLabel(type: MessageType) {
+  if (type === 'image') {
+    return '[图片] '
+  }
+
+  if (type === 'link') {
+    return '[链接] '
+  }
+
+  return ''
+}
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 22rpx;
-  background:
-    radial-gradient(circle at top right, rgba(255, 226, 181, 0.45), transparent 24%),
-    linear-gradient(180deg, #fffaf0 0%, #f2efe6 100%);
+.home-page {
+  position: relative;
 }
-.alert-banner {
+
+.hero {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 20rpx;
-  padding: 12rpx 6rpx;
-  border-radius: 24rpx;
+  gap: 24rpx;
+  padding: 34rpx 30rpx;
 }
-.alert-banner.danger {
-  padding: 22rpx;
-  background: linear-gradient(135deg, #fff6ea 0%, #ffe7df 100%);
-  border: 3rpx solid rgba(185, 28, 28, 0.2);
-  box-shadow: var(--ss-shadow-strong);
-}
-.banner-main {
+
+.hero-copy {
   flex: 1;
 }
-.banner-side {
-  min-width: 160rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10rpx;
-}
-.banner-tag {
-  display: inline-block;
-  padding: 10rpx 18rpx;
-  border-radius: 999rpx;
-  background: #fee2e2;
-  color: var(--ss-color-danger);
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44rpx;
+  padding: 0 16rpx;
+  border-radius: var(--ss-pill-radius);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ss-color-primary);
   font-size: var(--ss-font-size-caption);
   font-weight: 700;
 }
-.banner-title {
+
+.hero-title {
+  display: block;
+  margin-top: 16rpx;
+  font-size: var(--ss-font-size-hero);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: var(--ss-letter-spacing-tight);
+}
+
+.hero-desc {
   display: block;
   margin-top: 14rpx;
-  font-size: var(--ss-font-size-title);
-  font-weight: 700;
-}
-.banner-desc {
-  display: block;
-  margin-top: 10rpx;
   font-size: var(--ss-font-size-body);
   line-height: 1.7;
   color: var(--ss-color-subtext);
 }
-.banner-action,
-.banner-pulse {
+
+.hero-side {
+  display: flex;
+  min-width: 176rpx;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52rpx;
+  padding: 0 18rpx;
+  border-radius: var(--ss-pill-radius);
   font-size: var(--ss-font-size-caption);
   font-weight: 700;
 }
-.banner-action {
-  color: var(--ss-color-primary);
+
+.hero-pill.safe {
+  background: rgba(220, 252, 231, 0.95);
+  color: var(--ss-color-success);
 }
-.banner-pulse {
-  padding: 8rpx 14rpx;
-  border-radius: 999rpx;
-  background: #b91c1c;
-  color: #fff;
+
+.hero-pill.danger {
+  background: rgba(254, 226, 226, 0.95);
+  color: #b91c1c;
 }
-.action-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18rpx;
-  margin-top: 20rpx;
-}
-.action-button {
-  min-height: 144rpx;
+
+.hero-action {
+  min-width: 156rpx;
   border: none;
-  border-radius: 28rpx;
-  background: #f3f6ef;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.84);
   color: var(--ss-color-text);
+  font-size: var(--ss-font-size-body);
+  font-weight: 700;
+}
+
+.section-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.action-link {
+  color: var(--ss-color-primary);
+  font-size: var(--ss-font-size-caption);
+  font-weight: 700;
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 24rpx;
+  border-radius: 26rpx;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.recent-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  color: var(--ss-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.recent-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  flex-wrap: wrap;
+}
+
+.recent-name {
   font-size: var(--ss-font-size-subtitle);
   font-weight: 700;
-  line-height: 1.35;
-  padding: 12rpx 20rpx;
-  box-shadow: 0 12rpx 26rpx rgba(22, 48, 43, 0.08);
 }
-.action-button.action-primary {
-  background: linear-gradient(135deg, #d8fbf2 0%, #bdeee1 100%);
+
+.recent-preview,
+.recent-time {
+  display: block;
+  margin-top: 8rpx;
+  font-size: var(--ss-font-size-body);
+  line-height: 1.55;
+  color: var(--ss-color-subtext);
 }
-.action-button.action-soft {
-  background: linear-gradient(135deg, #e6f7ff 0%, #d7ecfb 100%);
+
+.recent-side {
+  min-width: 110rpx;
+  text-align: right;
 }
-.action-button.action-warm {
-  background: linear-gradient(135deg, #fff4dd 0%, #ffe8b8 100%);
+
+.recent-unread {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40rpx;
+  height: 40rpx;
+  margin-top: 10rpx;
+  padding: 0 10rpx;
+  border-radius: var(--ss-pill-radius);
+  background: var(--ss-color-danger);
+  color: #fff;
+  font-size: var(--ss-font-size-caption);
+  font-weight: 700;
 }
-.action-button.action-neutral {
-  background: linear-gradient(135deg, #f4f4f5 0%, #e8eaee 100%);
+
+.empty-inline {
+  padding: 28rpx 0 4rpx;
 }
-.action-button.action-danger {
-  background: linear-gradient(135deg, #ffe6e3 0%, #ffd5cf 100%);
-  color: #991b1b;
+
+.empty-inline-text {
+  font-size: var(--ss-font-size-body);
+  line-height: 1.7;
+  color: var(--ss-color-subtext);
 }
-.action-button.action-muted {
-  background: linear-gradient(135deg, #f5f0e6 0%, #ece5d7 100%);
-}
-.summary-list {
+
+.quick-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16rpx;
-  margin-top: 16rpx;
 }
-.summary-item {
-  padding: 22rpx 10rpx;
-  border-radius: 22rpx;
-  background: rgba(255, 255, 255, 0.78);
+
+.quick-button {
+  min-height: 164rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 10rpx;
+  padding: 24rpx;
+  border: none;
+  border-radius: 30rpx;
+  text-align: left;
+}
+
+.quick-button.primary {
+  background: linear-gradient(180deg, #e8f1ff 0%, #d9e9ff 100%);
+}
+
+.quick-button.soft {
+  background: linear-gradient(180deg, #eef8ff 0%, #e0f0ff 100%);
+}
+
+.quick-button.warm {
+  background: linear-gradient(180deg, #fff6df 0%, #ffedc2 100%);
+}
+
+.quick-button.danger {
+  background: linear-gradient(180deg, #ffe7e7 0%, #ffd7d7 100%);
+}
+
+.quick-title {
+  font-size: var(--ss-font-size-subtitle);
+  font-weight: 700;
+  color: var(--ss-color-text);
+}
+
+.quick-desc {
+  font-size: var(--ss-font-size-caption);
+  line-height: 1.5;
+  color: var(--ss-color-subtext);
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.summary-card {
+  padding: 26rpx 12rpx;
   text-align: center;
-  box-shadow: 0 10rpx 22rpx rgba(22, 48, 43, 0.05);
 }
-.summary-num {
+
+.summary-value {
   display: block;
   font-size: var(--ss-font-size-title);
-  font-weight: 700;
+  font-weight: 800;
   color: var(--ss-color-primary);
 }
+
 .summary-label {
   display: block;
   margin-top: 8rpx;
   font-size: var(--ss-font-size-caption);
-  line-height: 1.5;
   color: var(--ss-color-subtext);
 }
 </style>

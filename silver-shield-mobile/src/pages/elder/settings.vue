@@ -1,37 +1,53 @@
 <template>
-  <view class="page-shell">
-    <ss-topbar title="页面设置" subtitle="只保留老人真正会用到的几个开关。" show-back />
+  <view class="ss-page settings-page">
+    <ss-topbar title="设置" subtitle="参考 iOS Settings，用分组列表来放常用开关。" show-back />
 
-    <ss-card>
-      <ss-section-title title="字要更大吗" subtitle="看着吃力时，直接切成更大的字。" />
-      <view class="option-row">
-        <button class="option-btn" :class="{ active: settings.fontScale === 'large' }" @click="setFontScale('large')">已经够大</button>
-        <button class="option-btn" :class="{ active: settings.fontScale === 'x-large' }" @click="setFontScale('x-large')">再大一点</button>
-      </view>
+    <ss-card class="intro-card">
+      <text class="intro-title">适老化与 Apple 风格一起保留</text>
+      <text class="intro-desc">页面会更轻、更清楚，但不会为了好看牺牲字号、对比度和点击面积。</text>
     </ss-card>
 
-    <view class="setting-card">
-      <view class="setting-copy">
-        <text class="setting-title">首页更简单</text>
-        <text class="setting-desc">打开后，首页只留最常用的入口，少走几步。</text>
+    <view class="group">
+      <text class="group-label">显示</text>
+      <view class="ss-list-group">
+        <view class="ss-list-cell setting-cell">
+          <view class="setting-copy">
+            <text class="setting-title">字体大小</text>
+            <text class="setting-desc">看着吃力时，直接切成更大的字。</text>
+          </view>
+          <view class="font-segmented">
+            <button class="font-chip" :class="{ active: settings.fontScale === 'large' }" @click="setFontScale('large')">标准</button>
+            <button class="font-chip" :class="{ active: settings.fontScale === 'x-large' }" @click="setFontScale('x-large')">更大</button>
+          </view>
+        </view>
+        <view class="ss-list-cell setting-cell">
+          <view class="setting-copy">
+            <text class="setting-title">颜色更清楚</text>
+            <text class="setting-desc">重要信息会更醒目，更容易一眼看到。</text>
+          </view>
+          <switch :checked="settings.contrastMode" color="#2563eb" @change="toggleContrast" />
+        </view>
       </view>
-      <switch :checked="settings.simplifyMode" color="#0f766e" @change="toggleSimplifyMode" />
     </view>
 
-    <view class="setting-card">
-      <view class="setting-copy">
-        <text class="setting-title">颜色更清楚</text>
-        <text class="setting-desc">重要信息会更醒目，更容易一眼看到。</text>
+    <view class="group">
+      <text class="group-label">首页与提醒</text>
+      <view class="ss-list-group">
+        <view class="ss-list-cell setting-cell">
+          <view class="setting-copy">
+            <text class="setting-title">首页更简单</text>
+            <text class="setting-desc">打开后，首页只留最常用的入口，少走几步。</text>
+          </view>
+          <switch :checked="settings.simplifyMode" color="#2563eb" @change="toggleSimplifyMode" />
+        </view>
+        <view class="ss-list-cell setting-cell">
+          <view class="setting-copy">
+            <text class="setting-title">语音播报</text>
+            <text class="setting-desc">看不清时，可以点按钮让页面读出来。</text>
+          </view>
+          <switch :checked="settings.voiceBroadcastReserved" color="#2563eb" @change="toggleVoiceReserved" />
+        </view>
       </view>
-      <switch :checked="settings.contrastMode" color="#0f766e" @change="toggleContrast" />
-    </view>
-
-    <view class="setting-card">
-      <view class="setting-copy">
-        <text class="setting-title">打开语音播报</text>
-        <text class="setting-desc">看不清时，可以点按钮让页面读出来。</text>
-      </view>
-      <switch :checked="settings.voiceBroadcastReserved" color="#0f766e" @change="toggleVoiceReserved" />
     </view>
   </view>
 </template>
@@ -39,7 +55,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import SsCard from '@/components/ui/ss-card.vue'
-import SsSectionTitle from '@/components/ui/ss-section-title.vue'
 import SsTopbar from '@/components/ui/ss-topbar.vue'
 import { useAppStore } from '@/store/app'
 import type { ElderSettings } from '@/types/app'
@@ -74,57 +89,82 @@ function getSwitchValue(event: Event) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
+.intro-card {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
-  background:
-    radial-gradient(circle at top right, rgba(223, 247, 242, 0.45), transparent 24%),
-    #f5f3eb;
+  gap: 10rpx;
 }
-.option-row {
-  display: flex;
-  gap: 14rpx;
-  margin-top: 18rpx;
-}
-.option-btn {
-  flex: 1;
-  border: none;
-  border-radius: 18rpx;
-  background: #eef2f7;
-  color: var(--ss-color-text);
-  font-size: var(--ss-font-size-body);
-}
-.option-btn.active {
-  background: var(--ss-color-primary);
-  color: #fff;
-}
-.setting-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24rpx;
-  padding: 28rpx 26rpx;
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 12rpx 24rpx rgba(22, 48, 43, 0.06);
-}
-.setting-copy {
-  flex: 1;
-}
-.setting-title {
-  display: block;
+
+.intro-title {
   font-size: var(--ss-font-size-subtitle);
   font-weight: 700;
-  color: var(--ss-color-text);
 }
+
+.intro-desc {
+  font-size: var(--ss-font-size-body);
+  line-height: 1.7;
+  color: var(--ss-color-subtext);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.group-label {
+  padding-left: 8rpx;
+  font-size: var(--ss-font-size-caption);
+  font-weight: 700;
+  color: var(--ss-color-subtext);
+}
+
+.setting-cell {
+  justify-content: space-between;
+}
+
+.setting-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-title {
+  display: block;
+  font-size: var(--ss-font-size-body);
+  font-weight: 700;
+}
+
 .setting-desc {
   display: block;
-  margin-top: 8rpx;
-  font-size: var(--ss-font-size-body);
+  margin-top: 6rpx;
+  font-size: var(--ss-font-size-caption);
   line-height: 1.6;
   color: var(--ss-color-subtext);
+}
+
+.font-segmented {
+  display: inline-flex;
+  gap: 8rpx;
+  padding: 8rpx;
+  border-radius: var(--ss-pill-radius);
+  background: rgba(241, 245, 249, 0.95);
+}
+
+.font-chip {
+  min-width: 100rpx;
+  min-height: 54rpx;
+  padding: 0 18rpx;
+  border: none;
+  border-radius: var(--ss-pill-radius);
+  background: transparent;
+  color: var(--ss-color-subtext);
+  font-size: var(--ss-font-size-caption);
+}
+
+.font-chip.active {
+  background: #fff;
+  color: var(--ss-color-text);
+  font-weight: 700;
+  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.08);
 }
 </style>

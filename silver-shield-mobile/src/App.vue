@@ -43,9 +43,15 @@ watch(elderThemeState, () => {
 
 <style lang="scss">
 page {
-  background: var(--ss-color-bg);
+  background: transparent;
   color: var(--ss-color-text);
-  font-family: 'Avenir Next', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  font-family:
+    'SF Pro Display',
+    'SF Pro Text',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Avenir Next',
+    sans-serif;
   font-size: calc(28rpx * var(--ss-font-scale, 1));
 }
 </style>

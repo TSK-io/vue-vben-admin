@@ -1,18 +1,16 @@
 <template>
-  <view class="page-shell">
-    <ss-topbar title="先别操作" subtitle="只告诉你现在该怎么做，不讲复杂分析。" show-back />
+  <view class="ss-page risk-page">
+    <ss-topbar title="风险提醒" subtitle="只告诉你先做什么，不让页面变成复杂说明书。" show-back />
 
-    <ss-card v-if="topRisk">
-      <view class="hero-alert">
-        <text class="risk-badge">重要提醒</text>
-        <text class="risk-title">{{ topRisk.title }}</text>
-        <text class="risk-summary">{{ topRisk.summary }}</text>
-        <view class="strong-warning">
-          <text class="warning-title">现在先做这 3 件事</text>
-          <text class="warning-step">1. 不转账</text>
-          <text class="warning-step">2. 不点陌生链接</text>
-          <text class="warning-step">3. 立刻联系家人</text>
-        </view>
+    <ss-card v-if="topRisk" class="hero-card">
+      <text class="hero-badge">重要提醒</text>
+      <text class="hero-title">{{ topRisk.title }}</text>
+      <text class="hero-summary">{{ topRisk.summary }}</text>
+      <view class="steps-card">
+        <text class="steps-title">现在先做这 3 件事</text>
+        <text class="steps-item">1. 不转账</text>
+        <text class="steps-item">2. 不点陌生链接</text>
+        <text class="steps-item">3. 立刻联系家人</text>
       </view>
     </ss-card>
 
@@ -22,16 +20,16 @@
     />
 
     <ss-card v-if="topRisk">
-      <ss-section-title title="简单说" />
+      <ss-section-title title="为什么提醒你" />
       <text class="block-text">{{ topRisk.reason || '这条内容看起来不太安全，先不要继续操作。' }}</text>
     </ss-card>
 
     <ss-card v-if="topRisk">
-      <ss-section-title title="接下来怎么做" />
+      <ss-section-title title="下一步" subtitle="先把动作做对，比先看懂分析更重要。" />
       <text class="block-text">{{ topRisk.suggestion || '先联系家人，让熟悉的人帮你看一眼。' }}</text>
       <view class="action-group">
-        <button class="mini-action primary" @click="goChat">给家人发消息</button>
-        <button class="mini-action" @click="goContacts">查看联系人</button>
+        <button class="ss-primary-button" @click="goChat">给家人发消息</button>
+        <button class="ss-secondary-button" @click="goContacts">查看联系人</button>
       </view>
     </ss-card>
 
@@ -42,7 +40,7 @@
       empty-description="如果收到可疑消息或电话，页面会在这里提醒你先停一下。"
     />
 
-    <button class="cta-button" @click="goChat">联系家人</button>
+    <button class="ss-danger-button bottom-button" @click="goChat">联系家人</button>
   </view>
 </template>
 
@@ -70,90 +68,68 @@ function goContacts() {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
+.hero-card {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
-  background:
-    radial-gradient(circle at top left, rgba(255, 219, 214, 0.55), transparent 24%),
-    #fbf1ee;
+  gap: 14rpx;
 }
-.hero-alert {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  padding: 8rpx;
-}
-.risk-badge {
+
+.hero-badge {
   width: fit-content;
-  padding: 10rpx 20rpx;
-  border-radius: 999rpx;
-  background: #fee2e2;
-  color: #991b1b;
+  padding: 10rpx 18rpx;
+  border-radius: var(--ss-pill-radius);
+  background: rgba(254, 226, 226, 0.96);
+  color: #b91c1c;
   font-size: var(--ss-font-size-caption);
   font-weight: 700;
 }
-.risk-title {
-  font-size: var(--ss-font-size-title);
-  font-weight: 700;
+
+.hero-title {
+  font-size: var(--ss-font-size-hero);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: var(--ss-letter-spacing-tight);
 }
-.risk-summary,
+
+.hero-summary,
 .block-text {
   font-size: var(--ss-font-size-body);
   line-height: 1.7;
   color: var(--ss-color-subtext);
 }
-.strong-warning {
+
+.steps-card {
   margin-top: 8rpx;
-  padding: 22rpx;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+  padding: 24rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
   box-shadow: var(--ss-shadow-strong);
 }
-.warning-title {
+
+.steps-title {
   display: block;
   font-size: var(--ss-font-size-subtitle);
   font-weight: 700;
 }
-.warning-step {
+
+.steps-item {
   display: block;
   margin-top: 10rpx;
   font-size: var(--ss-font-size-body);
 }
-.block-meta {
-  display: block;
-  margin-top: 12rpx;
-  font-size: var(--ss-font-size-caption);
-  line-height: 1.6;
-  color: var(--ss-color-subtext);
-}
+
 .action-group {
   display: flex;
   gap: 14rpx;
   margin-top: 18rpx;
 }
-.mini-action {
+
+.action-group button {
   flex: 1;
-  border: none;
-  border-radius: 18rpx;
-  background: #f5efe4;
-  color: var(--ss-color-text);
-  font-size: var(--ss-font-size-body);
 }
-.mini-action.primary {
-  background: var(--ss-color-primary);
-  color: #fff;
-}
-.cta-button {
-  margin-top: 12rpx;
-  border: none;
-  border-radius: 20rpx;
-  background: var(--ss-color-danger);
-  color: #fff;
-  font-size: var(--ss-font-size-subtitle);
-  font-weight: 700;
+
+.bottom-button {
+  margin-top: auto;
 }
 </style>
