@@ -1,14 +1,17 @@
 <template>
-  <view class="chat-page">
+  <view class="ss-page ss-page--with-nav ss-page--with-bottom-bar chat-page">
     <view class="chat-shell">
-      <view class="chat-header ss-glass-card ss-fade-up">
-        <button class="circle-button ss-pressable" @click="goBack">‹</button>
-        <view class="header-main">
-          <text class="header-name">{{ selectedContact?.name || '聊天' }}</text>
-          <text class="header-meta">{{ selectedContact?.relation || '和熟悉的人慢慢聊' }}</text>
-        </view>
-        <button v-if="showBroadcast" class="circle-button small ss-pressable" @click="announceChat">读</button>
-      </view>
+      <app-nav-bar
+        class="ss-fade-up"
+        :title="selectedContact?.name || '聊天'"
+        :subtitle="selectedContact?.relation || '和熟悉的人慢慢聊'"
+        align="center"
+        show-back
+      >
+        <template #right>
+          <button v-if="showBroadcast" class="circle-button small ss-pressable" @click="announceChat">读</button>
+        </template>
+      </app-nav-bar>
 
       <view v-if="topHint" class="risk-banner ss-fade-in" :class="{ danger: topHintLevel === 'high' }">
         <text class="risk-banner-text">{{ topHint }}</text>
@@ -69,19 +72,22 @@
       </view>
     </view>
 
-    <view class="composer ss-glass-card ss-pop-in">
-      <button class="circle-button composer-tool ss-pressable" @click="sendImageSample">+</button>
-      <input v-model="draft" class="composer-input" placeholder="发消息前，先想一想是不是熟悉的人" />
-      <button class="send-button ss-pressable" :class="{ disabled: !draft.trim() }" @click="submitMessage">发送</button>
-    </view>
+    <app-bottom-action-bar>
+      <view class="composer ss-pop-in">
+        <button class="circle-button composer-tool ss-pressable" @click="sendImageSample">+</button>
+        <input v-model="draft" class="composer-input" placeholder="发消息前，先想一想是不是熟悉的人" />
+        <button class="send-button ss-pressable" :class="{ disabled: !draft.trim() }" @click="submitMessage">发送</button>
+      </view>
+    </app-bottom-action-bar>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import AppBottomActionBar from '@/components/app/AppBottomActionBar.vue'
+import AppNavBar from '@/components/app/AppNavBar.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
 import { useAppStore } from '@/store/app'
-import { backPage } from '@/utils/navigation'
 import type { ChatMessage } from '@/types/app'
 
 const store = useAppStore()
@@ -116,10 +122,6 @@ function announceChat() {
   })
 }
 
-function goBack() {
-  backPage()
-}
-
 function systemHint(message: ChatMessage) {
   if (message.riskLevel === 'high') {
     return '这条内容像诈骗，先别转账，先联系家人。'
@@ -135,25 +137,13 @@ function cleanImageText(content: string) {
 
 <style scoped lang="scss">
 .chat-page {
-  min-height: 100vh;
-  padding: 20rpx 20rpx 164rpx;
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.85), transparent 26%),
-    linear-gradient(180deg, #ffffff 0%, #f7f8fb 18%, #f2f4f8 100%);
+  gap: 16rpx;
 }
 
 .chat-shell {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-}
-
-.chat-header {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 18rpx 20rpx;
-  border-radius: 30rpx;
 }
 
 .circle-button {
@@ -172,26 +162,6 @@ function cleanImageText(content: string) {
 .circle-button.small {
   font-size: var(--ss-font-size-body);
   font-weight: 700;
-}
-
-.header-main {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-}
-
-.header-name {
-  display: block;
-  font-size: var(--ss-font-size-subtitle);
-  font-weight: 700;
-  letter-spacing: var(--ss-letter-spacing-tight);
-}
-
-.header-meta {
-  display: block;
-  margin-top: 6rpx;
-  font-size: var(--ss-font-size-caption);
-  color: var(--ss-color-subtext);
 }
 
 .risk-banner {
@@ -326,15 +296,10 @@ function cleanImageText(content: string) {
 }
 
 .composer {
-  position: fixed;
-  left: 20rpx;
-  right: 20rpx;
-  bottom: 18rpx;
   display: flex;
   align-items: center;
   gap: 12rpx;
-  padding: 12rpx;
-  border-radius: 30rpx;
+  width: 100%;
 }
 
 .composer-tool {

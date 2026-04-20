@@ -36,12 +36,24 @@ page {
   --ss-font-size-hero: calc(58rpx * var(--ss-font-scale));
   --ss-letter-spacing-tight: -0.02em;
   --ss-touch-height: 104rpx;
+  --ss-nav-height: 96rpx;
+  --ss-safe-top: env(safe-area-inset-top, 0px);
+  --ss-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ss-tabbar-height: 108rpx;
+  --ss-bottom-action-height: 112rpx;
+  --ss-bottom-bar-radius: 30rpx;
+  --ss-bottom-bar-padding: calc(16rpx + var(--ss-safe-bottom));
   --ss-button-radius: 28rpx;
   --ss-pill-radius: 999rpx;
   --ss-card-radius: 32rpx;
+  --ss-list-radius: 30rpx;
   --ss-page-padding: 28rpx;
+  --ss-page-gap: 20rpx;
+  --ss-page-top-offset: 24rpx;
+  --ss-page-bottom-offset: 40rpx;
   --ss-shadow-soft: 0 16rpx 40rpx rgba(15, 23, 42, 0.06);
   --ss-shadow-card: 0 20rpx 52rpx rgba(15, 23, 42, 0.07);
+  --ss-shadow-floating: 0 22rpx 60rpx rgba(15, 23, 42, 0.1);
   --ss-shadow-strong: 0 28rpx 72rpx rgba(153, 27, 27, 0.18);
   --ss-glass-border: 1.5rpx solid rgba(255, 255, 255, 0.72);
   --ss-backdrop-blur: blur(22rpx);
@@ -110,10 +122,22 @@ button:active {
 
 .ss-page {
   min-height: 100vh;
-  padding: 24rpx var(--ss-page-padding) 40rpx;
+  padding: var(--ss-page-top-offset) var(--ss-page-padding) var(--ss-page-bottom-offset);
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: var(--ss-page-gap);
+}
+
+.ss-page--with-nav {
+  padding-top: 0;
+}
+
+.ss-page--with-tabbar {
+  padding-bottom: calc(var(--ss-page-bottom-offset) + var(--ss-tabbar-height) + var(--ss-safe-bottom));
+}
+
+.ss-page--with-bottom-bar {
+  padding-bottom: calc(var(--ss-page-bottom-offset) + var(--ss-bottom-action-height) + var(--ss-safe-bottom));
 }
 
 .ss-page::before {
@@ -142,7 +166,7 @@ button:active {
 
 .ss-list-group {
   overflow: hidden;
-  border-radius: 30rpx;
+  border-radius: var(--ss-list-radius);
   background: rgba(255, 255, 255, 0.72);
   border: 1.5rpx solid var(--ss-color-border);
   box-shadow: var(--ss-shadow-soft);
@@ -217,6 +241,13 @@ button:active {
   background: rgba(255, 255, 255, 0.94);
   color: var(--ss-color-text);
   border: 1.5rpx solid rgba(148, 163, 184, 0.22);
+}
+
+.ss-page-caption {
+  padding-left: 8rpx;
+  font-size: var(--ss-font-size-caption);
+  font-weight: 700;
+  color: var(--ss-color-subtext);
 }
 
 .ss-danger-button {

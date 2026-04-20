@@ -1,6 +1,6 @@
 <template>
-  <view class="ss-page contacts-page">
-    <ss-topbar title="联系人" subtitle="更像 iOS 通讯录，先看最常联系的人。" show-back />
+  <view class="ss-page ss-page--with-nav ss-page--with-bottom-bar contacts-page">
+    <app-nav-bar title="联系人" subtitle="更像 iOS 通讯录，先看最常联系的人。" show-back />
     <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" text="这里可以语音读出联系人姓名和关系，方便慢慢看。" />
 
     <ss-feedback-state
@@ -11,46 +11,59 @@
     />
 
     <view v-else class="contact-section">
-      <text class="section-label">优先联系</text>
+      <text class="section-label ss-page-caption">优先联系</text>
       <view class="ss-list-group ss-fade-up ss-stagger-1">
-        <view v-for="contact in priorityContacts" :key="contact.id" class="ss-list-cell contact-cell" @click="chatWith(contact.id)">
-          <view class="avatar">{{ contact.avatarText }}</view>
-          <view class="contact-main">
-            <view class="contact-top">
-              <text class="name">{{ contact.name }}</text>
-              <text v-if="contact.isBlacklisted" class="ss-chip ss-chip-danger">谨慎联系</text>
-              <text v-else-if="contact.suspiciousLevel && contact.suspiciousLevel !== 'none'" class="ss-chip ss-chip-warn">先确认</text>
+        <app-list-cell
+          v-for="contact in priorityContacts"
+          :key="contact.id"
+          class="contact-cell"
+          :title="contact.name"
+          :description="contact.relation"
+          :secondary="contact.note"
+          :avatar-text="contact.avatarText"
+          align="start"
+          @click="chatWith(contact.id)"
+        >
+          <template #titleSuffix>
+            <text v-if="contact.isBlacklisted" class="ss-chip ss-chip-danger">谨慎联系</text>
+            <text v-else-if="contact.suspiciousLevel && contact.suspiciousLevel !== 'none'" class="ss-chip ss-chip-warn">先确认</text>
+          </template>
+          <template #trailing>
+            <view class="contact-actions">
+              <button class="action-chip ss-pressable" @click.stop="chatWith(contact.id)">消息</button>
+              <button class="action-chip ghost ss-pressable" @click.stop="startCall(contact.id)">电话</button>
             </view>
-            <text class="relation">{{ contact.relation }}</text>
-            <text class="note">{{ contact.note }}</text>
-          </view>
-          <view class="contact-actions">
-            <button class="action-chip ss-pressable" @click.stop="chatWith(contact.id)">消息</button>
-            <button class="action-chip ghost ss-pressable" @click.stop="startCall(contact.id)">电话</button>
-          </view>
-        </view>
+          </template>
+        </app-list-cell>
       </view>
 
-      <text class="section-label secondary">其他联系人</text>
+      <text class="section-label secondary ss-page-caption">其他联系人</text>
       <view class="ss-list-group ss-fade-up ss-stagger-2">
-        <view v-for="contact in otherContacts" :key="contact.id" class="ss-list-cell contact-cell compact" @click="chatWith(contact.id)">
-          <view class="avatar">{{ contact.avatarText }}</view>
-          <view class="contact-main">
-            <text class="name">{{ contact.name }}</text>
-            <text class="relation">{{ contact.relation }}</text>
-          </view>
-        </view>
+        <app-list-cell
+          v-for="contact in otherContacts"
+          :key="contact.id"
+          class="contact-cell compact"
+          :title="contact.name"
+          :description="contact.relation"
+          :avatar-text="contact.avatarText"
+          compact
+          @click="chatWith(contact.id)"
+        />
       </view>
     </view>
 
-    <button class="ss-secondary-button bottom-button" @click="openPage('/pages/elder/call-records')">最近通话</button>
+    <app-bottom-action-bar>
+      <button class="ss-secondary-button bottom-button" @click="openPage('/pages/elder/call-records')">最近通话</button>
+    </app-bottom-action-bar>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppBottomActionBar from '@/components/app/AppBottomActionBar.vue'
+import AppListCell from '@/components/app/AppListCell.vue'
+import AppNavBar from '@/components/app/AppNavBar.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
-import SsTopbar from '@/components/ui/ss-topbar.vue'
 import SsVoiceBar from '@/components/ui/ss-voice-bar.vue'
 import { useAppStore } from '@/store/app'
 import { openPage } from '@/utils/navigation'
@@ -80,9 +93,6 @@ function startCall(contactId: string) {
 }
 
 .section-label {
-  padding: 8rpx 8rpx 0;
-  font-size: var(--ss-font-size-caption);
-  font-weight: 700;
   color: var(--ss-color-primary);
 }
 
@@ -97,45 +107,6 @@ function startCall(contactId: string) {
 
 .contact-cell.compact {
   align-items: center;
-}
-
-.avatar {
-  width: 84rpx;
-  height: 84rpx;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
-  color: var(--ss-color-primary);
-  font-size: 30rpx;
-  font-weight: 700;
-}
-
-.contact-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.contact-top {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  flex-wrap: wrap;
-}
-
-.name {
-  font-size: var(--ss-font-size-subtitle);
-  font-weight: 700;
-}
-
-.relation,
-.note {
-  display: block;
-  margin-top: 8rpx;
-  font-size: var(--ss-font-size-body);
-  line-height: 1.55;
-  color: var(--ss-color-subtext);
 }
 
 .contact-actions {
@@ -162,6 +133,6 @@ function startCall(contactId: string) {
 }
 
 .bottom-button {
-  margin-top: auto;
+  flex: 1;
 }
 </style>

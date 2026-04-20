@@ -1,18 +1,17 @@
 <template>
-  <view class="ss-page home-page">
-    <ss-topbar :title="`您好，${displayName}`" subtitle="把重要的人和重要的事放在最前面。" />
+  <view class="ss-page ss-page--with-nav home-page">
+    <app-nav-bar :title="`您好，${displayName}`" subtitle="把重要的人和重要的事放在最前面。" />
 
-    <view class="hero ss-glass-card ss-fade-up ss-stagger-1">
-      <view class="hero-copy">
-        <text class="eyebrow">今天优先看这里</text>
+    <app-card class="hero ss-fade-up ss-stagger-1" padding="lg" elevated>
+      <app-section eyebrow="今天优先看这里">
         <text class="hero-title">{{ topRisk ? topRisk.title : '今天整体平稳，可以安心联系家人' }}</text>
         <text class="hero-desc">{{ topRisk?.summary || '最近会话、风险提醒和求助入口都已经放到首页，少找一步。' }}</text>
-      </view>
+      </app-section>
       <view class="hero-side">
         <text class="hero-pill" :class="hasHighRisk ? 'danger' : 'safe'">{{ hasHighRisk ? '高风险提醒' : '状态平稳' }}</text>
         <button class="hero-action ss-pressable" @click="openPage('/pages/elder/risk-alert')">{{ hasHighRisk ? '立即查看' : '查看提醒' }}</button>
       </view>
-    </view>
+    </app-card>
 
     <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" :text="voiceSummary" />
 
@@ -84,9 +83,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppCard from '@/components/app/AppCard.vue'
+import AppNavBar from '@/components/app/AppNavBar.vue'
+import AppSection from '@/components/app/AppSection.vue'
 import SsCard from '@/components/ui/ss-card.vue'
 import SsSectionTitle from '@/components/ui/ss-section-title.vue'
-import SsTopbar from '@/components/ui/ss-topbar.vue'
 import SsVoiceBar from '@/components/ui/ss-voice-bar.vue'
 import { useAppStore } from '@/store/app'
 import { openPage } from '@/utils/navigation'
@@ -152,25 +153,8 @@ function messageTypeLabel(type: MessageType) {
   background: rgba(255, 255, 255, 0.88);
 }
 
-.hero-copy {
-  flex: 1;
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44rpx;
-  padding: 0 16rpx;
-  border-radius: var(--ss-pill-radius);
-  background: rgba(255, 255, 255, 0.6);
-  color: var(--ss-color-primary);
-  font-size: var(--ss-font-size-caption);
-  font-weight: 700;
-}
-
 .hero-title {
   display: block;
-  margin-top: 16rpx;
   font-size: var(--ss-font-size-hero);
   font-weight: 800;
   line-height: 1.12;

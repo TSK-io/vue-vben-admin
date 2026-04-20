@@ -1,14 +1,13 @@
 <template>
-  <view class="ss-page settings-page">
-    <ss-topbar title="设置" subtitle="参考 iOS Settings，用分组列表来放常用开关。" show-back />
+  <view class="ss-page ss-page--with-nav settings-page">
+    <app-nav-bar title="设置" subtitle="参考 iOS Settings，用分组列表来放常用开关。" show-back />
 
-    <ss-card class="intro-card ss-fade-up ss-stagger-1">
+    <app-card class="intro-card ss-fade-up ss-stagger-1">
       <text class="intro-title">适老化与 Apple 风格一起保留</text>
       <text class="intro-desc">页面会更轻、更清楚，但不会为了好看牺牲字号、对比度和点击面积。</text>
-    </ss-card>
+    </app-card>
 
-    <view class="group">
-      <text class="group-label">显示</text>
+    <app-section class="group" title="显示" subtitle="先把阅读体验和识别效率相关的设置放在一起。">
       <view class="ss-list-group ss-fade-up ss-stagger-2">
         <view class="ss-list-cell setting-cell">
           <view class="setting-copy">
@@ -28,10 +27,9 @@
           <switch :checked="settings.contrastMode" color="#2563eb" @change="toggleContrast" />
         </view>
       </view>
-    </view>
+    </app-section>
 
-    <view class="group">
-      <text class="group-label">首页与提醒</text>
+    <app-section class="group" title="首页与提醒" subtitle="影响首页结构、提醒方式和老人使用负担。">
       <view class="ss-list-group ss-fade-up ss-stagger-3">
         <view class="ss-list-cell setting-cell">
           <view class="setting-copy">
@@ -48,14 +46,15 @@
           <switch :checked="settings.voiceBroadcastReserved" color="#2563eb" @change="toggleVoiceReserved" />
         </view>
       </view>
-    </view>
+    </app-section>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import SsCard from '@/components/ui/ss-card.vue'
-import SsTopbar from '@/components/ui/ss-topbar.vue'
+import AppCard from '@/components/app/AppCard.vue'
+import AppNavBar from '@/components/app/AppNavBar.vue'
+import AppSection from '@/components/app/AppSection.vue'
 import { useAppStore } from '@/store/app'
 import type { ElderSettings } from '@/types/app'
 
@@ -107,16 +106,7 @@ function getSwitchValue(event: Event) {
 }
 
 .group {
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.group-label {
-  padding-left: 8rpx;
-  font-size: var(--ss-font-size-caption);
-  font-weight: 700;
-  color: var(--ss-color-subtext);
+  gap: 14rpx;
 }
 
 .setting-cell {

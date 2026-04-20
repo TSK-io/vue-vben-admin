@@ -83,10 +83,10 @@
 
 ### P2 工程化落地
 
-- [ ] 抽离移动端 UI Token 与公共样式变量，避免每个页面单独写一套视觉方案
-- [ ] 抽离通用基础组件：`AppNavBar`、`AppCard`、`AppListCell`、`AppSection`、`AppBottomActionBar`
-- [ ] 梳理并统一 `tabBar`、状态栏、安全区、底部手势区适配
-- [ ] 建立一套页面级 UI 验收清单，确保后续新页面不再退回“很土的演示页”
+- [x] 抽离移动端 UI Token 与公共样式变量，避免每个页面单独写一套视觉方案
+- [x] 抽离通用基础组件：`AppNavBar`、`AppCard`、`AppListCell`、`AppSection`、`AppBottomActionBar`
+- [x] 梳理并统一 `tabBar`、状态栏、安全区、底部手势区适配
+- [x] 建立一套页面级 UI 验收清单，确保后续新页面不再退回“很土的演示页”
 
 ### 建议执行顺序
 
