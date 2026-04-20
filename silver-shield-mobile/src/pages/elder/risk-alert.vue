@@ -1,52 +1,48 @@
 <template>
   <view class="page-shell">
-    <ss-topbar title="风险提醒" subtitle="看到以下内容时，不要转账，不要点链接。" show-back />
+    <ss-topbar title="先别操作" subtitle="只告诉你现在该怎么做，不讲复杂分析。" show-back />
 
     <ss-card v-if="topRisk">
       <view class="hero-alert">
-        <text class="risk-badge">{{ topRisk.level.toUpperCase() }}</text>
+        <text class="risk-badge">重要提醒</text>
         <text class="risk-title">{{ topRisk.title }}</text>
         <text class="risk-summary">{{ topRisk.summary }}</text>
         <view class="strong-warning">
           <text class="warning-title">现在先做这 3 件事</text>
           <text class="warning-step">1. 不转账</text>
           <text class="warning-step">2. 不点陌生链接</text>
-          <text class="warning-step">3. 立即联系家属确认</text>
+          <text class="warning-step">3. 立刻联系家人</text>
         </view>
       </view>
     </ss-card>
 
     <ss-voice-bar
       :enabled="store.elderSettings.voiceBroadcastReserved"
-      :text="topRisk ? `${topRisk.title}。${topRisk.summary}` : '风险提醒页已预留语音播报能力。'"
+      :text="topRisk ? `${topRisk.title}。${topRisk.summary}` : '这里可以把提醒读出来。'"
     />
 
     <ss-card v-if="topRisk">
-      <ss-section-title title="为什么危险" />
-      <text class="block-text">{{ topRisk.reason }}</text>
-      <text v-if="topRisk.matchedText?.length" class="block-meta">命中词：{{ topRisk.matchedText.join('、') }}</text>
+      <ss-section-title title="简单说" />
+      <text class="block-text">{{ topRisk.reason || '这条内容看起来不太安全，先不要继续操作。' }}</text>
     </ss-card>
 
     <ss-card v-if="topRisk">
-      <ss-section-title title="建议怎么做" />
-      <text class="block-text">{{ topRisk.suggestion }}</text>
-      <text v-if="topRisk.confidence !== undefined" class="block-meta">风险置信度：{{ Math.round(topRisk.confidence * 100) }}%</text>
-      <text v-if="topRisk.detectionStatus === 'fallback'" class="block-meta warn-text">当前为兜底提示，请优先人工核验。</text>
-    </ss-card>
-
-    <ss-card v-if="store.aiServiceNotice">
-      <ss-section-title title="识别服务提示" />
-      <text class="block-text">{{ store.aiServiceNotice }}</text>
+      <ss-section-title title="接下来怎么做" />
+      <text class="block-text">{{ topRisk.suggestion || '先联系家人，让熟悉的人帮你看一眼。' }}</text>
+      <view class="action-group">
+        <button class="mini-action primary" @click="goChat">给家人发消息</button>
+        <button class="mini-action" @click="goContacts">查看联系人</button>
+      </view>
     </ss-card>
 
     <ss-feedback-state
       v-if="!topRisk"
       empty
       empty-title="当前没有新的风险提醒"
-      empty-description="当聊天、链接或后续通话分析命中风险后，这里会展示详细原因和建议。"
+      empty-description="如果收到可疑消息或电话，页面会在这里提醒你先停一下。"
     />
 
-    <button class="cta-button" @click="goChat">先联系家属确认</button>
+    <button class="cta-button" @click="goChat">联系家人</button>
   </view>
 </template>
 
@@ -67,6 +63,10 @@ function goChat() {
   store.selectContact('guardian-li')
   openPage('/pages/elder/chat')
 }
+
+function goContacts() {
+  openPage('/pages/elder/contacts')
+}
 </script>
 
 <style scoped lang="scss">
@@ -76,7 +76,9 @@ function goChat() {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
-  background: #fbf1ee;
+  background:
+    radial-gradient(circle at top left, rgba(255, 219, 214, 0.55), transparent 24%),
+    #fbf1ee;
 }
 .hero-alert {
   display: flex;
@@ -128,8 +130,22 @@ function goChat() {
   line-height: 1.6;
   color: var(--ss-color-subtext);
 }
-.warn-text {
-  color: #b45309;
+.action-group {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+.mini-action {
+  flex: 1;
+  border: none;
+  border-radius: 18rpx;
+  background: #f5efe4;
+  color: var(--ss-color-text);
+  font-size: var(--ss-font-size-body);
+}
+.mini-action.primary {
+  background: var(--ss-color-primary);
+  color: #fff;
 }
 .cta-button {
   margin-top: 12rpx;

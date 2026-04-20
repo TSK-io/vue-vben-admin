@@ -1,12 +1,12 @@
 <template>
   <view class="page-shell">
-    <ss-topbar title="联系人" subtitle="先联系最熟悉的人，陌生号码先核验。" show-back />
-    <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" text="联系人页已预留语音播报，可朗读联系人姓名、关系和联系建议。" />
+    <ss-topbar title="家人和熟人" subtitle="常联系的人放前面，点一下就能发消息或打电话。" show-back />
+    <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" text="这里可以语音读出联系人姓名和关系，方便慢慢看。" />
     <ss-feedback-state
       v-if="!contacts.length"
       empty
       empty-title="联系人列表暂时为空"
-      empty-description="完成绑定关系联调后，这里会展示家属、社区和熟人联系人。"
+      empty-description="稍后添加家人联系人后，就能从这里直接联系。"
     />
 
     <ss-card v-for="contact in contacts" :key="contact.id">
@@ -16,22 +16,21 @@
           <view class="name-row">
             <text class="name">{{ contact.name }}</text>
             <text v-if="contact.tag" class="tag">{{ contact.tag }}</text>
-            <text v-if="contact.isPriority" class="tag priority">重点</text>
-            <text v-if="contact.isBlacklisted" class="tag danger">黑名单</text>
-            <text v-if="contact.suspiciousLevel && contact.suspiciousLevel !== 'none'" class="tag warm">可疑</text>
+            <text v-if="contact.isPriority" class="tag priority">常联系</text>
+            <text v-if="contact.isBlacklisted" class="tag danger">谨慎联系</text>
+            <text v-if="contact.suspiciousLevel && contact.suspiciousLevel !== 'none'" class="tag warm">先确认</text>
           </view>
           <text class="relation">{{ contact.relation }}</text>
           <text class="note">{{ contact.note }}</text>
-          <text v-if="contact.supportsCommunityAssist" class="note">支持社区协同核验，可在高风险场景下请求协助。</text>
         </view>
       </view>
       <view class="action-row">
         <button class="mini-btn" @click="chatWith(contact.id)">发消息</button>
-        <button class="mini-btn secondary" @click="startCall(contact.id)">语音通话</button>
+        <button class="mini-btn secondary" @click="startCall(contact.id)">打电话</button>
       </view>
     </ss-card>
 
-    <button class="record-button" @click="openPage('/pages/elder/call-records')">查看通话记录</button>
+    <button class="record-button" @click="openPage('/pages/elder/call-records')">最近通话</button>
   </view>
 </template>
 
@@ -66,7 +65,9 @@ function startCall(contactId: string) {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
-  background: #f7f3e9;
+  background:
+    radial-gradient(circle at top left, rgba(223, 247, 242, 0.55), transparent 26%),
+    #f7f3e9;
 }
 .contact-row {
   display: flex;
@@ -76,7 +77,7 @@ function startCall(contactId: string) {
   width: 88rpx;
   height: 88rpx;
   border-radius: 50%;
-  background: #dff7f2;
+  background: linear-gradient(135deg, #dff7f2 0%, #c7ece3 100%);
   color: var(--ss-color-primary);
   display: flex;
   align-items: center;
@@ -143,8 +144,9 @@ function startCall(contactId: string) {
 .record-button {
   border: none;
   border-radius: 20rpx;
-  background: #eef2f7;
+  background: rgba(255, 255, 255, 0.85);
   color: var(--ss-color-text);
   font-size: var(--ss-font-size-body);
+  box-shadow: 0 12rpx 24rpx rgba(22, 48, 43, 0.06);
 }
 </style>

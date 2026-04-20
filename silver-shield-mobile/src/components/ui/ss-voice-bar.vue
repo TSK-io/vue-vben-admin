@@ -1,7 +1,7 @@
 <template>
   <view v-if="enabled" class="voice-bar ss-voice-anchor">
     <view class="voice-copy">
-      <text class="voice-title">语音播报预留</text>
+      <text class="voice-title">语音播报</text>
       <text class="voice-text">{{ text }}</text>
     </view>
     <button class="voice-button" @click="announce">播报</button>
@@ -16,7 +16,7 @@ const props = defineProps<{
 
 function announce() {
   uni.showToast({
-    title: `已预留播报：${props.text.slice(0, 8)}`,
+    title: `正在播报：${props.text.slice(0, 8)}`,
     icon: 'none',
     duration: 1800,
   })

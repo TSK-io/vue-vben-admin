@@ -1,20 +1,17 @@
 <template>
   <view class="page-shell">
-    <ss-topbar :title="selectedContact?.name || '聊天会话'" :subtitle="selectedContact?.relation || '与守护人保持联系'" show-back />
-
-    <ss-card>
-      <view class="tips-box">
-        <text class="tips-title">防骗提醒</text>
-        <text class="tips-text">凡是提到验证码、转账、银行卡、陌生链接，先不要操作，先联系家属。</text>
-        <text v-if="store.aiServiceNotice" class="tips-warning">{{ store.aiServiceNotice }}</text>
-        <text class="tips-warning">已预留图片消息 OCR 识别，可把截图先发给家人核验。</text>
+    <view class="chat-header">
+      <button class="back-button" @click="goBack">返回</button>
+      <view class="header-main">
+        <text class="header-name">{{ selectedContact?.name || '聊天' }}</text>
+        <text class="header-meta">{{ selectedContact?.relation || '和熟悉的人慢慢聊' }}</text>
       </view>
-    </ss-card>
+      <button v-if="showBroadcast" class="voice-button" @click="announceChat">朗读</button>
+    </view>
 
-    <ss-voice-bar
-      :enabled="store.elderSettings.voiceBroadcastReserved"
-      :text="selectedContact ? `正在与${selectedContact.name}聊天。风险提示：不要转账，不要点陌生链接。` : '聊天页已预留语音播报能力。'"
-    />
+    <view v-if="topHint" class="chat-tip">
+      <text class="chat-tip-text">{{ topHint }}</text>
+    </view>
 
     <ss-feedback-state
       v-if="!selectedContact"
@@ -30,59 +27,74 @@
     />
 
     <view class="message-list">
+      <view class="time-divider">
+        <text class="time-divider-text">今天</text>
+      </view>
       <view
         v-for="message in messages"
         :key="message.id"
         class="message-item"
-        :class="[`sender-${message.sender}`, `status-${message.status}`, { suspicious: message.suspicious }]"
+        :class="[`sender-${message.sender}`, `type-${message.type}`]"
       >
-        <template v-if="message.type === 'image'">
-          <view class="media-card">
-            <text class="media-tag">图片消息预留</text>
-            <text class="message-content">{{ message.content }}</text>
-          </view>
-        </template>
-        <template v-else-if="message.type === 'link'">
-          <view class="link-card">
-            <text class="media-tag">链接消息预留</text>
-            <text class="link-title">{{ message.linkTitle || '待校验链接' }}</text>
-            <text class="link-url">{{ message.linkUrl }}</text>
-            <text class="message-content">{{ message.content }}</text>
+        <template v-if="message.sender === 'system'">
+          <view class="system-note">
+            <text class="system-note-text">{{ systemHint(message) }}</text>
           </view>
         </template>
         <template v-else>
-          <text class="message-content">{{ message.content }}</text>
+          <view class="bubble">
+            <template v-if="message.type === 'image'">
+              <view class="media-card">
+                <text class="media-tag">图片</text>
+                <text class="message-content">{{ cleanImageText(message.content) }}</text>
+              </view>
+            </template>
+            <template v-else-if="message.type === 'link'">
+              <view class="link-card">
+                <text class="link-title">{{ message.linkTitle || '收到一个链接' }}</text>
+                <text class="link-url">{{ message.linkUrl }}</text>
+                <text class="message-content">{{ message.content }}</text>
+              </view>
+            </template>
+            <template v-else>
+              <text class="message-content">{{ message.content }}</text>
+            </template>
+          </view>
+          <text class="message-meta">{{ message.time }}</text>
         </template>
-
-        <text v-if="message.riskReason" class="message-risk">{{ message.riskReason }}</text>
-        <text class="message-meta">{{ message.time }} · {{ statusLabel(message.status) }}</text>
       </view>
     </view>
 
     <view class="composer">
-      <input v-model="draft" class="composer-input" placeholder="输入消息，含转账/链接等关键词会触发提醒" />
-      <button class="image-button" @click="sendImageSample">发截图</button>
-      <button class="send-button" @click="submitMessage">发送</button>
+      <button class="tool-button" @click="sendImageSample">+</button>
+      <input v-model="draft" class="composer-input" placeholder="发消息" />
+      <button class="send-button" :class="{ disabled: !draft.trim() }" @click="submitMessage">发送</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import SsCard from '@/components/ui/ss-card.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
-import SsTopbar from '@/components/ui/ss-topbar.vue'
-import SsVoiceBar from '@/components/ui/ss-voice-bar.vue'
 import { useAppStore } from '@/store/app'
-import type { MessageStatus } from '@/types/app'
+import { backPage } from '@/utils/navigation'
+import type { ChatMessage } from '@/types/app'
 
 const store = useAppStore()
 const draft = ref('')
 
 const selectedContact = computed(() => store.selectedContact)
 const messages = computed(() => store.selectedMessages)
+const showBroadcast = computed(() => store.elderSettings.voiceBroadcastReserved)
+const topHint = computed(() => {
+  const latestSystem = [...messages.value].reverse().find((item) => item.sender === 'system')
+  return latestSystem ? systemHint(latestSystem) : '遇到转账、验证码、陌生链接，先问家人。'
+})
 
 function submitMessage() {
+  if (!draft.value.trim()) {
+    return
+  }
   store.sendMessage(draft.value)
   draft.value = ''
 }
@@ -94,136 +106,229 @@ function sendImageSample() {
   })
 }
 
-function statusLabel(status: MessageStatus) {
-  const map: Record<MessageStatus, string> = {
-    sent: '已发送',
-    received: '收到回复',
-    risk: '风险提醒',
+function announceChat() {
+  uni.showToast({
+    title: '已开始朗读聊天',
+    icon: 'none',
+  })
+}
+
+function goBack() {
+  backPage()
+}
+
+function systemHint(message: ChatMessage) {
+  if (message.riskLevel === 'high') {
+    return '这条内容像诈骗，先别转账，先联系家人。'
   }
 
-  return map[status]
+  return message.content.replace(/^[^：:]*[：:]/, '').trim() || '这条内容需要先确认。'
+}
+
+function cleanImageText(content: string) {
+  return content.replace('图片消息预留：', '')
 }
 </script>
 
 <style scoped lang="scss">
 .page-shell {
   min-height: 100vh;
-  padding: 32rpx 24rpx 160rpx;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 18rpx 18rpx 148rpx;
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
-  background: linear-gradient(180deg, #f9f7f1 0%, #f0f4ef 100%);
+  gap: 14rpx;
+  background: linear-gradient(180deg, #efece4 0%, #e8eee9 100%);
 }
-.tips-box {
+.chat-header {
   display: flex;
-  flex-direction: column;
-  gap: 8rpx;
+  align-items: center;
+  gap: 16rpx;
+  padding: 8rpx 4rpx 4rpx;
 }
-.tips-title {
-  font-size: var(--ss-font-size-subtitle);
+.back-button,
+.voice-button {
+  min-height: 72rpx;
+  padding: 0 20rpx;
+  border: none;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ss-color-text);
+  font-size: var(--ss-font-size-caption);
+}
+.header-main {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.header-name {
+  display: block;
+  font-size: 36rpx;
   font-weight: 700;
-  color: #8a5a00;
+  color: var(--ss-color-text);
 }
-.tips-text {
-  font-size: var(--ss-font-size-body);
-  line-height: 1.6;
+.header-meta {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
   color: var(--ss-color-subtext);
 }
-.tips-warning {
-  font-size: var(--ss-font-size-caption);
-  line-height: 1.6;
-  color: #b45309;
+.chat-tip {
+  align-self: center;
+  max-width: 92%;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 243, 205, 0.92);
+}
+.chat-tip-text {
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #8a5a00;
+}
+.time-divider {
+  display: flex;
+  justify-content: center;
+  margin: 8rpx 0 4rpx;
+}
+.time-divider-text {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(112, 130, 124, 0.12);
+  font-size: 22rpx;
+  color: var(--ss-color-subtext);
 }
 .message-list {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 .message-item {
-  max-width: 82%;
-  padding: 20rpx 22rpx;
-  border-radius: 24rpx;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 .message-item.sender-self {
-  margin-left: auto;
-  background: #dff7f2;
+  align-items: flex-end;
 }
 .message-item.sender-other {
-  margin-right: auto;
+  align-items: flex-start;
+}
+.message-item.sender-system {
+  align-items: center;
+  margin: 6rpx 0;
+}
+.bubble {
+  max-width: 76%;
+  padding: 18rpx 20rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 10rpx 20rpx rgba(22, 48, 43, 0.05);
+}
+.sender-self .bubble {
+  border-bottom-right-radius: 10rpx;
+  background: #95ec69;
+  box-shadow: none;
+}
+.sender-other .bubble {
+  border-bottom-left-radius: 10rpx;
+  background: rgba(255, 255, 255, 0.98);
+}
+.type-link .bubble {
   background: #ffffff;
 }
-.message-item.sender-system,
-.message-item.status-risk,
-.message-item.suspicious {
-  width: 100%;
-  max-width: 100%;
-  background: #fff1f0;
-  border: 2rpx solid #fecaca;
+.system-note {
+  max-width: 88%;
+  padding: 12rpx 18rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 243, 221, 0.96);
+  border: 1px solid rgba(255, 196, 93, 0.45);
+}
+.system-note-text {
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #8a5a00;
+  text-align: center;
 }
 .message-content,
 .link-title,
 .link-url {
   font-size: var(--ss-font-size-body);
-  line-height: 1.7;
+  line-height: 1.55;
+  color: #111827;
 }
 .link-title {
   font-weight: 700;
 }
 .link-url,
 .message-meta,
-.media-tag,
-.message-risk {
-  font-size: var(--ss-font-size-caption);
+.media-tag {
+  font-size: 22rpx;
   color: var(--ss-color-subtext);
-}
-.message-risk {
-  color: #b91c1c;
 }
 .media-card,
 .link-card {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 6rpx;
+}
+.message-meta {
+  padding: 0 10rpx;
 }
 .composer {
   position: fixed;
-  left: 24rpx;
-  right: 24rpx;
-  bottom: 24rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 16rpx;
   display: flex;
-  gap: 16rpx;
-  padding: 18rpx;
-  border-radius: 26rpx;
-  background: rgba(255, 253, 248, 0.96);
-  box-shadow: 0 18rpx 40rpx rgba(22, 48, 43, 0.1);
+  align-items: center;
+  gap: 12rpx;
+  width: calc(100% - 32rpx);
+  max-width: 728px;
+  padding: 12rpx;
+  border-radius: 24rpx;
+  background: rgba(247, 247, 247, 0.98);
+  box-shadow: 0 10rpx 24rpx rgba(22, 48, 43, 0.08);
+}
+.tool-button {
+  width: 76rpx;
+  min-width: 76rpx;
+  min-height: 76rpx;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 40rpx;
+  line-height: 1;
 }
 .composer-input {
   flex: 1;
-  height: 88rpx;
-  padding: 0 20rpx;
-  border-radius: 18rpx;
-  background: #f3f5ef;
+  height: 76rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: #ffffff;
   font-size: var(--ss-font-size-body);
 }
 .send-button {
-  width: 160rpx;
+  width: 128rpx;
+  min-height: 76rpx;
   border: none;
-  border-radius: 18rpx;
-  background: var(--ss-color-primary);
+  border-radius: 999rpx;
+  background: #07c160;
   color: #fff;
   font-size: var(--ss-font-size-body);
   font-weight: 700;
 }
-.image-button {
-  width: 140rpx;
-  border: none;
-  border-radius: 18rpx;
-  background: #fff0d2;
-  color: #8a5a00;
-  font-size: var(--ss-font-size-caption);
-  font-weight: 700;
+.send-button.disabled {
+  background: #9fd9b5;
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    min-height: 100vh;
+    border-left: 1px solid rgba(22, 48, 43, 0.08);
+    border-right: 1px solid rgba(22, 48, 43, 0.08);
+    background: linear-gradient(180deg, #efece4 0%, #e7ede8 100%);
+  }
 }
 </style>

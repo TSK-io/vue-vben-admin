@@ -1,26 +1,23 @@
 <template>
   <view class="page-shell">
-    <ss-topbar title="通话记录" subtitle="查看最近与家人、社区的语音通话结果。" show-back />
-
-    <ss-card>
-      <ss-section-title title="通话方案预留" subtitle="当前以本地状态机演示，后续替换为真实 RTC 接入。" />
-      <text class="plan">{{ store.callSdkPlan }}</text>
-    </ss-card>
+    <ss-topbar title="最近通话" subtitle="只看最近联系过谁，结果一眼能看懂。" show-back />
 
     <ss-feedback-state
       v-if="!records.length"
       empty
       empty-title="还没有通话记录"
-      empty-description="从联系人页、风险详情或求助详情发起语音通话后，这里会自动沉淀记录。"
+      empty-description="打过电话以后，这里会自动显示最近的通话。"
     />
 
     <ss-card v-for="record in records" :key="record.id">
       <view class="record-card">
-        <text class="name">{{ record.contactName }}</text>
-        <text class="meta">{{ directionLabel(record.direction) }} · {{ statusLabel(record.status) }}</text>
-        <text class="meta">{{ record.startedAt }} · 时长 {{ record.durationLabel }}</text>
-        <text class="summary">{{ record.summaryText || '待补充通话摘要。' }}</text>
-        <text class="summary-tag">{{ record.summaryStatus === 'uploaded' ? '摘要已上传预留' : '待上传摘要' }}</text>
+        <view class="top-row">
+          <text class="name">{{ record.contactName }}</text>
+          <text class="summary-tag" :class="record.status">{{ statusLabel(record.status) }}</text>
+        </view>
+        <text class="meta">{{ directionLabel(record.direction) }} · {{ record.startedAt }}</text>
+        <text class="meta">通话时长 {{ record.durationLabel }}</text>
+        <text class="summary">{{ summaryLabel(record) }}</text>
       </view>
     </ss-card>
   </view>
@@ -30,10 +27,9 @@
 import { computed } from 'vue'
 import SsCard from '@/components/ui/ss-card.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
-import SsSectionTitle from '@/components/ui/ss-section-title.vue'
 import SsTopbar from '@/components/ui/ss-topbar.vue'
 import { useAppStore } from '@/store/app'
-import type { CallDirection, CallStatus } from '@/types/app'
+import type { CallDirection, CallRecord, CallStatus } from '@/types/app'
 
 const store = useAppStore()
 const records = computed(() => store.elderCallRecords)
@@ -52,6 +48,18 @@ function statusLabel(status: CallStatus) {
 
   return map[status] || status
 }
+
+function summaryLabel(record: CallRecord) {
+  if (record.status === 'missed') {
+    return '这次没有接通，可以稍后再打。'
+  }
+
+  if (record.status === 'failed') {
+    return '通话中断了，建议换个时间再联系。'
+  }
+
+  return record.summaryText || '这次通话已结束。'
+}
 </script>
 
 <style scoped lang="scss">
@@ -61,9 +69,10 @@ function statusLabel(status: CallStatus) {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
-  background: #f6f8f2;
+  background:
+    radial-gradient(circle at top right, rgba(230, 247, 255, 0.5), transparent 24%),
+    #f6f8f2;
 }
-.plan,
 .meta,
 .summary {
   font-size: var(--ss-font-size-body);
@@ -74,6 +83,12 @@ function statusLabel(status: CallStatus) {
   display: flex;
   flex-direction: column;
   gap: 10rpx;
+}
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
 }
 .name {
   font-size: var(--ss-font-size-subtitle);
@@ -86,5 +101,15 @@ function statusLabel(status: CallStatus) {
   background: #eef2f7;
   font-size: var(--ss-font-size-caption);
   color: var(--ss-color-text);
+}
+.summary-tag.ended {
+  background: #dff7f2;
+  color: var(--ss-color-primary);
+}
+.summary-tag.missed,
+.summary-tag.failed,
+.summary-tag.rejected {
+  background: #fff0d2;
+  color: #8a5a00;
 }
 </style>
