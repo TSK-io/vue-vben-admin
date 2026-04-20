@@ -13,11 +13,9 @@ export interface AdminUserListItem {
   name: string;
   username: string;
   phone: string;
-  role: 'admin' | 'community' | 'elder' | 'family';
-  riskLevel: 'high' | 'low' | 'medium';
-  bindCount: number;
-  communityName: string;
-  lastAlertAt: string;
+  role: 'admin' | 'ops' | 'reviewer' | 'support';
+  permissionScope: string;
+  lastLoginAt: string;
   status: 'disabled' | 'enabled';
 }
 
@@ -79,10 +77,22 @@ export interface ContentPayload {
   contentBody: string;
 }
 
-function mapRiskLevelFromRoles(roles: string[]): 'high' | 'low' | 'medium' {
-  if (roles.includes('elder')) return 'high';
-  if (roles.includes('family')) return 'medium';
-  return 'low';
+function mapAdminRole(roles: string[]): AdminUserListItem['role'] {
+  if (roles.includes('admin')) return 'admin';
+  if (roles.includes('ops')) return 'ops';
+  if (roles.includes('reviewer')) return 'reviewer';
+  if (roles.includes('support')) return 'support';
+  return 'support';
+}
+
+function mapPermissionScope(role: AdminUserListItem['role']) {
+  const scopeMap: Record<AdminUserListItem['role'], string> = {
+    admin: '全局管理',
+    ops: '运营配置',
+    reviewer: '风控审核',
+    support: '客服支持',
+  };
+  return scopeMap[role];
 }
 
 export async function getAdminUserListApi(params: AdminUserListParams) {
@@ -95,18 +105,19 @@ export async function getAdminUserListApi(params: AdminUserListParams) {
   });
   return {
     items: rows.map(
-      (item): AdminUserListItem => ({
-        bindCount: item.roles.includes('elder') ? 1 : 0,
-        communityName: item.roles.includes('community') ? '东湖社区' : '-',
+      (item): AdminUserListItem => {
+        const role = mapAdminRole(item.roles);
+        return {
         id: item.user_id,
-        lastAlertAt: item.last_login_at || '-',
+        lastLoginAt: item.last_login_at || '-',
         name: item.display_name,
+        permissionScope: mapPermissionScope(role),
         phone: item.phone,
-        riskLevel: mapRiskLevelFromRoles(item.roles),
-        role: item.roles[0] || 'elder',
+        role,
         status: item.status === 'active' ? 'enabled' : 'disabled',
         username: item.username,
-      }),
+      };
+      },
     ),
     total: rows.length,
   };

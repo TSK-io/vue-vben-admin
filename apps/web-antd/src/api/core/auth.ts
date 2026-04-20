@@ -21,7 +21,7 @@ export namespace AuthApi {
     inviteCode?: string;
     password: string;
     phone: string;
-    role: 'admin' | 'community' | 'elder' | 'family';
+    role: 'admin' | 'ops' | 'reviewer' | 'support';
     username: string;
   }
 }

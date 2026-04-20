@@ -18,7 +18,7 @@ interface WebAntdPreferencesExtension {
 export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
-    defaultHomePath: '/elder/home',
+    defaultHomePath: '/admin/users',
     name: import.meta.env.VITE_APP_TITLE,
   },
   logo: {

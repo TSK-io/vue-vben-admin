@@ -15,18 +15,18 @@ export async function getUserInfoApi() {
     username: string;
   }>('/auth/me');
 
-  const firstRole = result.roles[0] ?? 'elder';
+  const firstRole = result.roles[0] ?? 'admin';
   const homePathMap: Record<string, string> = {
     admin: '/admin/users',
-    community: '/community/workorders',
-    elder: '/elder/home',
-    family: '/family/notifications',
+    ops: '/admin/contents',
+    reviewer: '/admin/rules',
+    support: '/admin/users',
   };
 
   return {
     avatar: '',
     desc: result.phone,
-    homePath: homePathMap[firstRole] ?? '/elder/home',
+    homePath: homePathMap[firstRole] ?? '/admin/users',
     realName: result.display_name,
     roles: result.roles,
     token: '',

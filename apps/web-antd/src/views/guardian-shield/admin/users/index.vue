@@ -36,21 +36,9 @@ const filters = reactive({
 
 const roleTextMap: Record<AdminUserListItem['role'], string> = {
   admin: '管理员',
-  community: '社区工作人员',
-  elder: '老年用户',
-  family: '子女用户',
-};
-
-const riskColorMap: Record<AdminUserListItem['riskLevel'], string> = {
-  high: 'red',
-  low: 'green',
-  medium: 'orange',
-};
-
-const riskTextMap: Record<AdminUserListItem['riskLevel'], string> = {
-  high: '高风险',
-  low: '低风险',
-  medium: '中风险',
+  ops: '运营管理员',
+  reviewer: '风控审核员',
+  support: '客服支持',
 };
 
 const statusColorMap: Record<AdminUserListItem['status'], string> = {
@@ -64,9 +52,9 @@ const statusTextMap: Record<AdminUserListItem['status'], string> = {
 };
 
 const summaryCards = computed(() => {
-  const elderCount = rows.value.filter((item) => item.role === 'elder').length;
-  const highRiskCount = rows.value.filter(
-    (item) => item.riskLevel === 'high',
+  const adminCount = rows.value.filter((item) => item.role === 'admin').length;
+  const reviewerCount = rows.value.filter(
+    (item) => item.role === 'reviewer',
   ).length;
   const enabledCount = rows.value.filter(
     (item) => item.status === 'enabled',
@@ -79,14 +67,14 @@ const summaryCards = computed(() => {
       description: '结合筛选条件统计当前可见用户总数。',
     },
     {
-      title: '老年用户',
-      value: `${elderCount}`,
-      description: '第一阶段重点关注适老页面和风险提醒闭环。',
+      title: '管理员账号',
+      value: `${adminCount}`,
+      description: '用于系统配置、权限管理和全局维护。',
     },
     {
-      title: '高风险对象',
-      value: `${highRiskCount}`,
-      description: '为后续重点关注、工单流转提供基础口径。',
+      title: '审核角色',
+      value: `${reviewerCount}`,
+      description: '用于承接风险规则与人工复核工作。',
     },
     {
       title: '启用账号',
@@ -108,24 +96,14 @@ const columns: TableColumnsType<AdminUserListItem> = [
     title: '角色',
   },
   {
-    dataIndex: 'communityName',
-    key: 'communityName',
-    title: '所属社区',
+    dataIndex: 'permissionScope',
+    key: 'permissionScope',
+    title: '权限范围',
   },
   {
-    dataIndex: 'riskLevel',
-    key: 'riskLevel',
-    title: '风险状态',
-  },
-  {
-    dataIndex: 'bindCount',
-    key: 'bindCount',
-    title: '绑定关系',
-  },
-  {
-    dataIndex: 'lastAlertAt',
-    key: 'lastAlertAt',
-    title: '最近告警',
+    dataIndex: 'lastLoginAt',
+    key: 'lastLoginAt',
+    title: '最近登录',
   },
   {
     dataIndex: 'status',
@@ -136,14 +114,6 @@ const columns: TableColumnsType<AdminUserListItem> = [
 
 function getRoleLabel(role: AdminUserListItem['role']) {
   return roleTextMap[role];
-}
-
-function getRiskColor(level: AdminUserListItem['riskLevel']) {
-  return riskColorMap[level];
-}
-
-function getRiskLabel(level: AdminUserListItem['riskLevel']) {
-  return riskTextMap[level];
 }
 
 function getStatusColor(status: AdminUserListItem['status']) {
@@ -204,11 +174,11 @@ onMounted(() => {
         <p class="eyebrow">管理后台 / 第一阶段</p>
         <h1>用户管理</h1>
         <p class="description">
-          当前页面用于承接比赛演示中的账号、角色和权限管理，可按角色、状态和关键词筛选用户，快速定位重点对象和异常账号。
+          当前页面仅用于后台账号、角色和权限范围管理，可按角色、状态和关键词筛选后台人员账号。
         </p>
       </div>
       <div class="hero-tip">
-        <span>重点用于展示“系统可配置、角色可区分、风险对象可追踪”的后台能力。</span>
+        <span>这里不再展示老年端、家属端或社区前台用户，只保留后台管理账号。</span>
       </div>
     </section>
 
@@ -233,7 +203,7 @@ onMounted(() => {
         <Input
           v-model:value="filters.keyword"
           allow-clear
-          placeholder="搜索姓名、手机号、社区或编号"
+          placeholder="搜索姓名、手机号、账号或编号"
           style="width: 260px"
           @press-enter="handleSearch"
         />
@@ -243,10 +213,10 @@ onMounted(() => {
           placeholder="角色"
           style="width: 180px"
           :options="[
-            { label: '老年用户', value: 'elder' },
-            { label: '子女用户', value: 'family' },
-            { label: '社区工作人员', value: 'community' },
             { label: '管理员', value: 'admin' },
+            { label: '运营管理员', value: 'ops' },
+            { label: '风控审核员', value: 'reviewer' },
+            { label: '客服支持', value: 'support' },
           ]"
         />
         <Select
@@ -284,7 +254,7 @@ onMounted(() => {
             <div class="user-cell">
               <strong>{{ record.name }}</strong>
               <span>{{ record.id }} · {{ record.phone }}</span>
-              <span>{{ record.age }} 岁 · {{ record.createdAt }} 注册</span>
+              <span>{{ record.username }} · {{ record.lastLoginAt }}</span>
             </div>
           </template>
 
@@ -292,17 +262,8 @@ onMounted(() => {
             <Tag color="blue">{{ getRoleLabel(record.role) }}</Tag>
           </template>
 
-          <template v-else-if="column.key === 'riskLevel'">
-            <div class="risk-cell">
-              <Tag :color="getRiskColor(record.riskLevel)">
-                {{ getRiskLabel(record.riskLevel) }}
-              </Tag>
-              <span>风险分 {{ record.riskScore }}</span>
-            </div>
-          </template>
-
-          <template v-else-if="column.key === 'bindCount'">
-            <span>{{ record.bindCount }} 个关联对象</span>
+          <template v-else-if="column.key === 'permissionScope'">
+            <span>{{ record.permissionScope }}</span>
           </template>
 
           <template v-else-if="column.key === 'status'">

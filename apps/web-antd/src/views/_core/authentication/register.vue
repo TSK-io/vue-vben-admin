@@ -15,10 +15,10 @@ defineOptions({ name: 'Register' });
 const loading = ref(false);
 
 const roleOptions = [
-  { label: '老年用户', value: 'elder' },
-  { label: '子女用户', value: 'family' },
-  { label: '社区工作人员', value: 'community' },
   { label: '系统管理员', value: 'admin' },
+  { label: '运营管理员', value: 'ops' },
+  { label: '风控审核员', value: 'reviewer' },
+  { label: '客服支持', value: 'support' },
 ] as const;
 
 const formSchema = computed((): VbenFormSchema[] => {
@@ -29,7 +29,7 @@ const formSchema = computed((): VbenFormSchema[] => {
         options: roleOptions,
         placeholder: '请选择身份',
       },
-      defaultValue: 'elder',
+      defaultValue: 'admin',
       fieldName: 'role',
       label: '身份类型',
       rules: z.string().min(1, { message: '请选择身份类型' }),
@@ -99,10 +99,10 @@ const formSchema = computed((): VbenFormSchema[] => {
     {
       component: 'VbenInput',
       componentProps: {
-        placeholder: '老年/子女/社区用户可填写邀请码',
+        placeholder: '按需填写后台开通邀请码',
       },
       fieldName: 'inviteCode',
-      help: '用于模拟“邀请码加入”流程，管理员可留空。',
+      help: '用于模拟后台账号开通流程，可留空。',
       label: '邀请码',
     },
     {

@@ -1,22 +1,32 @@
-# Silver Shield AI: Anti-Fraud Protection System
+# Silver Shield IM
 
-Silver Shield AI is a web project for anti-fraud protection of older adults. It connects elders, family members, community workers, and administrators in one coordinated workflow.
+Silver Shield IM is a multi-module project centered on a `uni-app` instant messaging client for end users.
 
-## What This Project Does
+The repository is now split by clear responsibilities:
 
-- Elder portal: risk alerts, one-click help, family binding, anti-fraud knowledge, accessibility settings
-- Family portal: overview, elder list, alert details, notifications, remote reminders
-- Community portal: district overview, key elders, work orders, education management, reports
-- Admin portal: users, roles, risk rules, content management, system settings
+- User client: `silver-shield-mobile`
+- Admin console only: `apps/web-antd`
+- Main business backend: `apps/backend-fastapi`
+- Independent AI risk service: `ai-api-service`
 
-## Demo Flow
+`apps/web-antd` is no longer treated as an elder portal, family portal, or community portal. It should only carry management, review, configuration, and operations functions.
 
-`Login -> Risk Recognition -> Risk Alert -> Family Notification -> Community Work Order -> Admin Configuration`
+## Product Focus
+
+- `silver-shield-mobile` is the real end-user product and should focus on conversations, contacts, chat, risk reminders, and SOS flows.
+- `apps/web-antd` is the admin backend for users, bindings, risk records, content, permissions, and system settings.
+- `apps/backend-fastapi` provides the main business APIs for mobile and admin.
+- `ai-api-service` provides independent fraud and risk detection APIs for message text, chat logs, and suspicious links.
+
+## Core Flow
+
+`Login -> Conversations -> Chat -> Risk Detection -> Risk Reminder / SOS -> Admin Review / Configuration`
 
 ## Project Structure
 
-- Frontend: `apps/web-antd`
-- Backend: `apps/backend-fastapi`
+- User client: `silver-shield-mobile`
+- Admin frontend: `apps/web-antd`
+- Main backend: `apps/backend-fastapi`
 - Independent AI API Service: `ai-api-service`
 - Requirements: [`需求文档.md`](./需求文档.md)
 - TODO: [`TODO.md`](./TODO.md)
@@ -59,13 +69,20 @@ QWEN_MODEL=...
 pnpm install
 ```
 
-2. Start frontend
+2. Start admin frontend
 
 ```bash
 pnpm dev:antd
 ```
 
-3. Start backend
+3. Start mobile client
+
+```bash
+cd silver-shield-mobile
+npm run dev:h5
+```
+
+4. Start backend
 
 ```bash
 cd apps/backend-fastapi
@@ -73,7 +90,7 @@ source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-4. Build frontend
+5. Build admin frontend
 
 ```bash
 pnpm build:antd
@@ -81,8 +98,8 @@ pnpm build:antd
 
 ## Notes
 
-- This repository has been refocused from a scaffold project into the Silver Shield AI competition project.
-- The current goal is to make the anti-fraud business flow clear, stable, and demo-ready.
+- This repository has been refocused from a scaffold project into a mobile IM plus admin-console project.
+- The current goal is to make the mobile messaging flow and backend management boundary clear, stable, and demo-ready.
 
 ## License
 
