@@ -1,4 +1,5 @@
 export type UserRole = 'elder' | 'guardian'
+export type BackendUserRole = 'elder' | 'family' | 'community' | 'admin'
 export type RiskLevel = 'low' | 'medium' | 'high'
 export type MessageSender = 'self' | 'other' | 'system'
 export type MessageStatus = 'sent' | 'received' | 'risk'
@@ -165,6 +166,8 @@ export interface UserProfile {
   role: UserRole
   phone: string
   welcomeText: string
+  backendRoles?: BackendUserRole[]
+  username?: string
 }
 
 export interface LoginForm {

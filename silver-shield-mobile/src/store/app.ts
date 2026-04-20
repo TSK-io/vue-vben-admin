@@ -531,8 +531,8 @@ export const useAppStore = defineStore('app', {
     lastRiskRefreshAt: '',
   }),
   getters: {
-    elderName: (state) => (state.profile?.role === 'elder' ? state.profile.name : '王阿姨'),
-    guardianName: (state) => (state.profile?.role === 'guardian' ? state.profile.name : '李女士'),
+    elderName: (state) => (state.currentRole === 'elder' ? state.profile?.name || '王阿姨' : '王阿姨'),
+    guardianName: (state) => (state.currentRole === 'guardian' ? state.profile?.name || '李女士' : '李女士'),
     selectedContact(state): Contact | undefined {
       return state.contacts.find((item) => item.id === state.selectedContactId)
     },
@@ -860,13 +860,9 @@ export const useAppStore = defineStore('app', {
 
       try {
         const result = await detectFraudChatLog({
-          contactId,
           messages: relatedMessages.map((item) => ({
-            id: item.id,
-            sender: item.sender,
-            content: item.content,
-            time: item.time,
-            type: item.type,
+            role: item.sender === 'self' ? 'self' : item.sender === 'other' ? 'peer' : 'system',
+            text: item.content,
           })),
         })
 
@@ -910,8 +906,7 @@ export const useAppStore = defineStore('app', {
 
         try {
           const result = await detectFraudLink({
-            url: message.linkUrl || '',
-            title: message.linkTitle,
+            link: message.linkUrl || '',
           })
 
           this.analyzedLinkTraceKeys.push(traceKey)
@@ -1042,9 +1037,25 @@ export const useAppStore = defineStore('app', {
       })
 
       this.sosCount += 1
-      this.sosAlerts.unshift(sosAlert)
-      this.selectedSosId = sosAlert.id
-      this.mainServiceNotice = sosAlert.detectionStatus === 'fallback'
+      const normalizedAlert: SosAlert = {
+        id: sosAlert.help_id,
+        elderId: 'elder-001',
+        elderName: '王阿姨',
+        summary: sosAlert.summary,
+        status: 'pending',
+        time: formatDisplayTime(),
+        detail,
+        location: '居家地址待确认',
+        linkedTicketNo: `SOS-${String(Date.now()).slice(-6)}`,
+        latestAction: sosAlert.notification_ids.length
+          ? '主业务系统已通知守护人和社区联系人。'
+          : '主业务系统已记录求助，等待后续通知。',
+        reporterPhone: this.profile?.phone || '未登记',
+        detectionStatus: sosAlert.help_id.startsWith('sos-') ? 'fallback' : 'success',
+      }
+      this.sosAlerts.unshift(normalizedAlert)
+      this.selectedSosId = normalizedAlert.id
+      this.mainServiceNotice = normalizedAlert.detectionStatus === 'fallback'
         ? '主业务系统当前使用演示回执，请继续按流程回访老人。'
         : '主业务系统已记录本次求助，并同步通知守护人。'
       this.savePersistedState()

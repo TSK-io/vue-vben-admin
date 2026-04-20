@@ -19,19 +19,14 @@ interface MessageDetectPayload {
 }
 
 interface ChatLogDetectPayload {
-  contactId: string
   messages: Array<{
-    id: string
-    sender: string
-    content: string
-    time: string
-    type: string
+    role: string
+    text: string
   }>
 }
 
 interface LinkDetectPayload {
-  url: string
-  title?: string
+  link: string
 }
 
 function levelFromScore(score: number): RiskLevel {
@@ -79,7 +74,7 @@ function mockAnalyzeText(text: string): FraudDetectResult {
 function mockAnalyzeChatLog(
   messages: ChatLogDetectPayload['messages'],
 ): FraudDetectResult {
-  const joined = messages.map((item) => item.content).join('\n')
+  const joined = messages.map((item) => item.text).join('\n')
   const result = mockAnalyzeText(joined)
 
   if (!result.suspicious && messages.length >= 3) {
@@ -96,8 +91,8 @@ function mockAnalyzeChatLog(
   return result
 }
 
-function mockAnalyzeLink(url: string, title?: string): FraudDetectResult {
-  const text = `${title || ''} ${url}`.toLowerCase()
+function mockAnalyzeLink(url: string): FraudDetectResult {
+  const text = url.toLowerCase()
   const matchedText = ['short', 'bonus', 'reward', 'verify', 'promo']
     .filter((keyword) => text.includes(keyword))
 
@@ -172,7 +167,7 @@ export function detectFraudLink(payload: LinkDetectPayload): Promise<FraudDetect
         data: payload,
         useAiBase: true,
       }),
-    () => mockAnalyzeLink(payload.url, payload.title),
+    () => mockAnalyzeLink(payload.link),
   )
 }
 

@@ -2,6 +2,7 @@ import { request } from '@/api/http'
 import { backendModules } from '@/api/modules'
 import { appConfig } from '@/utils/config'
 import type {
+  BackendUserRole,
   Contact,
   ElderProfile,
   LoginForm,
@@ -27,6 +28,57 @@ export interface AlertListResponse {
 interface RequestWithFallbackResult<T> {
   data: T
   fallback: boolean
+}
+
+interface BackendLoginResponse {
+  access_token: string
+  display_name: string
+  expires_in: number
+  refresh_token: string
+  roles: BackendUserRole[]
+  token_type: string
+  user_id: string
+  username: string
+}
+
+interface BackendProfileResponse {
+  display_name: string
+  permissions: string[]
+  phone: string
+  roles: BackendUserRole[]
+  user_id: string
+  username: string
+}
+
+interface BackendBindingItem {
+  authorized_at: string
+  elder_name: string
+  elder_user_id: string
+  family_name: string
+  family_user_id: string
+  id: string
+  is_emergency_contact: boolean
+  relationship_type: string
+  status: string
+}
+
+interface BackendRiskAlertItem {
+  elder_name: string
+  elder_user_id: string
+  id: string
+  occurred_at: string
+  risk_level: 'high' | 'low' | 'medium'
+  risk_score: number
+  source_type: 'call' | 'sms'
+  status: string
+  summary: string
+  title: string
+}
+
+interface BackendRiskAlertDetail extends BackendRiskAlertItem {
+  hit_rule_codes: string[]
+  reason_detail: string
+  suggestion_action: string
 }
 
 function mockProfileByRole(role: UserRole): UserProfile {
@@ -146,6 +198,51 @@ function mockAlerts(): AlertListResponse {
   }
 }
 
+function normalizeUserRole(role: BackendUserRole): UserRole {
+  return role === 'family' ? 'guardian' : 'elder'
+}
+
+function buildWelcomeText(role: UserRole, name: string) {
+  if (role === 'elder') {
+    return `${name}，遇到转账、验证码、陌生链接时，先暂停，再联系家人确认。`
+  }
+
+  return `${name}，请优先处理高风险提醒、回访老人，并关注最新求助。`
+}
+
+function mapBackendProfile(profile: BackendProfileResponse): UserProfile {
+  const primaryRole = normalizeUserRole(profile.roles[0] || 'elder')
+
+  return {
+    id: profile.user_id,
+    name: profile.display_name,
+    role: primaryRole,
+    phone: profile.phone,
+    welcomeText: buildWelcomeText(primaryRole, profile.display_name),
+    backendRoles: profile.roles,
+    username: profile.username,
+  }
+}
+
+function normalizeTimeLabel(value?: string) {
+  if (!value) {
+    return '待更新'
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    month: '2-digit',
+    day: '2-digit',
+    hour12: false,
+  })
+}
+
 async function requestWithFallback<T>(
   run: () => Promise<T>,
   fallback: () => T,
@@ -173,10 +270,27 @@ async function requestWithFallback<T>(
 export function loginByPassword(form: LoginForm): Promise<RequestWithFallbackResult<AuthLoginResponse>> {
   return requestWithFallback(
     () =>
-      request<AuthLoginResponse>({
+      request<BackendLoginResponse>({
         url: backendModules.main.login,
         method: 'POST',
-        data: form,
+        data: {
+          username: form.account,
+          password: form.password,
+        },
+      }).then((result) => {
+        const role = normalizeUserRole(result.roles[0] || 'elder')
+        return {
+          token: result.access_token,
+          user: {
+            id: result.user_id,
+            name: result.display_name,
+            role,
+            phone: '',
+            welcomeText: buildWelcomeText(role, result.display_name),
+            backendRoles: result.roles,
+            username: result.username,
+          },
+        }
       }),
     () => ({
       token: `mock-token-${form.role}`,
@@ -188,9 +302,9 @@ export function loginByPassword(form: LoginForm): Promise<RequestWithFallbackRes
 export function fetchUserProfile(role: UserRole): Promise<RequestWithFallbackResult<UserProfile>> {
   return requestWithFallback(
     () =>
-      request<UserProfile>({
+      request<BackendProfileResponse>({
         url: backendModules.main.profile,
-      }),
+      }).then((result) => mapBackendProfile(result)),
     () => mockProfileByRole(role),
   )
 }
@@ -198,8 +312,43 @@ export function fetchUserProfile(role: UserRole): Promise<RequestWithFallbackRes
 export function fetchBindingRelations(): Promise<RequestWithFallbackResult<BindingResponse>> {
   return requestWithFallback(
     () =>
-      request<BindingResponse>({
+      request<BackendBindingItem[]>({
         url: backendModules.main.binding,
+      }).then((rows) => {
+        const contacts = rows.map(
+          (item): Contact => ({
+            id: item.family_user_id,
+            name: item.family_name,
+            relation: item.relationship_type,
+            avatarText: item.family_name?.slice(0, 1) || '家',
+            isGuardian: true,
+            isPriority: item.is_emergency_contact,
+            tag: item.is_emergency_contact ? '紧急联系人' : '家庭联系人',
+            note: item.status === 'active' ? '当前绑定已生效。' : `当前状态：${item.status}`,
+          }),
+        )
+
+        const eldersMap = new Map<string, ElderProfile>()
+        for (const item of rows) {
+          if (!eldersMap.has(item.elder_user_id)) {
+            eldersMap.set(item.elder_user_id, {
+              id: item.elder_user_id,
+              name: item.elder_name,
+              age: 0,
+              relation: item.relationship_type,
+              statusSummary: item.status === 'active' ? '监护关系正常。' : `绑定状态：${item.status}`,
+              lastContactAt: normalizeTimeLabel(item.authorized_at),
+              riskLevel: 'low',
+              riskCountToday: 0,
+              pendingAlerts: 0,
+            })
+          }
+        }
+
+        return {
+          contacts,
+          elders: [...eldersMap.values()],
+        }
       }),
     mockBindings,
   )
@@ -208,8 +357,48 @@ export function fetchBindingRelations(): Promise<RequestWithFallbackResult<Bindi
 export function fetchRiskAlerts(): Promise<RequestWithFallbackResult<AlertListResponse>> {
   return requestWithFallback(
     () =>
-      request<AlertListResponse>({
+      request<{
+        items: BackendRiskAlertItem[]
+        pagination: {
+          page: number
+          page_size: number
+          total: number
+        }
+      }>({
         url: backendModules.main.alerts,
+        params: {
+          page: 1,
+          page_size: 20,
+        },
+      }).then(async (result) => {
+        const details = await Promise.all(
+          result.items.map((item) =>
+            request<BackendRiskAlertDetail>({
+              url: `${backendModules.main.alertDetail}/${item.id}`,
+            }),
+          ),
+        )
+
+        return {
+          records: result.items.map(
+            (item, index): RiskRecord => ({
+              id: item.id,
+              level: item.risk_level,
+              title: item.title,
+              summary: item.summary,
+              reason: details[index]?.reason_detail,
+              suggestion: details[index]?.suggestion_action,
+              time: normalizeTimeLabel(item.occurred_at),
+              source: item.source_type === 'sms' ? 'chat' : 'call',
+              matchedText: details[index]?.hit_rule_codes || [],
+              confidence: Math.min((item.risk_score || 0) / 100, 1),
+              traceKey: item.id,
+              detectionStatus: 'success',
+              relatedContactId: item.elder_user_id,
+              followUpStatus: item.status === 'closed' ? 'resolved' : 'pending',
+            }),
+          ),
+        }
       }),
     mockAlerts,
   )

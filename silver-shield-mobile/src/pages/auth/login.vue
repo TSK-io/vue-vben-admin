@@ -21,19 +21,20 @@
       </view>
 
       <view class="form-list">
-        <view class="form-item">
-          <text class="label">账号</text>
-          <input v-model="form.account" class="input" placeholder="输入演示账号，例如 elder-demo" />
-        </view>
-        <view class="form-item">
-          <text class="label">密码</text>
-          <input v-model="form.password" class="input" password placeholder="输入任意密码即可登录" />
-        </view>
+      <view class="form-item">
+        <text class="label">账号</text>
+        <input v-model="form.account" class="input" placeholder="输入真实账号，例如 elder_demo / family_demo" />
+      </view>
+      <view class="form-item">
+        <text class="label">密码</text>
+        <input v-model="form.password" class="input" password placeholder="输入密码，例如演示环境默认 111" />
+      </view>
       </view>
 
       <text v-if="store.loginError" class="error-text">{{ store.loginError }}</text>
 
       <button class="submit-button" @click="submitLogin">登录并进入首页</button>
+      <text class="hint-text">老人端可用 `elder_demo`，守护人端可用 `family_demo`。</text>
     </ss-card>
   </view>
 </template>
@@ -54,8 +55,8 @@ const roles: Array<{ label: string; value: UserRole }> = [
 ]
 
 const form = reactive<LoginForm>({
-  account: 'elder-demo',
-  password: '123456',
+  account: 'elder_demo',
+  password: '111',
   role: 'elder',
 })
 
@@ -153,5 +154,12 @@ async function submitLogin() {
   color: #fff;
   font-size: 30rpx;
   font-weight: 700;
+}
+.hint-text {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--ss-color-subtext);
 }
 </style>
