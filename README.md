@@ -9,12 +9,12 @@ The repository is now split by clear responsibilities:
 - Main business backend: `apps/backend-fastapi`
 - Independent AI risk service: `ai-api-service`
 
-`apps/web-antd` is no longer treated as an elder portal, family portal, or community portal. It should only carry management, review, configuration, and operations functions.
+`apps/web-antd` has been cleaned up into a pure admin console. End-user portals and their related frontend routes, pages, and APIs have been removed from the web app.
 
 ## Product Focus
 
 - `silver-shield-mobile` is the real end-user product and should focus on conversations, contacts, chat, risk reminders, and SOS flows.
-- `apps/web-antd` is the admin backend for users, bindings, risk records, content, permissions, and system settings.
+- `apps/web-antd` is the admin backend for admin accounts, permissions, risk records, content, and system settings.
 - `apps/backend-fastapi` provides the main business APIs for mobile and admin.
 - `ai-api-service` provides independent fraud and risk detection APIs for message text, chat logs, and suspicious links.
 
@@ -100,6 +100,7 @@ pnpm build:antd
 
 - This repository has been refocused from a scaffold project into a mobile IM plus admin-console project.
 - The current goal is to make the mobile messaging flow and backend management boundary clear, stable, and demo-ready.
+- The current `web` app is already restricted to admin-only modules and should not reintroduce end-user pages.
 
 ## License
 
