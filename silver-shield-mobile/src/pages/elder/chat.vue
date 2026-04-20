@@ -152,7 +152,7 @@ function cleanImageText(content: string) {
   min-height: 74rpx;
   padding: 0;
   border: none;
-  border-radius: 50%;
+  border-radius: 24rpx;
   background: rgba(255, 255, 255, 0.92);
   color: var(--ss-color-primary);
   font-size: 40rpx;
@@ -167,22 +167,22 @@ function cleanImageText(content: string) {
 .risk-banner {
   padding: 16rpx 20rpx;
   border-radius: 999rpx;
-  background: rgba(255, 243, 205, 0.96);
+  background: var(--ss-color-warning-bg);
   align-self: center;
 }
 
 .risk-banner.danger {
-  background: rgba(254, 226, 226, 0.94);
+  background: var(--ss-color-danger-bg);
 }
 
 .risk-banner-text {
   font-size: var(--ss-font-size-caption);
   line-height: 1.5;
-  color: #9a6700;
+  color: var(--ss-color-warning-fg);
 }
 
 .risk-banner.danger .risk-banner-text {
-  color: #b91c1c;
+  color: var(--ss-color-danger-fg);
 }
 
 .message-list {
@@ -201,7 +201,7 @@ function cleanImageText(content: string) {
 .time-divider-text {
   padding: 8rpx 18rpx;
   border-radius: var(--ss-pill-radius);
-  background: rgba(148, 163, 184, 0.14);
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-subtext);
   font-size: var(--ss-font-size-caption);
 }
@@ -233,12 +233,12 @@ function cleanImageText(content: string) {
   padding: 20rpx 22rpx;
   border-radius: 28rpx;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 14rpx 30rpx rgba(15, 23, 42, 0.08);
+  box-shadow: var(--ss-shadow-soft);
 }
 
 .sender-self .bubble {
   border-bottom-right-radius: 12rpx;
-  background: linear-gradient(180deg, #3f9bff 0%, var(--ss-color-primary) 100%);
+  background: var(--ss-color-primary);
 }
 
 .sender-self .message-content,
@@ -255,13 +255,13 @@ function cleanImageText(content: string) {
   max-width: 88%;
   padding: 14rpx 18rpx;
   border-radius: 22rpx;
-  background: rgba(255, 247, 224, 0.98);
+  background: var(--ss-color-warning-bg);
 }
 
 .system-note-text {
   font-size: var(--ss-font-size-caption);
   line-height: 1.6;
-  color: #9a6700;
+  color: var(--ss-color-warning-fg);
   text-align: center;
 }
 
@@ -313,6 +313,7 @@ function cleanImageText(content: string) {
   padding: 0 22rpx;
   border-radius: var(--ss-pill-radius);
   background: rgba(255, 255, 255, 0.96);
+  border: var(--ss-hairline);
   font-size: var(--ss-font-size-body);
 }
 
@@ -321,13 +322,13 @@ function cleanImageText(content: string) {
   min-height: 76rpx;
   border: none;
   border-radius: var(--ss-pill-radius);
-  background: linear-gradient(180deg, #3b82f6 0%, var(--ss-color-primary) 100%);
+  background: var(--ss-color-primary);
   color: #fff;
   font-size: var(--ss-font-size-body);
   font-weight: 700;
 }
 
 .send-button.disabled {
-  background: #bfdbfe;
+  background: rgba(181, 201, 232, 0.9);
 }
 </style>

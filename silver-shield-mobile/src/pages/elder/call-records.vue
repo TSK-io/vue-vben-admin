@@ -88,18 +88,18 @@ function summaryLabel(record: CallRecord) {
   width: fit-content;
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef2f7;
+  background: var(--ss-color-surface-soft);
   font-size: var(--ss-font-size-caption);
   color: var(--ss-color-text);
 }
 .summary-tag.ended {
-  background: #dff7f2;
-  color: var(--ss-color-primary);
+  background: var(--ss-color-success-bg);
+  color: var(--ss-color-success-fg);
 }
 .summary-tag.missed,
 .summary-tag.failed,
 .summary-tag.rejected {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 </style>

@@ -103,14 +103,6 @@ function sendReminder() {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: #fbf1ee;
-}
 .hero-alert {
   display: flex;
   flex-direction: column;
@@ -123,16 +115,16 @@ function sendReminder() {
   font-size: 22rpx;
 }
 .risk-badge.high {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 .risk-badge.medium {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .risk-badge.low {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--ss-color-success-bg);
+  color: var(--ss-color-success-fg);
 }
 .risk-title {
   font-size: 36rpx;
@@ -153,7 +145,7 @@ function sendReminder() {
   color: var(--ss-color-subtext);
 }
 .warn-text {
-  color: #b45309;
+  color: var(--ss-color-warning-fg);
 }
 .action-group {
   display: flex;
@@ -169,11 +161,11 @@ function sendReminder() {
   font-weight: 700;
 }
 .cta-button.secondary {
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 .cta-button.warm {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 </style>

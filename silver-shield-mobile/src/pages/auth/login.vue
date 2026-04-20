@@ -1,13 +1,21 @@
 <template>
   <view class="page-shell">
+    <view class="orb orb--left" />
+    <view class="orb orb--right" />
+
     <view class="hero">
-      <text class="eyebrow">Silver Shield Login</text>
-      <text class="title">登录并进入对应角色首页</text>
-      <text class="subtitle">先用 mock 登录态完成 H5 演示，后续再替换为真实接口。</text>
+      <text class="eyebrow">SILVER SHIELD</text>
+      <text class="title">更安静、更可信的沟通入口</text>
+      <text class="subtitle">登录后进入熟悉的联系人与会话，不让风险提醒抢走聊天本身的主角位置。</text>
     </view>
 
-    <ss-card>
-      <ss-section-title title="选择角色" subtitle="不同角色会进入不同首页，并加载不同资料。" />
+    <ss-card class="login-card">
+      <view class="login-card__head">
+        <text class="login-card__title">登录账号</text>
+        <text class="login-card__desc">演示阶段先使用本地账号，后续再替换成真实登录接口。</text>
+      </view>
+
+      <ss-section-title title="选择身份" subtitle="不同身份会进入不同的消息与守护视图。" />
       <view class="role-switch">
         <button
           v-for="role in roles"
@@ -16,24 +24,25 @@
           :class="{ active: form.role === role.value }"
           @click="form.role = role.value"
         >
-          {{ role.label }}
+          <text class="role-chip__label">{{ role.label }}</text>
+          <text class="role-chip__meta">{{ role.value === 'elder' ? '会话与求助' : '守护与提醒' }}</text>
         </button>
       </view>
 
       <view class="form-list">
-      <view class="form-item">
-        <text class="label">账号</text>
-        <input v-model="form.account" class="input" placeholder="输入真实账号，例如 elder_demo / family_demo" />
-      </view>
-      <view class="form-item">
-        <text class="label">密码</text>
-        <input v-model="form.password" class="input" password placeholder="输入密码，例如演示环境默认 111" />
-      </view>
+        <view class="form-item">
+          <text class="label">账号</text>
+          <input v-model="form.account" class="input" placeholder="输入账号，例如 elder_demo" />
+        </view>
+        <view class="form-item">
+          <text class="label">密码</text>
+          <input v-model="form.password" class="input" password placeholder="输入密码，演示环境默认 111" />
+        </view>
       </view>
 
       <text v-if="store.loginError" class="error-text">{{ store.loginError }}</text>
 
-      <button class="submit-button" @click="submitLogin">登录并进入首页</button>
+      <button class="ss-primary-button submit-button" @click="submitLogin">登录并进入首页</button>
       <text class="hint-text">老人端可用 `elder_demo`，守护人端可用 `family_demo`。</text>
     </ss-card>
   </view>
@@ -73,93 +82,185 @@ async function submitLogin() {
 <style scoped lang="scss">
 .page-shell {
   min-height: 100vh;
-  padding: 40rpx 28rpx 48rpx;
-  background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 30%),
-    linear-gradient(180deg, #f9f6ee 0%, #eef3ef 100%);
+  position: relative;
+  overflow: hidden;
+  padding: calc(48rpx + var(--ss-safe-top)) 28rpx 48rpx;
   display: flex;
   flex-direction: column;
-  gap: 28rpx;
+  gap: 30rpx;
 }
+
+.orb {
+  position: absolute;
+  border-radius: 999rpx;
+  filter: blur(12rpx);
+  opacity: 0.8;
+}
+
+.orb--left {
+  top: 36rpx;
+  left: -84rpx;
+  width: 240rpx;
+  height: 240rpx;
+  background: radial-gradient(circle, rgba(23, 104, 229, 0.12), rgba(23, 104, 229, 0));
+}
+
+.orb--right {
+  top: 180rpx;
+  right: -78rpx;
+  width: 220rpx;
+  height: 220rpx;
+  background: radial-gradient(circle, rgba(183, 121, 31, 0.08), rgba(183, 121, 31, 0));
+}
+
 .hero {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 14rpx;
+  padding: 12rpx 6rpx 0;
 }
+
 .eyebrow {
-  font-size: 24rpx;
-  letter-spacing: 4rpx;
+  font-size: var(--ss-font-size-caption);
+  letter-spacing: 5rpx;
   color: var(--ss-color-primary);
+  font-weight: var(--ss-font-weight-semibold);
 }
+
 .title {
-  font-size: 52rpx;
-  font-weight: 700;
-  line-height: 1.3;
+  max-width: 11em;
+  font-size: var(--ss-font-size-hero);
+  font-weight: var(--ss-font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: var(--ss-letter-spacing-tight);
+  color: var(--ss-color-text-strong);
 }
+
 .subtitle {
-  font-size: 28rpx;
-  line-height: 1.7;
+  max-width: 20em;
+  font-size: var(--ss-font-size-body);
+  line-height: 1.75;
   color: var(--ss-color-subtext);
 }
-.role-switch {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 20rpx;
+
+.login-card {
+  position: relative;
+  z-index: 1;
 }
-.role-chip {
-  flex: 1;
-  border: none;
-  border-radius: 20rpx;
-  background: #edf5f3;
-  color: var(--ss-color-primary);
-  font-size: 26rpx;
-}
-.role-chip.active {
-  background: var(--ss-color-primary);
-  color: #fff;
-}
-.form-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-  margin-top: 24rpx;
-}
-.form-item {
+
+.login-card__head {
   display: flex;
   flex-direction: column;
   gap: 10rpx;
+  margin-bottom: 28rpx;
 }
+
+.login-card__title {
+  font-size: var(--ss-font-size-title);
+  font-weight: var(--ss-font-weight-bold);
+  letter-spacing: var(--ss-letter-spacing-tight);
+  color: var(--ss-color-text-strong);
+}
+
+.login-card__desc {
+  font-size: var(--ss-font-size-body-sm);
+  line-height: 1.7;
+  color: var(--ss-color-subtext);
+}
+
+.role-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.role-chip {
+  min-height: 144rpx;
+  padding: 22rpx;
+  border-radius: 24rpx;
+  background: rgba(245, 247, 250, 0.96);
+  border: var(--ss-hairline);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8rpx;
+  color: var(--ss-color-text);
+  box-shadow: none;
+}
+
+.role-chip__label {
+  font-size: var(--ss-font-size-body);
+  font-weight: var(--ss-font-weight-semibold);
+}
+
+.role-chip__meta {
+  font-size: var(--ss-font-size-body-sm);
+  line-height: 1.5;
+  color: var(--ss-color-subtext);
+}
+
+.role-chip.active {
+  background: rgba(236, 242, 250, 0.98);
+  border-color: rgba(23, 104, 229, 0.18);
+  color: var(--ss-color-primary-strong);
+  box-shadow: var(--ss-shadow-soft);
+}
+
+.role-chip.active .role-chip__meta {
+  color: var(--ss-color-primary);
+}
+
+.form-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+  margin-top: 28rpx;
+}
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
 .label {
-  font-size: 26rpx;
-  font-weight: 600;
+  font-size: var(--ss-font-size-body-sm);
+  font-weight: var(--ss-font-weight-semibold);
+  color: var(--ss-color-text-strong);
 }
+
 .input {
-  height: 92rpx;
-  border-radius: 18rpx;
-  background: #f7f7f3;
+  height: var(--ss-input-height);
+  border-radius: 22rpx;
+  background: var(--ss-color-surface-muted);
+  border: var(--ss-hairline);
   padding: 0 24rpx;
-  font-size: 28rpx;
+  font-size: var(--ss-font-size-body);
+  color: var(--ss-color-text);
 }
+
 .error-text {
   display: block;
   margin-top: 18rpx;
   color: var(--ss-color-danger);
-  font-size: 24rpx;
+  font-size: var(--ss-font-size-body-sm);
+  font-weight: var(--ss-font-weight-medium);
 }
+
 .submit-button {
   margin-top: 24rpx;
-  border: none;
-  border-radius: 20rpx;
-  background: var(--ss-color-primary);
-  color: #fff;
-  font-size: 30rpx;
-  font-weight: 700;
+  width: 100%;
 }
+
 .hint-text {
   display: block;
   margin-top: 18rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
+  font-size: var(--ss-font-size-body-sm);
+  line-height: 1.7;
   color: var(--ss-color-subtext);
 }
 </style>

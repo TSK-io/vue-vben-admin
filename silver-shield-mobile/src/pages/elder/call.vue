@@ -137,7 +137,7 @@ function persistSummary() {
   width: 132rpx;
   height: 132rpx;
   border-radius: 50%;
-  background: linear-gradient(180deg, #ffffff 0%, #edf6ff 100%);
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-primary);
   display: flex;
   align-items: center;
@@ -176,20 +176,20 @@ function persistSummary() {
   font-weight: 700;
 }
 .action-button {
-  background: linear-gradient(180deg, #ffffff 0%, #edf6ff 100%);
-  color: var(--ss-color-primary);
+  background: var(--ss-color-surface-soft);
+  color: var(--ss-color-primary-strong);
 }
 .action-button.warm {
-  background: linear-gradient(180deg, #ffffff 0%, #fff4dc 100%);
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .action-button.danger {
-  background: linear-gradient(180deg, #fff6f6 0%, #ffe4e4 100%);
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 .action-button.secondary,
 .save-button.secondary {
-  background: rgba(247, 248, 250, 0.98);
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 .summary-input {
@@ -198,12 +198,13 @@ function persistSummary() {
   margin-top: 16rpx;
   padding: 20rpx;
   border-radius: 22rpx;
-  background: rgba(249, 250, 251, 0.98);
+  background: var(--ss-color-surface-muted);
+  border: var(--ss-hairline);
   font-size: var(--ss-font-size-body);
 }
 .save-button {
   margin-top: 16rpx;
-  background: linear-gradient(180deg, #3f9bff 0%, var(--ss-color-primary) 100%);
+  background: var(--ss-color-primary);
   color: #fff;
 }
 </style>

@@ -82,7 +82,7 @@ function handleClick() {
 
 <style scoped lang="scss">
 .app-list-cell {
-  border-radius: 26rpx;
+  border-radius: 22rpx;
 }
 
 .app-list-cell--start {
@@ -105,14 +105,14 @@ function handleClick() {
 .app-list-cell__avatar {
   width: 88rpx;
   height: 88rpx;
-  border-radius: 50%;
+  border-radius: 28rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-primary);
   font-size: 30rpx;
-  font-weight: 700;
+  font-weight: var(--ss-font-weight-semibold);
 }
 
 .app-list-cell__body {
@@ -144,14 +144,14 @@ function handleClick() {
 
 .app-list-cell__title {
   font-size: var(--ss-font-size-subtitle);
-  font-weight: 700;
-  color: var(--ss-color-text);
+  font-weight: var(--ss-font-weight-semibold);
+  color: var(--ss-color-text-strong);
 }
 
 .app-list-cell__description,
 .app-list-cell__secondary-text,
 .app-list-cell__meta-text {
-  font-size: var(--ss-font-size-caption);
+  font-size: var(--ss-font-size-body-sm);
   line-height: 1.55;
   color: var(--ss-color-subtext);
 }

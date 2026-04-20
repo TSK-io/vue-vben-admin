@@ -12,7 +12,7 @@
   bottom: 0;
   z-index: 20;
   margin-top: auto;
-  padding-top: 16rpx;
+  padding-top: 12rpx;
   padding-bottom: var(--ss-bottom-bar-padding);
 }
 
@@ -21,7 +21,7 @@
   align-items: center;
   gap: 16rpx;
   min-height: var(--ss-bottom-action-height);
-  padding: 18rpx 20rpx;
+  padding: 16rpx 18rpx;
   border-radius: var(--ss-bottom-bar-radius);
 }
 </style>

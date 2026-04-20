@@ -46,12 +46,14 @@ page {
   background: transparent;
   color: var(--ss-color-text);
   font-family:
-    'SF Pro Display',
-    'SF Pro Text',
+    'DIN Next',
+    'Avenir Next',
     'PingFang SC',
     'Hiragino Sans GB',
-    'Avenir Next',
+    'Microsoft YaHei',
     sans-serif;
   font-size: calc(28rpx * var(--ss-font-scale, 1));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 </style>

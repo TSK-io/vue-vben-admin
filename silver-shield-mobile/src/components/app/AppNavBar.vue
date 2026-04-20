@@ -65,14 +65,14 @@ function goBack() {
 .app-nav__title {
   display: block;
   font-size: var(--ss-font-size-title);
-  font-weight: 700;
+  font-weight: var(--ss-font-weight-bold);
   letter-spacing: var(--ss-letter-spacing-tight);
-  color: var(--ss-color-text);
+  color: var(--ss-color-text-strong);
 }
 
 .app-nav__subtitle {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 6rpx;
   font-size: var(--ss-font-size-caption);
   line-height: 1.6;
   color: var(--ss-color-subtext);
@@ -88,13 +88,13 @@ function goBack() {
 .app-nav__button {
   min-height: 72rpx;
   padding: 0;
-  border: 1.5rpx solid rgba(148, 163, 184, 0.18);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.72);
+  border: var(--ss-hairline);
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.9);
   color: var(--ss-color-primary);
-  font-size: 40rpx;
+  font-size: 36rpx;
   line-height: 1;
-  box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ss-shadow-soft);
 }
 
 .app-nav__right {

@@ -117,14 +117,6 @@ function persistSummary() {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: linear-gradient(180deg, #f4f8fb 0%, #eef3ef 100%);
-}
 .hero-card {
   display: flex;
   flex-direction: column;
@@ -135,8 +127,8 @@ function persistSummary() {
 .avatar {
   width: 132rpx;
   height: 132rpx;
-  border-radius: 50%;
-  background: #dff7f2;
+  border-radius: 28rpx;
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-primary);
   display: flex;
   align-items: center;
@@ -175,20 +167,20 @@ function persistSummary() {
   font-weight: 700;
 }
 .action-button {
-  background: #dff7f2;
-  color: var(--ss-color-primary);
+  background: var(--ss-color-surface-soft);
+  color: var(--ss-color-primary-strong);
 }
 .action-button.warm {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .action-button.danger {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 .action-button.secondary,
 .save-button.secondary {
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 .summary-input {
@@ -197,7 +189,8 @@ function persistSummary() {
   margin-top: 16rpx;
   padding: 20rpx;
   border-radius: 22rpx;
-  background: #f7faf7;
+  background: var(--ss-color-surface-muted);
+  border: var(--ss-hairline);
   font-size: var(--ss-font-size-body);
 }
 .save-button {

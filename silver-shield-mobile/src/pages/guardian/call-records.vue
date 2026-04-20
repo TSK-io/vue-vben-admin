@@ -87,14 +87,6 @@ function riskLevelLabel(level: RiskLevel) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: #eef4f6;
-}
 .plan,
 .meta {
   font-size: var(--ss-font-size-body);
@@ -115,7 +107,8 @@ function riskLevelLabel(level: RiskLevel) {
   min-height: 150rpx;
   padding: 20rpx;
   border-radius: 22rpx;
-  background: #f7faf7;
+  background: var(--ss-color-surface-muted);
+  border: var(--ss-hairline);
   font-size: var(--ss-font-size-body);
 }
 .action-row {
@@ -127,7 +120,7 @@ function riskLevelLabel(level: RiskLevel) {
 .summary-tag {
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef2f7;
+  background: var(--ss-color-surface-soft);
   font-size: var(--ss-font-size-caption);
   color: var(--ss-color-text);
 }

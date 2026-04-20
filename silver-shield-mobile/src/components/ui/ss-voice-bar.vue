@@ -31,8 +31,8 @@ function announce() {
   gap: 20rpx;
   padding: 22rpx 24rpx;
   border-radius: 28rpx;
-  background: rgba(231, 240, 255, 0.7);
-  box-shadow: 0 12rpx 28rpx rgba(37, 99, 235, 0.08);
+  background: rgba(236, 242, 250, 0.84);
+  box-shadow: 0 10rpx 24rpx rgba(23, 104, 229, 0.08);
   backdrop-filter: blur(14rpx);
 }
 
@@ -59,10 +59,10 @@ function announce() {
   min-width: 148rpx;
   border: none;
   border-radius: 22rpx;
-  background: linear-gradient(180deg, #60a5fa 0%, var(--ss-color-primary) 100%);
+  background: var(--ss-color-primary);
   color: #fff;
   font-size: var(--ss-font-size-body);
   font-weight: 700;
-  box-shadow: 0 12rpx 24rpx rgba(37, 99, 235, 0.18);
+  box-shadow: 0 12rpx 24rpx rgba(23, 104, 229, 0.16);
 }
 </style>

@@ -1,10 +1,10 @@
 <template>
-  <view class="ss-page ss-page--with-nav settings-page">
-    <app-nav-bar title="设置" subtitle="参考 iOS Settings，用分组列表来放常用开关。" show-back />
+  <view class="ss-page ss-page--with-nav ss-page--with-tabbar settings-page">
+    <app-nav-bar title="我的" subtitle="账号信息、适老化设置和提醒方式统一放在这里。" />
 
     <app-card class="intro-card ss-fade-up ss-stagger-1">
-      <text class="intro-title">适老化与 Apple 风格一起保留</text>
-      <text class="intro-desc">页面会更轻、更清楚，但不会为了好看牺牲字号、对比度和点击面积。</text>
+      <text class="intro-title">{{ profileName }}</text>
+      <text class="intro-desc">把账号信息、阅读体验和提醒方式放在一个固定入口，减少来回找页面。</text>
     </app-card>
 
     <app-section class="group" title="显示" subtitle="先把阅读体验和识别效率相关的设置放在一起。">
@@ -24,7 +24,7 @@
             <text class="setting-title">颜色更清楚</text>
             <text class="setting-desc">重要信息会更醒目，更容易一眼看到。</text>
           </view>
-          <switch :checked="settings.contrastMode" color="#2563eb" @change="toggleContrast" />
+          <switch :checked="settings.contrastMode" :color="switchColor" @change="toggleContrast" />
         </view>
       </view>
     </app-section>
@@ -36,17 +36,25 @@
             <text class="setting-title">首页更简单</text>
             <text class="setting-desc">打开后，首页只留最常用的入口，少走几步。</text>
           </view>
-          <switch :checked="settings.simplifyMode" color="#2563eb" @change="toggleSimplifyMode" />
+          <switch :checked="settings.simplifyMode" :color="switchColor" @change="toggleSimplifyMode" />
         </view>
         <view class="ss-list-cell setting-cell">
           <view class="setting-copy">
             <text class="setting-title">语音播报</text>
             <text class="setting-desc">看不清时，可以点按钮让页面读出来。</text>
           </view>
-          <switch :checked="settings.voiceBroadcastReserved" color="#2563eb" @change="toggleVoiceReserved" />
+          <switch :checked="settings.voiceBroadcastReserved" :color="switchColor" @change="toggleVoiceReserved" />
         </view>
       </view>
     </app-section>
+
+    <app-card class="intro-card ss-fade-up ss-stagger-4">
+      <text class="intro-title">账号</text>
+      <text class="intro-desc">手机号：{{ store.profile?.phone || '未加载' }}</text>
+      <button class="ss-secondary-button logout-button" @click="logout">退出登录</button>
+    </app-card>
+
+    <app-tab-bar role="elder" current="me" />
   </view>
 </template>
 
@@ -55,11 +63,15 @@ import { computed } from 'vue'
 import AppCard from '@/components/app/AppCard.vue'
 import AppNavBar from '@/components/app/AppNavBar.vue'
 import AppSection from '@/components/app/AppSection.vue'
+import AppTabBar from '@/components/app/AppTabBar.vue'
 import { useAppStore } from '@/store/app'
+import { relaunchTo } from '@/utils/navigation'
 import type { ElderSettings } from '@/types/app'
 
 const store = useAppStore()
 const settings = computed(() => store.elderSettings)
+const switchColor = 'var(--ss-color-primary)'
+const profileName = computed(() => store.profile?.name || '当前账号')
 
 function setFontScale(fontScale: ElderSettings['fontScale']) {
   store.updateElderSettings({ fontScale })
@@ -84,6 +96,11 @@ function getSwitchValue(event: Event) {
   return typeof detail.detail?.value === 'boolean'
     ? detail.detail.value
     : Boolean(target?.checked)
+}
+
+function logout() {
+  store.logout()
+  relaunchTo('/pages/auth/login')
 }
 </script>
 
@@ -137,7 +154,7 @@ function getSwitchValue(event: Event) {
   gap: 8rpx;
   padding: 8rpx;
   border-radius: var(--ss-pill-radius);
-  background: rgba(241, 245, 249, 0.95);
+  background: var(--ss-color-surface-soft);
 }
 
 .font-chip {
@@ -152,9 +169,13 @@ function getSwitchValue(event: Event) {
 }
 
 .font-chip.active {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.96);
   color: var(--ss-color-text);
   font-weight: 700;
-  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.08);
+  box-shadow: var(--ss-shadow-soft);
+}
+
+.logout-button {
+  margin-top: 8rpx;
 }
 </style>

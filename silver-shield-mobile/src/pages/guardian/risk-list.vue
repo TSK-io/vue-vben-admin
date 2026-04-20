@@ -1,6 +1,6 @@
 <template>
-  <view class="page-shell">
-    <ss-topbar title="风险通知" subtitle="优先处理高风险，再逐条完成回访和提醒。" show-back />
+  <view class="ss-page ss-page--with-nav ss-page--with-tabbar">
+    <ss-topbar title="提醒" subtitle="高风险、待处理和最新识别结果都统一放在这里。" />
     <ss-feedback-state
       v-if="store.isWeakNetwork"
       weak-network
@@ -45,12 +45,15 @@
         <button class="mini-btn secondary" @click="goRiskChat(risk.id)">去聊天确认</button>
       </view>
     </ss-card>
+
+    <app-tab-bar role="guardian" current="alerts" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import AppTabBar from '@/components/app/AppTabBar.vue'
 import SsCard from '@/components/ui/ss-card.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
 import SsTopbar from '@/components/ui/ss-topbar.vue'
@@ -102,14 +105,6 @@ function goRiskChat(riskId: string) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: #f7f1ef;
-}
 .risk-head {
   display: flex;
   align-items: center;
@@ -122,16 +117,16 @@ function goRiskChat(riskId: string) {
   font-size: 22rpx;
 }
 .risk-badge.high {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 .risk-badge.medium {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .risk-badge.low {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--ss-color-success-bg);
+  color: var(--ss-color-success-fg);
 }
 .risk-time,
 .risk-meta {
@@ -171,7 +166,7 @@ function goRiskChat(riskId: string) {
   font-size: 26rpx;
 }
 .mini-btn.secondary {
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 </style>

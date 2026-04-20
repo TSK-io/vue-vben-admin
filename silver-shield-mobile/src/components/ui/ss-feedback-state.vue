@@ -78,18 +78,18 @@ const descriptionText = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 14rpx;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1.5rpx solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.84);
+  border: var(--ss-hairline);
   box-shadow: var(--ss-shadow-soft);
   backdrop-filter: blur(18rpx);
 }
 .state-card.mode-error {
-  background: rgba(255, 245, 245, 0.86);
-  border-color: rgba(185, 28, 28, 0.16);
+  background: var(--ss-color-danger-bg);
+  border-color: rgba(199, 70, 70, 0.16);
 }
 .state-card.mode-weak {
-  background: rgba(255, 248, 235, 0.9);
-  border-color: rgba(180, 83, 9, 0.16);
+  background: var(--ss-color-warning-bg);
+  border-color: rgba(183, 121, 31, 0.16);
 }
 .state-title {
   font-size: var(--ss-font-size-subtitle);
@@ -109,7 +109,7 @@ const descriptionText = computed(() => {
   margin-top: 8rpx;
   border: none;
   border-radius: var(--ss-button-radius);
-  background: linear-gradient(180deg, #3b82f6 0%, var(--ss-color-primary) 100%);
+  background: var(--ss-color-primary);
   color: #fff;
   font-size: var(--ss-font-size-body);
   font-weight: 700;

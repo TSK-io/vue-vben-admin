@@ -73,33 +73,32 @@ function logoutAndLoginAgain() {
 <style scoped lang="scss">
 .page-shell {
   min-height: 100vh;
-  padding: 40rpx 28rpx 48rpx;
-  background:
-    radial-gradient(circle at top right, rgba(245, 158, 11, 0.18), transparent 30%),
-    linear-gradient(180deg, #f9f6ee 0%, #f2efe4 100%);
+  padding: calc(42rpx + var(--ss-safe-top)) 28rpx 48rpx;
   display: flex;
   flex-direction: column;
   gap: 24rpx;
 }
 .hero {
-  padding: 24rpx 8rpx;
+  padding: 12rpx 8rpx 0;
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  gap: 14rpx;
 }
 .eyebrow {
-  font-size: 24rpx;
+  font-size: var(--ss-font-size-caption);
   letter-spacing: 4rpx;
   color: var(--ss-color-primary);
+  font-weight: var(--ss-font-weight-semibold);
 }
 .title {
-  font-size: 52rpx;
-  line-height: 1.3;
-  font-weight: 700;
-  color: var(--ss-color-text);
+  font-size: var(--ss-font-size-hero);
+  line-height: 1.2;
+  font-weight: var(--ss-font-weight-bold);
+  color: var(--ss-color-text-strong);
+  letter-spacing: var(--ss-letter-spacing-tight);
 }
 .subtitle {
-  font-size: 28rpx;
+  font-size: var(--ss-font-size-body);
   line-height: 1.7;
   color: var(--ss-color-subtext);
 }
@@ -110,11 +109,12 @@ function logoutAndLoginAgain() {
   margin-bottom: 20rpx;
 }
 .section-title {
-  font-size: 34rpx;
-  font-weight: 700;
+  font-size: var(--ss-font-size-subtitle);
+  font-weight: var(--ss-font-weight-semibold);
+  color: var(--ss-color-text-strong);
 }
 .section-desc {
-  font-size: 26rpx;
+  font-size: var(--ss-font-size-body-sm);
   color: var(--ss-color-subtext);
 }
 .action-list {
@@ -125,17 +125,16 @@ function logoutAndLoginAgain() {
 .primary-button,
 .secondary-button {
   width: 100%;
-  border: none;
-  border-radius: 20rpx;
-  font-size: 30rpx;
-  font-weight: 700;
+  font-size: var(--ss-font-size-body);
+  font-weight: var(--ss-font-weight-semibold);
 }
 .primary-button {
   background: var(--ss-color-primary);
   color: #fff;
 }
 .secondary-button {
-  background: #eef2f7;
+  background: rgba(255, 255, 255, 0.92);
+  border: var(--ss-hairline);
   color: var(--ss-color-text);
 }
 .decision-list {
@@ -144,8 +143,8 @@ function logoutAndLoginAgain() {
   gap: 14rpx;
 }
 .decision-item {
-  font-size: 27rpx;
-  line-height: 1.6;
+  font-size: var(--ss-font-size-body-sm);
+  line-height: 1.7;
   color: var(--ss-color-subtext);
 }
 </style>

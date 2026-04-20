@@ -1,8 +1,8 @@
 import type { UserRole } from '@/types/app'
 
 const roleHomeMap: Record<UserRole, string> = {
-  elder: '/pages/elder/home',
-  guardian: '/pages/guardian/home'
+  elder: '/pages/elder/conversations',
+  guardian: '/pages/guardian/conversations'
 }
 
 export function navigateToRoleHome(role: UserRole, redirect = false) {
@@ -21,6 +21,10 @@ export function openPage(url: string) {
 }
 
 export function relaunchTo(url: string) {
+  uni.reLaunch({ url })
+}
+
+export function openPrimaryTab(url: string) {
   uni.reLaunch({ url })
 }
 

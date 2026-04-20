@@ -63,14 +63,6 @@ function callCommunity(contactId: string) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: #eef7f1;
-}
 .summary-box {
   display: flex;
   flex-direction: column;
@@ -90,8 +82,8 @@ function callCommunity(contactId: string) {
 .avatar {
   width: 88rpx;
   height: 88rpx;
-  border-radius: 50%;
-  background: #dff7f2;
+  border-radius: 28rpx;
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-primary);
   display: flex;
   align-items: center;
@@ -121,7 +113,7 @@ function callCommunity(contactId: string) {
   font-size: var(--ss-font-size-body);
 }
 .mini-btn.secondary {
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 </style>

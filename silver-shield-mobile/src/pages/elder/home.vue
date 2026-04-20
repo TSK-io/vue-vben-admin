@@ -190,20 +190,20 @@ function messageTypeLabel(type: MessageType) {
 }
 
 .hero-pill.safe {
-  background: rgba(220, 252, 231, 0.95);
-  color: var(--ss-color-success);
+  background: var(--ss-color-success-bg);
+  color: var(--ss-color-success-fg);
 }
 
 .hero-pill.danger {
-  background: rgba(254, 226, 226, 0.95);
-  color: #b91c1c;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 
 .hero-action {
   min-width: 156rpx;
   border: none;
   border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
   font-size: var(--ss-font-size-body);
   font-weight: 700;
@@ -240,8 +240,8 @@ function messageTypeLabel(type: MessageType) {
 .recent-avatar {
   width: 88rpx;
   height: 88rpx;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  border-radius: 28rpx;
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-primary);
   display: flex;
   align-items: center;
@@ -326,7 +326,7 @@ function messageTypeLabel(type: MessageType) {
 }
 
 .quick-button.primary {
-  background: linear-gradient(180deg, #ffffff 0%, #edf6ff 100%);
+  background: var(--ss-color-surface-soft);
 }
 
 .quick-button.soft {
@@ -334,11 +334,11 @@ function messageTypeLabel(type: MessageType) {
 }
 
 .quick-button.warm {
-  background: linear-gradient(180deg, #ffffff 0%, #fff4dc 100%);
+  background: var(--ss-color-warning-bg);
 }
 
 .quick-button.danger {
-  background: linear-gradient(180deg, #fff7f7 0%, #ffe5e5 100%);
+  background: var(--ss-color-danger-bg);
 }
 
 .quick-title {

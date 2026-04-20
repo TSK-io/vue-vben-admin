@@ -1,6 +1,6 @@
 <template>
-  <view class="page-shell">
-    <ss-topbar title="守护总览" :subtitle="store.profile?.welcomeText || '欢迎回来，请优先处理高风险提醒。'" />
+  <view class="ss-page ss-page--with-nav ss-page--with-tabbar">
+    <ss-topbar title="我的" :subtitle="store.profile?.welcomeText || '账号信息、守护总览和常用操作放在这里。'" />
 
     <ss-card>
       <text class="card-title">当前登录信息</text>
@@ -38,7 +38,7 @@
     </ss-card>
 
     <ss-card>
-      <ss-section-title title="高频操作" subtitle="优先回访、再发送提醒，减少切换层级。" />
+      <ss-section-title title="常用操作" subtitle="从我的页进入通话记录、社区协同和远程提醒。" />
       <view class="action-grid">
         <button class="action-button" @click="openPage('/pages/guardian/elders')">老人列表</button>
         <button class="action-button" @click="openPage('/pages/guardian/risk-list')">风险通知</button>
@@ -73,11 +73,14 @@
     </ss-card>
 
     <button class="logout-button" @click="logout">退出登录</button>
+
+    <app-tab-bar role="guardian" current="me" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppTabBar from '@/components/app/AppTabBar.vue'
 import SsCard from '@/components/ui/ss-card.vue'
 import SsSectionTitle from '@/components/ui/ss-section-title.vue'
 import SsTopbar from '@/components/ui/ss-topbar.vue'
@@ -179,16 +182,6 @@ function scrollToSos() {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-  background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 28%),
-    linear-gradient(180deg, #f4f8fb 0%, #ecf3f2 100%);
-}
 .card-title {
   display: block;
   margin-bottom: 18rpx;
@@ -209,14 +202,14 @@ function scrollToSos() {
 .summary-item {
   padding: 20rpx 12rpx;
   border-radius: 22rpx;
-  background: #edf7f5;
+  background: var(--ss-color-surface-soft);
   text-align: center;
 }
 .summary-item.danger {
-  background: #fff1f0;
+  background: var(--ss-color-danger-bg);
 }
 .summary-item.warm {
-  background: #fff4de;
+  background: var(--ss-color-warning-bg);
 }
 .summary-num {
   display: block;
@@ -240,20 +233,20 @@ function scrollToSos() {
 .action-button {
   border: none;
   border-radius: 22rpx;
-  background: #e8f0f7;
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-text);
   font-size: 28rpx;
   font-weight: 700;
 }
 .action-button.accent {
-  background: #dff7f2;
+  background: rgba(236, 242, 250, 0.96);
 }
 .action-button.soft {
-  background: #fff4de;
+  background: rgba(245, 242, 235, 0.98);
 }
 .action-button.warm {
-  background: #fef3c7;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .trend-list {
   display: flex;
@@ -268,7 +261,7 @@ function scrollToSos() {
   gap: 16rpx;
   padding: 18rpx 20rpx;
   border-radius: 18rpx;
-  background: #f7fafb;
+  background: rgba(255, 255, 255, 0.9);
 }
 .trend-label {
   font-size: 26rpx;
@@ -290,8 +283,8 @@ function scrollToSos() {
   width: fit-content;
   padding: 6rpx 16rpx;
   border-radius: 999rpx;
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
   font-size: 22rpx;
 }
 .focus-title {
@@ -318,13 +311,13 @@ function scrollToSos() {
   font-size: 26rpx;
 }
 .mini-btn.secondary {
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 .logout-button {
   border: none;
   border-radius: 20rpx;
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
   font-size: 30rpx;
 }

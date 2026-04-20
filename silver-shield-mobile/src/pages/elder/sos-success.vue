@@ -51,7 +51,7 @@ const latestSos = computed(() => store.selectedSosAlert || store.activeSosAlerts
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle, rgba(220, 252, 231, 0.96) 0%, rgba(255, 255, 255, 0.9) 68%);
+  background: radial-gradient(circle, var(--ss-color-success-bg) 0%, rgba(255, 255, 255, 0.92) 68%);
 }
 .result-core {
   width: 92rpx;
@@ -60,11 +60,11 @@ const latestSos = computed(() => store.selectedSosAlert || store.activeSosAlerts
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #34d399 0%, #16a34a 100%);
+  background: var(--ss-color-success);
   color: #fff;
   font-size: 46rpx;
   font-weight: 800;
-  box-shadow: 0 18rpx 40rpx rgba(22, 163, 74, 0.24);
+  box-shadow: 0 18rpx 36rpx rgba(31, 138, 91, 0.2);
 }
 .result-title {
   font-size: 44rpx;
@@ -80,7 +80,7 @@ const latestSos = computed(() => store.selectedSosAlert || store.activeSosAlerts
 .result-note {
   font-size: 24rpx;
   line-height: 1.6;
-  color: #0f766e;
+  color: var(--ss-color-success-fg);
 }
 .action-group {
   display: flex;
@@ -96,11 +96,11 @@ const latestSos = computed(() => store.selectedSosAlert || store.activeSosAlerts
   font-weight: 700;
 }
 .primary-btn {
-  background: linear-gradient(180deg, #3f9bff 0%, var(--ss-color-primary) 100%);
+  background: var(--ss-color-primary);
   color: #fff;
 }
 .secondary-btn {
-  background: rgba(247, 248, 250, 0.98);
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 </style>

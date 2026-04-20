@@ -31,8 +31,8 @@ const cardClass = computed(() => [
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
-  height: 120rpx;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent);
+  height: 88rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent);
   pointer-events: none;
 }
 

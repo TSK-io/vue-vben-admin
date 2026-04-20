@@ -1,6 +1,6 @@
 <template>
-  <view class="ss-page ss-page--with-nav ss-page--with-bottom-bar conversations-page">
-    <app-nav-bar title="最近消息" subtitle="像 iMessage 一样，只把最近联系的人清楚地列出来。" show-back />
+  <view class="ss-page ss-page--with-nav ss-page--with-tabbar conversations-page">
+    <app-nav-bar title="会话" subtitle="最近联系的人、未读消息和风险提示都放在这里。" />
     <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" text="这里可以读出最近消息和联系人名字。" />
 
     <app-card class="filter-bar ss-fade-up ss-stagger-1" padding="sm">
@@ -41,18 +41,16 @@
       </app-list-cell>
     </view>
 
-    <app-bottom-action-bar>
-      <button class="ss-secondary-button bottom-button" @click="openPage('/pages/elder/home')">回到首页</button>
-    </app-bottom-action-bar>
+    <app-tab-bar role="elder" current="conversations" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import AppBottomActionBar from '@/components/app/AppBottomActionBar.vue'
 import AppCard from '@/components/app/AppCard.vue'
 import AppListCell from '@/components/app/AppListCell.vue'
 import AppNavBar from '@/components/app/AppNavBar.vue'
+import AppTabBar from '@/components/app/AppTabBar.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
 import SsVoiceBar from '@/components/ui/ss-voice-bar.vue'
 import { useAppStore } from '@/store/app'
@@ -99,7 +97,7 @@ function messageTypeLabel(type: MessageType) {
   gap: 8rpx;
   padding: 8rpx;
   border-radius: var(--ss-pill-radius);
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--ss-color-surface-soft);
 }
 
 .segment {
@@ -114,10 +112,10 @@ function messageTypeLabel(type: MessageType) {
 }
 
 .segment.active {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.94);
   color: var(--ss-color-text);
   font-weight: 700;
-  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.08);
+  box-shadow: var(--ss-shadow-soft);
 }
 
 .preview {
@@ -140,7 +138,4 @@ function messageTypeLabel(type: MessageType) {
   font-weight: 700;
 }
 
-.bottom-button {
-  flex: 1;
-}
 </style>

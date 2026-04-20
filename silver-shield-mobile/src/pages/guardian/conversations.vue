@@ -1,6 +1,6 @@
 <template>
-  <view class="page-shell">
-    <ss-topbar title="会话列表" subtitle="优先查看带风险标记和未读消息的老人会话。" show-back />
+  <view class="ss-page ss-page--with-nav ss-page--with-tabbar">
+    <ss-topbar title="会话" subtitle="优先处理未读和风险标记会话，直接进入回访。" />
 
     <ss-feedback-state
       v-if="!sessions.length"
@@ -30,11 +30,14 @@
         </view>
       </view>
     </ss-card>
+
+    <app-tab-bar role="guardian" current="conversations" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppTabBar from '@/components/app/AppTabBar.vue'
 import SsCard from '@/components/ui/ss-card.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
 import SsTopbar from '@/components/ui/ss-topbar.vue'
@@ -82,14 +85,6 @@ function messageTypeLabel(type: MessageType) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: #eef4f6;
-}
 .session-row {
   display: flex;
   gap: 18rpx;
@@ -98,8 +93,8 @@ function messageTypeLabel(type: MessageType) {
 .avatar {
   width: 88rpx;
   height: 88rpx;
-  border-radius: 50%;
-  background: #dff7f2;
+  border-radius: 28rpx;
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-primary);
   display: flex;
   align-items: center;
@@ -127,16 +122,16 @@ function messageTypeLabel(type: MessageType) {
   font-size: 20rpx;
 }
 .tag {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .tag.priority {
-  background: #dff7f2;
-  color: var(--ss-color-primary);
+  background: var(--ss-color-success-bg);
+  color: var(--ss-color-success-fg);
 }
 .risk-tag {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 .relation,
 .preview,

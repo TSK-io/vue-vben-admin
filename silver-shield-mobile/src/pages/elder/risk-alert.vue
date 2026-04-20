@@ -1,6 +1,6 @@
 <template>
-  <view class="ss-page risk-page">
-    <ss-topbar title="风险提醒" subtitle="只告诉你先做什么，不让页面变成复杂说明书。" show-back />
+  <view class="ss-page ss-page--with-nav ss-page--with-tabbar risk-page">
+    <ss-topbar title="提醒" subtitle="高风险提醒和处理建议都统一放在这里。" />
 
     <ss-card v-if="topRisk" class="hero-card ss-pop-in">
       <text class="hero-badge">重要提醒</text>
@@ -40,12 +40,13 @@
       empty-description="如果收到可疑消息或电话，页面会在这里提醒你先停一下。"
     />
 
-    <button class="ss-danger-button bottom-button ss-pressable" @click="goChat">联系家人</button>
+    <app-tab-bar role="elder" current="alerts" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppTabBar from '@/components/app/AppTabBar.vue'
 import SsCard from '@/components/ui/ss-card.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
 import SsSectionTitle from '@/components/ui/ss-section-title.vue'
@@ -78,8 +79,8 @@ function goContacts() {
   width: fit-content;
   padding: 10rpx 18rpx;
   border-radius: var(--ss-pill-radius);
-  background: rgba(254, 226, 226, 0.96);
-  color: #b91c1c;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
   font-size: var(--ss-font-size-caption);
   font-weight: 700;
 }
@@ -102,7 +103,7 @@ function goContacts() {
   margin-top: 8rpx;
   padding: 24rpx;
   border-radius: 28rpx;
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  background: var(--ss-color-danger);
   color: #fff;
   box-shadow: var(--ss-shadow-strong);
 }
@@ -129,7 +130,4 @@ function goContacts() {
   flex: 1;
 }
 
-.bottom-button {
-  margin-top: auto;
-}
 </style>

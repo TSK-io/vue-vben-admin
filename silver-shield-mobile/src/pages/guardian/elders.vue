@@ -1,6 +1,6 @@
 <template>
-  <view class="page-shell">
-    <ss-topbar title="老人列表" subtitle="先看谁有风险、谁刚发来求助，再进入聊天回访。" show-back />
+  <view class="ss-page ss-page--with-nav ss-page--with-tabbar">
+    <ss-topbar title="老人" subtitle="把需要优先回访、提醒和观察的人放在这里。" />
     <ss-feedback-state
       v-if="!elders.length"
       empty
@@ -39,11 +39,14 @@
         <button class="mini-btn danger" @click="toggleBlacklist(elder.id)">黑名单</button>
       </view>
     </ss-card>
+
+    <app-tab-bar role="guardian" current="contacts" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppTabBar from '@/components/app/AppTabBar.vue'
 import SsCard from '@/components/ui/ss-card.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
 import SsTopbar from '@/components/ui/ss-topbar.vue'
@@ -106,14 +109,6 @@ function toggleBlacklist(elderId: string) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: #eef4f6;
-}
 .elder-row {
   display: flex;
   gap: 18rpx;
@@ -121,8 +116,8 @@ function toggleBlacklist(elderId: string) {
 .avatar {
   width: 88rpx;
   height: 88rpx;
-  border-radius: 50%;
-  background: #dff7f2;
+  border-radius: 28rpx;
+  background: var(--ss-color-surface-soft);
   color: var(--ss-color-primary);
   display: flex;
   align-items: center;
@@ -148,16 +143,16 @@ function toggleBlacklist(elderId: string) {
   font-size: 20rpx;
 }
 .risk-tag.high {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 .risk-tag.medium {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .risk-tag.low {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--ss-color-success-bg);
+  color: var(--ss-color-success-fg);
 }
 .meta,
 .summary {
@@ -176,7 +171,7 @@ function toggleBlacklist(elderId: string) {
 .metric {
   padding: 8rpx 14rpx;
   border-radius: 999rpx;
-  background: #f3f7f8;
+  background: var(--ss-color-surface-soft);
   font-size: 22rpx;
   color: var(--ss-color-subtext);
 }
@@ -195,15 +190,15 @@ function toggleBlacklist(elderId: string) {
   font-size: 26rpx;
 }
 .mini-btn.secondary {
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 .mini-btn.warm {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .mini-btn.danger {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 </style>

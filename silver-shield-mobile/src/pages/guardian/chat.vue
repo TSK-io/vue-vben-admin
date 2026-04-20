@@ -124,14 +124,6 @@ function statusLabel(status: MessageStatus) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 160rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: linear-gradient(180deg, #f4f8fb 0%, #eef3ef 100%);
-}
 .tips-box {
   display: flex;
   flex-direction: column;
@@ -150,7 +142,7 @@ function statusLabel(status: MessageStatus) {
 .tips-warning {
   font-size: 23rpx;
   line-height: 1.6;
-  color: #b45309;
+  color: var(--ss-color-warning-fg);
 }
 .quick-row {
   display: flex;
@@ -160,18 +152,18 @@ function statusLabel(status: MessageStatus) {
   flex: 1;
   border: none;
   border-radius: 18rpx;
-  background: #dff7f2;
-  color: var(--ss-color-primary);
+  background: var(--ss-color-surface-soft);
+  color: var(--ss-color-primary-strong);
   font-size: 24rpx;
   font-weight: 700;
 }
 .quick-btn.secondary {
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 .quick-btn.warm {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .message-list {
   display: flex;
@@ -188,19 +180,19 @@ function statusLabel(status: MessageStatus) {
 }
 .message-item.sender-self {
   margin-left: auto;
-  background: #dff7f2;
+  background: var(--ss-color-surface-soft);
 }
 .message-item.sender-other {
   margin-right: auto;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
 }
 .message-item.sender-system,
 .message-item.status-risk,
 .message-item.suspicious {
   width: 100%;
   max-width: 100%;
-  background: #fff1f0;
-  border: 2rpx solid #fecaca;
+  background: var(--ss-color-danger-bg);
+  border: 2rpx solid rgba(199, 70, 70, 0.2);
 }
 .message-content,
 .link-title,
@@ -219,7 +211,7 @@ function statusLabel(status: MessageStatus) {
   color: var(--ss-color-subtext);
 }
 .message-risk {
-  color: #b91c1c;
+  color: var(--ss-color-danger-fg);
 }
 .media-card,
 .link-card {
@@ -236,15 +228,16 @@ function statusLabel(status: MessageStatus) {
   gap: 16rpx;
   padding: 18rpx;
   border-radius: 26rpx;
-  background: rgba(255, 253, 248, 0.96);
-  box-shadow: 0 18rpx 40rpx rgba(22, 48, 43, 0.1);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--ss-shadow-floating);
 }
 .composer-input {
   flex: 1;
   height: 88rpx;
   padding: 0 20rpx;
   border-radius: 18rpx;
-  background: #f3f5ef;
+  background: var(--ss-color-surface-muted);
+  border: var(--ss-hairline);
   font-size: 28rpx;
 }
 .send-button {

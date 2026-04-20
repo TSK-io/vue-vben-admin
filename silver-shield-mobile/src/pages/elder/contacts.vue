@@ -1,6 +1,6 @@
 <template>
-  <view class="ss-page ss-page--with-nav ss-page--with-bottom-bar contacts-page">
-    <app-nav-bar title="联系人" subtitle="更像 iOS 通讯录，先看最常联系的人。" show-back />
+  <view class="ss-page ss-page--with-nav ss-page--with-tabbar contacts-page">
+    <app-nav-bar title="联系人" subtitle="优先联系人和其他联系人分开展示，更容易找。" />
     <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" text="这里可以语音读出联系人姓名和关系，方便慢慢看。" />
 
     <ss-feedback-state
@@ -52,17 +52,15 @@
       </view>
     </view>
 
-    <app-bottom-action-bar>
-      <button class="ss-secondary-button bottom-button" @click="openPage('/pages/elder/call-records')">最近通话</button>
-    </app-bottom-action-bar>
+    <app-tab-bar role="elder" current="contacts" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import AppBottomActionBar from '@/components/app/AppBottomActionBar.vue'
 import AppListCell from '@/components/app/AppListCell.vue'
 import AppNavBar from '@/components/app/AppNavBar.vue'
+import AppTabBar from '@/components/app/AppTabBar.vue'
 import SsFeedbackState from '@/components/ui/ss-feedback-state.vue'
 import SsVoiceBar from '@/components/ui/ss-voice-bar.vue'
 import { useAppStore } from '@/store/app'
@@ -121,18 +119,15 @@ function startCall(contactId: string) {
   padding: 0 16rpx;
   border: none;
   border-radius: var(--ss-pill-radius);
-  background: linear-gradient(180deg, #3b82f6 0%, var(--ss-color-primary) 100%);
+  background: var(--ss-color-primary);
   color: #fff;
   font-size: var(--ss-font-size-caption);
   font-weight: 700;
 }
 
 .action-chip.ghost {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 
-.bottom-button {
-  flex: 1;
-}
 </style>

@@ -117,14 +117,6 @@ function resolveAlert() {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: linear-gradient(180deg, #fff7f5 0%, #eef4f6 100%);
-}
 .hero-block {
   display: flex;
   flex-direction: column;
@@ -137,16 +129,16 @@ function resolveAlert() {
   font-size: 22rpx;
 }
 .status-tag.pending {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--ss-color-danger-bg);
+  color: var(--ss-color-danger-fg);
 }
 .status-tag.processing {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .status-tag.resolved {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--ss-color-success-bg);
+  color: var(--ss-color-success-fg);
 }
 .hero-title {
   font-size: 36rpx;
@@ -162,7 +154,7 @@ function resolveAlert() {
 }
 .block-meta {
   margin-top: 12rpx;
-  color: #0f766e;
+  color: var(--ss-color-success-fg);
 }
 .action-group {
   display: flex;
@@ -178,15 +170,15 @@ function resolveAlert() {
   font-weight: 700;
 }
 .cta-button.secondary {
-  background: #fff0d2;
-  color: #8a5a00;
+  background: var(--ss-color-warning-bg);
+  color: var(--ss-color-warning-fg);
 }
 .cta-button.warm {
-  background: #dff7f2;
-  color: var(--ss-color-primary);
+  background: var(--ss-color-success-bg);
+  color: var(--ss-color-success-fg);
 }
 .cta-button.muted {
-  background: #eef2f7;
+  background: var(--ss-color-surface-muted);
   color: var(--ss-color-text);
 }
 </style>

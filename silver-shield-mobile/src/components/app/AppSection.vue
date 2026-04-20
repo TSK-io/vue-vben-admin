@@ -47,18 +47,18 @@ defineProps<{
   min-height: 44rpx;
   padding: 0 16rpx;
   border-radius: var(--ss-pill-radius);
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--ss-color-primary-soft);
   color: var(--ss-color-primary);
   font-size: var(--ss-font-size-caption);
-  font-weight: 700;
+  font-weight: var(--ss-font-weight-semibold);
 }
 
 .app-section__title {
   display: block;
   font-size: var(--ss-font-size-subtitle);
-  font-weight: 700;
+  font-weight: var(--ss-font-weight-semibold);
   letter-spacing: var(--ss-letter-spacing-tight);
-  color: var(--ss-color-text);
+  color: var(--ss-color-text-strong);
 }
 
 .app-section__eyebrow + .app-section__title {
