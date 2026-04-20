@@ -1,13 +1,13 @@
-$ss-color-primary: #2563eb;
-$ss-color-primary-soft: #e7f0ff;
+$ss-color-primary: #0a84ff;
+$ss-color-primary-soft: #edf6ff;
 $ss-color-accent: #f59e0b;
 $ss-color-danger: #dc2626;
 $ss-color-success: #16a34a;
-$ss-color-bg: #f3f6fb;
-$ss-color-surface: rgba(255, 255, 255, 0.78);
+$ss-color-bg: #f5f5f7;
+$ss-color-surface: rgba(255, 255, 255, 0.84);
 $ss-color-surface-strong: #ffffff;
-$ss-color-text: #14213d;
-$ss-color-subtext: #60708f;
+$ss-color-text: #111827;
+$ss-color-subtext: #6b7280;
 $ss-color-border: rgba(148, 163, 184, 0.22);
 $ss-color-contrast-bg: #fffbea;
 $ss-color-contrast-surface: #ffffff;
@@ -40,8 +40,8 @@ page {
   --ss-pill-radius: 999rpx;
   --ss-card-radius: 32rpx;
   --ss-page-padding: 28rpx;
-  --ss-shadow-soft: 0 18rpx 48rpx rgba(15, 23, 42, 0.08);
-  --ss-shadow-card: 0 24rpx 60rpx rgba(15, 23, 42, 0.08);
+  --ss-shadow-soft: 0 16rpx 40rpx rgba(15, 23, 42, 0.06);
+  --ss-shadow-card: 0 20rpx 52rpx rgba(15, 23, 42, 0.07);
   --ss-shadow-strong: 0 28rpx 72rpx rgba(153, 27, 27, 0.18);
   --ss-glass-border: 1.5rpx solid rgba(255, 255, 255, 0.72);
   --ss-backdrop-blur: blur(22rpx);
@@ -76,8 +76,8 @@ textarea {
 page {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.88), transparent 30%),
-    linear-gradient(180deg, #f8fbff 0%, var(--ss-color-bg) 46%, #edf3fb 100%);
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.96), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #fafafb 18%, var(--ss-color-bg) 52%, #f1f2f5 100%);
   color: var(--ss-color-text);
 }
 
@@ -122,8 +122,8 @@ button:active {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at top right, rgba(191, 219, 254, 0.42), transparent 25%),
-    radial-gradient(circle at 10% 30%, rgba(255, 255, 255, 0.7), transparent 18%);
+    radial-gradient(circle at top right, rgba(244, 247, 255, 0.9), transparent 26%),
+    radial-gradient(circle at 10% 30%, rgba(255, 255, 255, 0.84), transparent 18%);
 }
 
 .ss-glass-card {
@@ -134,6 +134,10 @@ button:active {
   border-radius: var(--ss-card-radius);
   box-shadow: var(--ss-shadow-card);
   backdrop-filter: var(--ss-backdrop-blur);
+  transition:
+    transform var(--ss-duration-base) var(--ss-ease-standard),
+    box-shadow var(--ss-duration-base) var(--ss-ease-standard),
+    background var(--ss-duration-base) var(--ss-ease-standard);
 }
 
 .ss-list-group {
@@ -150,6 +154,10 @@ button:active {
   align-items: center;
   gap: 18rpx;
   padding: 26rpx 28rpx;
+  transition:
+    transform var(--ss-duration-fast) var(--ss-ease-standard),
+    background var(--ss-duration-fast) var(--ss-ease-standard),
+    opacity var(--ss-duration-fast) var(--ss-ease-standard);
 }
 
 .ss-list-cell + .ss-list-cell {
@@ -196,6 +204,7 @@ button:active {
   border-radius: var(--ss-button-radius);
   font-size: var(--ss-font-size-body);
   font-weight: 700;
+  box-shadow: var(--ss-shadow-soft);
 }
 
 .ss-primary-button {
@@ -205,7 +214,7 @@ button:active {
 }
 
 .ss-secondary-button {
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.94);
   color: var(--ss-color-text);
   border: 1.5rpx solid rgba(148, 163, 184, 0.22);
 }
@@ -220,6 +229,58 @@ button:active {
   animation: ss-fade-up var(--ss-duration-base) var(--ss-ease-standard);
 }
 
+.ss-fade-in {
+  animation: ss-fade-in 240ms var(--ss-ease-standard);
+}
+
+.ss-pop-in {
+  animation: ss-pop-in 320ms var(--ss-ease-standard);
+}
+
+.ss-stagger-1 {
+  animation-delay: 40ms;
+}
+
+.ss-stagger-2 {
+  animation-delay: 90ms;
+}
+
+.ss-stagger-3 {
+  animation-delay: 140ms;
+}
+
+.ss-stagger-4 {
+  animation-delay: 190ms;
+}
+
+.ss-pressable:active,
+.ss-list-cell:active,
+.ss-glass-card:active {
+  transform: scale(0.988);
+}
+
+.ss-list-cell:active {
+  background: rgba(245, 247, 250, 0.96);
+}
+
+.ss-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.ss-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.52), transparent);
+  animation: ss-shimmer 2.2s infinite;
+}
+
+.ss-pulse-soft {
+  animation: ss-pulse-soft 1.8s ease-in-out infinite;
+}
+
 @keyframes ss-fade-up {
   from {
     opacity: 0;
@@ -229,5 +290,44 @@ button:active {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes ss-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ss-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes ss-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ss-pulse-soft {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.12);
+  }
+
+  50% {
+    box-shadow: 0 0 0 14rpx rgba(10, 132, 255, 0);
   }
 }

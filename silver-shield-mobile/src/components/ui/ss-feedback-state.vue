@@ -1,5 +1,5 @@
 <template>
-  <view class="state-card" :class="modeClass">
+  <view class="state-card ss-fade-up" :class="[modeClass, { 'ss-shimmer': loading }]">
     <text class="state-title">{{ titleText }}</text>
     <text class="state-desc">{{ descriptionText }}</text>
     <text v-if="hint" class="state-hint">{{ hint }}</text>

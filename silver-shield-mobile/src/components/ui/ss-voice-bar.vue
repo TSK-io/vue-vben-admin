@@ -1,5 +1,5 @@
 <template>
-  <view v-if="enabled" class="voice-bar ss-voice-anchor">
+  <view v-if="enabled" class="voice-bar ss-voice-anchor ss-fade-up">
     <view class="voice-copy">
       <text class="voice-title">语音播报</text>
       <text class="voice-text">{{ text }}</text>

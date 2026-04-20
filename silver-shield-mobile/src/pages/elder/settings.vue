@@ -2,22 +2,22 @@
   <view class="ss-page settings-page">
     <ss-topbar title="设置" subtitle="参考 iOS Settings，用分组列表来放常用开关。" show-back />
 
-    <ss-card class="intro-card">
+    <ss-card class="intro-card ss-fade-up ss-stagger-1">
       <text class="intro-title">适老化与 Apple 风格一起保留</text>
       <text class="intro-desc">页面会更轻、更清楚，但不会为了好看牺牲字号、对比度和点击面积。</text>
     </ss-card>
 
     <view class="group">
       <text class="group-label">显示</text>
-      <view class="ss-list-group">
+      <view class="ss-list-group ss-fade-up ss-stagger-2">
         <view class="ss-list-cell setting-cell">
           <view class="setting-copy">
             <text class="setting-title">字体大小</text>
             <text class="setting-desc">看着吃力时，直接切成更大的字。</text>
           </view>
           <view class="font-segmented">
-            <button class="font-chip" :class="{ active: settings.fontScale === 'large' }" @click="setFontScale('large')">标准</button>
-            <button class="font-chip" :class="{ active: settings.fontScale === 'x-large' }" @click="setFontScale('x-large')">更大</button>
+            <button class="font-chip ss-pressable" :class="{ active: settings.fontScale === 'large' }" @click="setFontScale('large')">标准</button>
+            <button class="font-chip ss-pressable" :class="{ active: settings.fontScale === 'x-large' }" @click="setFontScale('x-large')">更大</button>
           </view>
         </view>
         <view class="ss-list-cell setting-cell">
@@ -32,7 +32,7 @@
 
     <view class="group">
       <text class="group-label">首页与提醒</text>
-      <view class="ss-list-group">
+      <view class="ss-list-group ss-fade-up ss-stagger-3">
         <view class="ss-list-cell setting-cell">
           <view class="setting-copy">
             <text class="setting-title">首页更简单</text>

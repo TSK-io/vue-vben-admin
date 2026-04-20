@@ -3,7 +3,7 @@
     <ss-topbar title="最近消息" subtitle="像 iMessage 一样，只把最近联系的人清楚地列出来。" show-back />
     <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" text="这里可以读出最近消息和联系人名字。" />
 
-    <view class="filter-bar ss-glass-card">
+    <view class="filter-bar ss-glass-card ss-fade-up ss-stagger-1">
       <text class="filter-title">会话</text>
       <view class="segmented">
         <text class="segment active">全部</text>
@@ -19,7 +19,7 @@
     />
 
     <view v-else class="conversation-group ss-list-group ss-fade-up">
-      <view v-for="session in sessions" :key="session.contactId" class="conversation-cell ss-list-cell" @click="openChat(session.contactId)">
+      <view v-for="session in sessions" :key="session.contactId" class="conversation-cell ss-list-cell ss-fade-up" @click="openChat(session.contactId)">
         <view class="avatar">{{ session.avatarText }}</view>
         <view class="main">
           <view class="row-top">

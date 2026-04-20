@@ -1,16 +1,16 @@
 <template>
   <view class="chat-page">
     <view class="chat-shell">
-      <view class="chat-header ss-glass-card">
-        <button class="circle-button" @click="goBack">‹</button>
+      <view class="chat-header ss-glass-card ss-fade-up">
+        <button class="circle-button ss-pressable" @click="goBack">‹</button>
         <view class="header-main">
           <text class="header-name">{{ selectedContact?.name || '聊天' }}</text>
           <text class="header-meta">{{ selectedContact?.relation || '和熟悉的人慢慢聊' }}</text>
         </view>
-        <button v-if="showBroadcast" class="circle-button small" @click="announceChat">读</button>
+        <button v-if="showBroadcast" class="circle-button small ss-pressable" @click="announceChat">读</button>
       </view>
 
-      <view v-if="topHint" class="risk-banner" :class="{ danger: topHintLevel === 'high' }">
+      <view v-if="topHint" class="risk-banner ss-fade-in" :class="{ danger: topHintLevel === 'high' }">
         <text class="risk-banner-text">{{ topHint }}</text>
       </view>
 
@@ -43,7 +43,7 @@
             </view>
           </template>
           <template v-else>
-            <view class="bubble-wrap">
+            <view class="bubble-wrap ss-fade-up">
               <view class="bubble">
                 <template v-if="message.type === 'image'">
                   <view class="media-card">
@@ -69,10 +69,10 @@
       </view>
     </view>
 
-    <view class="composer ss-glass-card">
-      <button class="circle-button composer-tool" @click="sendImageSample">+</button>
+    <view class="composer ss-glass-card ss-pop-in">
+      <button class="circle-button composer-tool ss-pressable" @click="sendImageSample">+</button>
       <input v-model="draft" class="composer-input" placeholder="发消息前，先想一想是不是熟悉的人" />
-      <button class="send-button" :class="{ disabled: !draft.trim() }" @click="submitMessage">发送</button>
+      <button class="send-button ss-pressable" :class="{ disabled: !draft.trim() }" @click="submitMessage">发送</button>
     </view>
   </view>
 </template>
@@ -139,7 +139,7 @@ function cleanImageText(content: string) {
   padding: 20rpx 20rpx 164rpx;
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.85), transparent 26%),
-    linear-gradient(180deg, #f8fbff 0%, #eef4fd 100%);
+    linear-gradient(180deg, #ffffff 0%, #f7f8fb 18%, #f2f4f8 100%);
 }
 
 .chat-shell {
@@ -163,7 +163,7 @@ function cleanImageText(content: string) {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.92);
   color: var(--ss-color-primary);
   font-size: 40rpx;
   line-height: 1;
@@ -262,13 +262,13 @@ function cleanImageText(content: string) {
 .bubble {
   padding: 20rpx 22rpx;
   border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 14rpx 30rpx rgba(15, 23, 42, 0.08);
 }
 
 .sender-self .bubble {
   border-bottom-right-radius: 12rpx;
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(180deg, #3f9bff 0%, var(--ss-color-primary) 100%);
 }
 
 .sender-self .message-content,
@@ -285,7 +285,7 @@ function cleanImageText(content: string) {
   max-width: 88%;
   padding: 14rpx 18rpx;
   border-radius: 22rpx;
-  background: rgba(255, 243, 205, 0.96);
+  background: rgba(255, 247, 224, 0.98);
 }
 
 .system-note-text {
@@ -347,7 +347,7 @@ function cleanImageText(content: string) {
   height: 76rpx;
   padding: 0 22rpx;
   border-radius: var(--ss-pill-radius);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.96);
   font-size: var(--ss-font-size-body);
 }
 

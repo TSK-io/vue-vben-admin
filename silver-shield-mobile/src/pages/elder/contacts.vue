@@ -12,7 +12,7 @@
 
     <view v-else class="contact-section">
       <text class="section-label">优先联系</text>
-      <view class="ss-list-group">
+      <view class="ss-list-group ss-fade-up ss-stagger-1">
         <view v-for="contact in priorityContacts" :key="contact.id" class="ss-list-cell contact-cell" @click="chatWith(contact.id)">
           <view class="avatar">{{ contact.avatarText }}</view>
           <view class="contact-main">
@@ -25,14 +25,14 @@
             <text class="note">{{ contact.note }}</text>
           </view>
           <view class="contact-actions">
-            <button class="action-chip" @click.stop="chatWith(contact.id)">消息</button>
-            <button class="action-chip ghost" @click.stop="startCall(contact.id)">电话</button>
+            <button class="action-chip ss-pressable" @click.stop="chatWith(contact.id)">消息</button>
+            <button class="action-chip ghost ss-pressable" @click.stop="startCall(contact.id)">电话</button>
           </view>
         </view>
       </view>
 
       <text class="section-label secondary">其他联系人</text>
-      <view class="ss-list-group">
+      <view class="ss-list-group ss-fade-up ss-stagger-2">
         <view v-for="contact in otherContacts" :key="contact.id" class="ss-list-cell contact-cell compact" @click="chatWith(contact.id)">
           <view class="avatar">{{ contact.avatarText }}</view>
           <view class="contact-main">

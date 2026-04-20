@@ -2,11 +2,11 @@
   <view class="ss-page risk-page">
     <ss-topbar title="风险提醒" subtitle="只告诉你先做什么，不让页面变成复杂说明书。" show-back />
 
-    <ss-card v-if="topRisk" class="hero-card">
+    <ss-card v-if="topRisk" class="hero-card ss-pop-in">
       <text class="hero-badge">重要提醒</text>
       <text class="hero-title">{{ topRisk.title }}</text>
       <text class="hero-summary">{{ topRisk.summary }}</text>
-      <view class="steps-card">
+      <view class="steps-card ss-pulse-soft">
         <text class="steps-title">现在先做这 3 件事</text>
         <text class="steps-item">1. 不转账</text>
         <text class="steps-item">2. 不点陌生链接</text>
@@ -19,17 +19,17 @@
       :text="topRisk ? `${topRisk.title}。${topRisk.summary}` : '这里可以把提醒读出来。'"
     />
 
-    <ss-card v-if="topRisk">
+    <ss-card v-if="topRisk" class="ss-fade-up ss-stagger-2">
       <ss-section-title title="为什么提醒你" />
       <text class="block-text">{{ topRisk.reason || '这条内容看起来不太安全，先不要继续操作。' }}</text>
     </ss-card>
 
-    <ss-card v-if="topRisk">
+    <ss-card v-if="topRisk" class="ss-fade-up ss-stagger-3">
       <ss-section-title title="下一步" subtitle="先把动作做对，比先看懂分析更重要。" />
       <text class="block-text">{{ topRisk.suggestion || '先联系家人，让熟悉的人帮你看一眼。' }}</text>
       <view class="action-group">
-        <button class="ss-primary-button" @click="goChat">给家人发消息</button>
-        <button class="ss-secondary-button" @click="goContacts">查看联系人</button>
+        <button class="ss-primary-button ss-pressable" @click="goChat">给家人发消息</button>
+        <button class="ss-secondary-button ss-pressable" @click="goContacts">查看联系人</button>
       </view>
     </ss-card>
 
@@ -40,7 +40,7 @@
       empty-description="如果收到可疑消息或电话，页面会在这里提醒你先停一下。"
     />
 
-    <button class="ss-danger-button bottom-button" @click="goChat">联系家人</button>
+    <button class="ss-danger-button bottom-button ss-pressable" @click="goChat">联系家人</button>
   </view>
 </template>
 

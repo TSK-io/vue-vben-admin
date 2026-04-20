@@ -1,5 +1,5 @@
 <template>
-  <view class="page-shell">
+  <view class="ss-page">
     <ss-topbar title="最近通话" subtitle="只看最近联系过谁，结果一眼能看懂。" show-back />
 
     <ss-feedback-state
@@ -9,7 +9,7 @@
       empty-description="打过电话以后，这里会自动显示最近的通话。"
     />
 
-    <ss-card v-for="record in records" :key="record.id">
+    <ss-card v-for="record in records" :key="record.id" class="ss-fade-up">
       <view class="record-card">
         <view class="top-row">
           <text class="name">{{ record.contactName }}</text>
@@ -63,16 +63,6 @@ function summaryLabel(record: CallRecord) {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background:
-    radial-gradient(circle at top right, rgba(230, 247, 255, 0.5), transparent 24%),
-    #f6f8f2;
-}
 .meta,
 .summary {
   font-size: var(--ss-font-size-body);

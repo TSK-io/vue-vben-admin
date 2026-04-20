@@ -2,7 +2,7 @@
   <view class="ss-page home-page">
     <ss-topbar :title="`您好，${displayName}`" subtitle="把重要的人和重要的事放在最前面。" />
 
-    <view class="hero ss-glass-card ss-fade-up">
+    <view class="hero ss-glass-card ss-fade-up ss-stagger-1">
       <view class="hero-copy">
         <text class="eyebrow">今天优先看这里</text>
         <text class="hero-title">{{ topRisk ? topRisk.title : '今天整体平稳，可以安心联系家人' }}</text>
@@ -10,20 +10,20 @@
       </view>
       <view class="hero-side">
         <text class="hero-pill" :class="hasHighRisk ? 'danger' : 'safe'">{{ hasHighRisk ? '高风险提醒' : '状态平稳' }}</text>
-        <button class="hero-action" @click="openPage('/pages/elder/risk-alert')">{{ hasHighRisk ? '立即查看' : '查看提醒' }}</button>
+        <button class="hero-action ss-pressable" @click="openPage('/pages/elder/risk-alert')">{{ hasHighRisk ? '立即查看' : '查看提醒' }}</button>
       </view>
     </view>
 
     <ss-voice-bar :enabled="store.elderSettings.voiceBroadcastReserved" :text="voiceSummary" />
 
-    <ss-card class="section-card ss-fade-up">
+    <ss-card class="section-card ss-fade-up ss-stagger-2">
       <ss-section-title title="最近会话" subtitle="先看最近联系的人，减少来回找入口。">
         <template #action>
           <text class="action-link" @click="openPage('/pages/elder/conversations')">全部</text>
         </template>
       </ss-section-title>
       <view v-if="recentSessions.length" class="recent-list">
-        <view v-for="session in recentSessions" :key="session.contactId" class="recent-item" @click="openChat(session.contactId)">
+        <view v-for="session in recentSessions" :key="session.contactId" class="recent-item ss-pressable" @click="openChat(session.contactId)">
           <view class="recent-avatar">{{ session.avatarText }}</view>
           <view class="recent-main">
             <view class="recent-row">
@@ -43,29 +43,29 @@
       </view>
     </ss-card>
 
-    <ss-card class="section-card ss-fade-up">
+    <ss-card class="section-card ss-fade-up ss-stagger-3">
       <ss-section-title title="常用操作" subtitle="常用功能只保留 4 个最关键入口。" />
       <view class="quick-grid">
-        <button class="quick-button primary" @click="chatWithGuardian">
+        <button class="quick-button primary ss-pressable" @click="chatWithGuardian">
           <text class="quick-title">发消息</text>
           <text class="quick-desc">直接联系女儿</text>
         </button>
-        <button class="quick-button soft" @click="callGuardian">
+        <button class="quick-button soft ss-pressable" @click="callGuardian">
           <text class="quick-title">打电话</text>
           <text class="quick-desc">一键语音联系</text>
         </button>
-        <button class="quick-button warm" @click="openPage('/pages/elder/contacts')">
+        <button class="quick-button warm ss-pressable" @click="openPage('/pages/elder/contacts')">
           <text class="quick-title">联系人</text>
           <text class="quick-desc">查看家人电话</text>
         </button>
-        <button class="quick-button danger" @click="submitSos">
+        <button class="quick-button danger ss-pressable ss-pulse-soft" @click="submitSos">
           <text class="quick-title">一键求助</text>
           <text class="quick-desc">紧急情况快速求助</text>
         </button>
       </view>
     </ss-card>
 
-    <view class="summary-row ss-fade-up">
+    <view class="summary-row ss-fade-up ss-stagger-4">
       <view class="summary-card ss-glass-card">
         <text class="summary-value">{{ contactsCount }}</text>
         <text class="summary-label">联系人</text>
@@ -149,6 +149,7 @@ function messageTypeLabel(type: MessageType) {
   justify-content: space-between;
   gap: 24rpx;
   padding: 34rpx 30rpx;
+  background: rgba(255, 255, 255, 0.88);
 }
 
 .hero-copy {
@@ -248,7 +249,8 @@ function messageTypeLabel(type: MessageType) {
   gap: 18rpx;
   padding: 24rpx;
   border-radius: 26rpx;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.9);
+  transition: transform var(--ss-duration-fast) var(--ss-ease-standard), box-shadow var(--ss-duration-fast) var(--ss-ease-standard);
 }
 
 .recent-avatar {
@@ -340,19 +342,19 @@ function messageTypeLabel(type: MessageType) {
 }
 
 .quick-button.primary {
-  background: linear-gradient(180deg, #e8f1ff 0%, #d9e9ff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #edf6ff 100%);
 }
 
 .quick-button.soft {
-  background: linear-gradient(180deg, #eef8ff 0%, #e0f0ff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f2f8ff 100%);
 }
 
 .quick-button.warm {
-  background: linear-gradient(180deg, #fff6df 0%, #ffedc2 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #fff4dc 100%);
 }
 
 .quick-button.danger {
-  background: linear-gradient(180deg, #ffe7e7 0%, #ffd7d7 100%);
+  background: linear-gradient(180deg, #fff7f7 0%, #ffe5e5 100%);
 }
 
 .quick-title {

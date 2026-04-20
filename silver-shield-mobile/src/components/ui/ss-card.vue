@@ -1,5 +1,5 @@
 <template>
-  <view class="ss-card">
+  <view class="ss-card ss-fade-up">
     <slot />
   </view>
 </template>

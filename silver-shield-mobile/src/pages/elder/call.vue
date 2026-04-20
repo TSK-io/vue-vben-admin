@@ -1,8 +1,8 @@
 <template>
-  <view class="page-shell">
+  <view class="ss-page">
     <ss-topbar title="语音通话" subtitle="App 内语音通话演示流程，后续可替换真实 SDK。" show-back />
 
-    <ss-card v-if="call">
+    <ss-card v-if="call" class="ss-pop-in">
       <view class="hero-card">
         <view class="avatar">{{ call.avatarText }}</view>
         <text class="name">{{ call.contactName }}</text>
@@ -13,27 +13,27 @@
       </view>
     </ss-card>
 
-    <ss-card v-if="call">
+    <ss-card v-if="call" class="ss-fade-up ss-stagger-2">
       <ss-section-title title="通话控制" subtitle="覆盖拨打、接听、通话中、挂断和异常处理。" />
       <view class="action-grid">
-        <button v-if="call.status === 'ringing'" class="action-button warm" @click="acceptCall">接听</button>
-        <button v-if="call.status === 'ringing' || call.status === 'connecting'" class="action-button" @click="connectCall">模拟接通</button>
-        <button v-if="call.status === 'connected'" class="action-button" @click="tickCall">增加 30 秒</button>
-        <button class="action-button danger" @click="endCall">挂断</button>
-        <button class="action-button secondary" @click="failCall">网络异常</button>
-        <button v-if="call.status === 'ringing'" class="action-button secondary" @click="rejectCall">拒接</button>
+        <button v-if="call.status === 'ringing'" class="action-button warm ss-pressable" @click="acceptCall">接听</button>
+        <button v-if="call.status === 'ringing' || call.status === 'connecting'" class="action-button ss-pressable" @click="connectCall">模拟接通</button>
+        <button v-if="call.status === 'connected'" class="action-button ss-pressable" @click="tickCall">增加 30 秒</button>
+        <button class="action-button danger ss-pressable" @click="endCall">挂断</button>
+        <button class="action-button secondary ss-pressable" @click="failCall">网络异常</button>
+        <button v-if="call.status === 'ringing'" class="action-button secondary ss-pressable" @click="rejectCall">拒接</button>
       </view>
     </ss-card>
 
-    <ss-card v-if="call">
+    <ss-card v-if="call" class="ss-fade-up ss-stagger-3">
       <ss-section-title title="摘要上传预留" subtitle="真实接入后可上传 ASR 结果、风险标签与回访结论。" />
       <textarea v-model="summaryDraft" class="summary-input" maxlength="120" />
-      <button class="save-button" @click="saveAndFinish">保存摘要并结束</button>
+      <button class="save-button ss-pressable" @click="saveAndFinish">保存摘要并结束</button>
     </ss-card>
 
     <ss-card v-else>
       <text class="empty-text">当前没有进行中的通话，您可以从联系人、风险详情、求助详情或老人列表发起。</text>
-      <button class="save-button secondary" @click="openPage('/pages/elder/call-records')">查看通话记录</button>
+      <button class="save-button secondary ss-pressable" @click="openPage('/pages/elder/call-records')">查看通话记录</button>
     </ss-card>
   </view>
 </template>
@@ -126,14 +126,6 @@ function persistSummary() {
 </script>
 
 <style scoped lang="scss">
-.page-shell {
-  min-height: 100vh;
-  padding: 32rpx 24rpx 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  background: linear-gradient(180deg, #f6f9fb 0%, #eef3ea 100%);
-}
 .hero-card {
   display: flex;
   flex-direction: column;
@@ -145,7 +137,7 @@ function persistSummary() {
   width: 132rpx;
   height: 132rpx;
   border-radius: 50%;
-  background: #dff7f2;
+  background: linear-gradient(180deg, #ffffff 0%, #edf6ff 100%);
   color: var(--ss-color-primary);
   display: flex;
   align-items: center;
@@ -184,20 +176,20 @@ function persistSummary() {
   font-weight: 700;
 }
 .action-button {
-  background: #dff7f2;
+  background: linear-gradient(180deg, #ffffff 0%, #edf6ff 100%);
   color: var(--ss-color-primary);
 }
 .action-button.warm {
-  background: #fff0d2;
+  background: linear-gradient(180deg, #ffffff 0%, #fff4dc 100%);
   color: #8a5a00;
 }
 .action-button.danger {
-  background: #fee2e2;
+  background: linear-gradient(180deg, #fff6f6 0%, #ffe4e4 100%);
   color: #991b1b;
 }
 .action-button.secondary,
 .save-button.secondary {
-  background: #eef2f7;
+  background: rgba(247, 248, 250, 0.98);
   color: var(--ss-color-text);
 }
 .summary-input {
@@ -206,12 +198,12 @@ function persistSummary() {
   margin-top: 16rpx;
   padding: 20rpx;
   border-radius: 22rpx;
-  background: #f7faf7;
+  background: rgba(249, 250, 251, 0.98);
   font-size: var(--ss-font-size-body);
 }
 .save-button {
   margin-top: 16rpx;
-  background: var(--ss-color-primary);
+  background: linear-gradient(180deg, #3f9bff 0%, var(--ss-color-primary) 100%);
   color: #fff;
 }
 </style>
