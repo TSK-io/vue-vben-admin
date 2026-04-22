@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import {
   Button,
@@ -18,6 +19,8 @@ import { getBindingListApi, getFamilyAlertListApi, sendFamilyReminderApi } from 
 import type { FamilyAlertItem } from '#/api';
 
 defineOptions({ name: 'FamilyAlerts' });
+
+const router = useRouter();
 
 const loading = ref(false);
 const alerts = ref<FamilyAlertItem[]>([]);
@@ -153,6 +156,22 @@ function openReminder(item: FamilyAlertItem) {
   reminderChannel.value = 'app';
   reminderText.value = item.remoteMessage;
   reminderVisible.value = true;
+}
+
+async function handleOpenChat(item: FamilyAlertItem) {
+  const bindings = await getBindingListApi();
+  const target = bindings.find((binding) => binding.elderName === item.elderName);
+  if (!target) {
+    message.warning('未找到对应老人绑定关系，暂时无法发起聊天');
+    return;
+  }
+  await router.push({
+    path: '/chat/index',
+    query: {
+      source: 'risk-alert',
+      userId: target.elderUserId,
+    },
+  });
 }
 
 async function submitReminder() {
@@ -317,9 +336,12 @@ onMounted(() => {
                 <div class="info-card callout-card">
                   <p class="info-label">推荐提醒文案</p>
                   <p class="info-text">{{ item.remoteMessage }}</p>
-                  <Button type="primary" @click="openReminder(item)">
-                    发送远程提醒
-                  </Button>
+                  <Space wrap>
+                    <Button type="primary" @click="openReminder(item)">
+                      发送远程提醒
+                    </Button>
+                    <Button @click="handleOpenChat(item)">发起聊天</Button>
+                  </Space>
                 </div>
               </Col>
               <Col :lg="12" :span="24">

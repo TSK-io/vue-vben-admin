@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import defaultdict, deque
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -10,19 +11,34 @@ from fastapi import HTTPException, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
 from app.db.session import session_scope
-from app.models import ChatConversation, ChatConversationMember, ChatInstancePresence, ChatMessage, User
+from app.models import (
+    ChatAuditLog,
+    ChatConversation,
+    ChatConversationMember,
+    ChatInstancePresence,
+    ChatMessage,
+    ChatUserRelation,
+    ElderFamilyBinding,
+    User,
+)
 from app.schemas.chat import (
+    ChatRelationshipItem,
     ChatConversationDetail,
     ChatConversationItem,
     ChatConversationMemberItem,
     ChatMessageItem,
     ChatSendMessageRequest,
     ChatUnreadSummary,
+    ChatRecommendedContactItem,
     ChatUserSearchItem,
+    CreateChatBlacklistRequest,
+    CreateChatReportRequest,
     CreateConversationRequest,
     MarkMessageReadRequest,
     OnlineStateItem,
+    UpdateChatMuteRequest,
 )
 from app.schemas.user import UserProfile
 
@@ -57,6 +73,76 @@ def _analyze_risk(text: str) -> dict[str, str]:
         "risk_reason": reason,
         "risk_suggestion": "请勿泄露验证码、转账或点击不明链接，必要时联系家人、社区或求助入口。",
     }
+
+
+def _normalize_relation(session, owner_user_id: str, target_user_id: str) -> ChatUserRelation:
+    relation = session.scalar(
+        select(ChatUserRelation).where(
+            ChatUserRelation.owner_user_id == owner_user_id,
+            ChatUserRelation.target_user_id == target_user_id,
+        )
+    )
+    if relation:
+        return relation
+    relation = ChatUserRelation(owner_user_id=owner_user_id, target_user_id=target_user_id)
+    session.add(relation)
+    session.flush()
+    return relation
+
+
+def _write_audit_log(
+    session,
+    *,
+    actor_user_id: str | None,
+    action: str,
+    target_user_id: str | None = None,
+    conversation_id: str | None = None,
+    message_id: str | None = None,
+    risk_level: str | None = None,
+    detail: dict[str, Any] | None = None,
+) -> None:
+    settings = get_settings()
+    if not settings.chat_audit_enabled:
+        return
+    session.add(
+        ChatAuditLog(
+            actor_user_id=actor_user_id,
+            target_user_id=target_user_id,
+            conversation_id=conversation_id,
+            message_id=message_id,
+            action=action,
+            detail_json=json.dumps(detail, ensure_ascii=False) if detail else None,
+            risk_level=risk_level,
+        )
+    )
+
+
+def _ensure_chat_allowed(session, actor_user_id: str, target_user_id: str) -> None:
+    actor = session.get(User, actor_user_id)
+    target = session.get(User, target_user_id)
+    if not actor or actor.status != "active":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="当前账号不可发起聊天")
+    if not target or target.status != "active":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="对方账号当前不可聊天")
+
+    blocked = session.scalar(
+        select(ChatUserRelation).where(
+            or_(
+                and_(
+                    ChatUserRelation.owner_user_id == actor_user_id,
+                    ChatUserRelation.target_user_id == target_user_id,
+                    ChatUserRelation.is_blocked.is_(True),
+                ),
+                and_(
+                    ChatUserRelation.owner_user_id == target_user_id,
+                    ChatUserRelation.target_user_id == actor_user_id,
+                    ChatUserRelation.is_blocked.is_(True),
+                ),
+            )
+        )
+    )
+    if blocked:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="当前聊天对象不可达")
 
 
 def _to_message_item(message: ChatMessage, current_user_id: str) -> ChatMessageItem:
@@ -96,7 +182,12 @@ def _require_member(session, conversation_id: str, user_id: str) -> ChatConversa
 
 def search_chat_users(user: UserProfile, keyword: str | None = None, limit: int = 20) -> list[ChatUserSearchItem]:
     with session_scope() as session:
+        blocked_subquery = select(ChatUserRelation.target_user_id).where(
+            ChatUserRelation.owner_user_id == user.user_id,
+            ChatUserRelation.is_blocked.is_(True),
+        )
         query = select(User).where(User.id != user.user_id, User.status == "active").order_by(User.display_name.asc())
+        query = query.where(User.id.not_in(blocked_subquery))
         if keyword:
             pattern = f"%{keyword}%"
             query = query.where(or_(User.display_name.ilike(pattern), User.username.ilike(pattern), User.phone.ilike(pattern)))
@@ -113,12 +204,63 @@ def search_chat_users(user: UserProfile, keyword: str | None = None, limit: int 
         ]
 
 
+def list_recommended_contacts(user: UserProfile, limit: int = 10) -> list[ChatRecommendedContactItem]:
+    with session_scope() as session:
+        blocked_subquery = select(ChatUserRelation.target_user_id).where(
+            ChatUserRelation.owner_user_id == user.user_id,
+            ChatUserRelation.is_blocked.is_(True),
+        )
+        query = (
+            select(ElderFamilyBinding, User)
+            .join(
+                User,
+                or_(
+                    and_(
+                        ElderFamilyBinding.elder_user_id == user.user_id,
+                        ElderFamilyBinding.family_user_id == User.id,
+                    ),
+                    and_(
+                        ElderFamilyBinding.family_user_id == user.user_id,
+                        ElderFamilyBinding.elder_user_id == User.id,
+                    ),
+                ),
+            )
+            .where(
+                ElderFamilyBinding.status == "active",
+                User.id != user.user_id,
+                User.status == "active",
+                User.id.not_in(blocked_subquery),
+            )
+            .order_by(ElderFamilyBinding.is_emergency_contact.desc(), ElderFamilyBinding.created_at.desc())
+            .limit(limit)
+        )
+        rows = session.execute(query).all()
+        return [
+            ChatRecommendedContactItem(
+                user_id=target.id,
+                username=target.username,
+                display_name=target.display_name,
+                phone=target.phone,
+                status=target.status,
+                relationship_type=binding.relationship_type,
+                is_emergency_contact=binding.is_emergency_contact,
+                recommendation_reason=(
+                    f"来自已绑定{binding.relationship_type or '家庭'}关系"
+                    + ("，且为紧急联系人" if binding.is_emergency_contact else "")
+                ),
+            )
+            for binding, target in rows
+        ]
+
+
 def create_or_get_conversation(user: UserProfile, payload: CreateConversationRequest) -> ChatConversationDetail:
     participant_ids = sorted(set([user.user_id, *payload.participant_user_ids]))
     with session_scope() as session:
         users = session.execute(select(User).where(User.id.in_(participant_ids), User.status == "active")).scalars().all()
         if len(users) != 2:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话成员不存在或不可达")
+        peer_user_id = next(item for item in participant_ids if item != user.user_id)
+        _ensure_chat_allowed(session, user.user_id, peer_user_id)
 
         conversation_rows = (
             session.execute(
@@ -157,6 +299,14 @@ def create_or_get_conversation(user: UserProfile, payload: CreateConversationReq
             )
         session.flush()
         conversation_id = conversation.id
+        _write_audit_log(
+            session,
+            actor_user_id=user.user_id,
+            action="conversation_created",
+            target_user_id=peer_user_id,
+            conversation_id=conversation_id,
+            detail={"conversation_type": payload.conversation_type},
+        )
     return get_conversation_detail(user, conversation_id)
 
 
@@ -260,6 +410,8 @@ def send_message(user: UserProfile, conversation_id: str, payload: ChatSendMessa
         )
         assert conversation is not None
         peer_member = next((item for item in conversation.members if item.user_id != user.user_id), None)
+        if peer_member:
+            _ensure_chat_allowed(session, user.user_id, peer_member.user_id)
         now = _now()
         risk = _analyze_risk(payload.content_text)
         message = ChatMessage(
@@ -290,6 +442,16 @@ def send_message(user: UserProfile, conversation_id: str, payload: ChatSendMessa
             else:
                 member.unread_count += 1
         session.refresh(message, attribute_names=["sender"])
+        _write_audit_log(
+            session,
+            actor_user_id=user.user_id,
+            action="message_sent",
+            target_user_id=peer_member.user_id if peer_member else None,
+            conversation_id=conversation_id,
+            message_id=message.id,
+            risk_level=message.risk_level,
+            detail={"message_type": payload.message_type, "content_preview": _message_preview(payload.content_text)},
+        )
         return _to_message_item(message, user.user_id)
 
 
@@ -307,6 +469,14 @@ def mark_messages_read(user: UserProfile, conversation_id: str, payload: MarkMes
         session.flush()
         total_unread = session.scalar(
             select(func.sum(ChatConversationMember.unread_count)).where(ChatConversationMember.user_id == user.user_id)
+        )
+        _write_audit_log(
+            session,
+            actor_user_id=user.user_id,
+            action="message_read",
+            conversation_id=conversation_id,
+            message_id=payload.last_read_message_id,
+            detail={"total_unread": total_unread or 0},
         )
         return ChatUnreadSummary(total_unread=total_unread or 0)
 
@@ -333,6 +503,151 @@ def list_online_states(user: UserProfile, user_ids: list[str] | None = None) -> 
             )
             for item in target_ids
         ]
+
+
+def list_relationships(user: UserProfile) -> list[ChatRelationshipItem]:
+    with session_scope() as session:
+        rows = session.execute(
+            select(ChatUserRelation).where(
+                ChatUserRelation.owner_user_id == user.user_id,
+                or_(ChatUserRelation.is_blocked.is_(True), ChatUserRelation.is_reported.is_(True)),
+            )
+        ).scalars().all()
+        return [
+            ChatRelationshipItem(
+                target_user_id=item.target_user_id,
+                is_blocked=item.is_blocked,
+                is_reported=item.is_reported,
+                report_reason=item.report_reason,
+                blocked_at=item.blocked_at,
+                reported_at=item.reported_at,
+            )
+            for item in rows
+        ]
+
+
+def create_blacklist_record(user: UserProfile, payload: CreateChatBlacklistRequest) -> ChatRelationshipItem:
+    if payload.target_user_id == user.user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能将自己加入黑名单")
+    with session_scope() as session:
+        _ensure_chat_allowed(session, user.user_id, payload.target_user_id)
+        relation = _normalize_relation(session, user.user_id, payload.target_user_id)
+        relation.is_blocked = True
+        relation.blocked_at = _now()
+        if payload.reason:
+            relation.report_reason = payload.reason
+        _write_audit_log(
+            session,
+            actor_user_id=user.user_id,
+            action="user_blocked",
+            target_user_id=payload.target_user_id,
+            detail={"reason": payload.reason},
+        )
+        return ChatRelationshipItem(
+            target_user_id=relation.target_user_id,
+            is_blocked=relation.is_blocked,
+            is_reported=relation.is_reported,
+            report_reason=relation.report_reason,
+            blocked_at=relation.blocked_at,
+            reported_at=relation.reported_at,
+        )
+
+
+def remove_blacklist_record(user: UserProfile, target_user_id: str) -> ChatRelationshipItem:
+    with session_scope() as session:
+        relation = _normalize_relation(session, user.user_id, target_user_id)
+        relation.is_blocked = False
+        relation.blocked_at = None
+        _write_audit_log(
+            session,
+            actor_user_id=user.user_id,
+            action="user_unblocked",
+            target_user_id=target_user_id,
+        )
+        return ChatRelationshipItem(
+            target_user_id=relation.target_user_id,
+            is_blocked=relation.is_blocked,
+            is_reported=relation.is_reported,
+            report_reason=relation.report_reason,
+            blocked_at=relation.blocked_at,
+            reported_at=relation.reported_at,
+        )
+
+
+def create_report_record(user: UserProfile, payload: CreateChatReportRequest) -> ChatRelationshipItem:
+    if payload.target_user_id == user.user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能举报自己")
+    with session_scope() as session:
+        relation = _normalize_relation(session, user.user_id, payload.target_user_id)
+        relation.is_reported = True
+        relation.report_reason = payload.reason
+        relation.reported_at = _now()
+        _write_audit_log(
+            session,
+            actor_user_id=user.user_id,
+            action="user_reported",
+            target_user_id=payload.target_user_id,
+            conversation_id=payload.conversation_id,
+            message_id=payload.message_id,
+            detail={"reason": payload.reason},
+        )
+        return ChatRelationshipItem(
+            target_user_id=relation.target_user_id,
+            is_blocked=relation.is_blocked,
+            is_reported=relation.is_reported,
+            report_reason=relation.report_reason,
+            blocked_at=relation.blocked_at,
+            reported_at=relation.reported_at,
+        )
+
+
+def update_conversation_mute(
+    user: UserProfile, conversation_id: str, payload: UpdateChatMuteRequest
+) -> ChatConversationMemberItem:
+    with session_scope() as session:
+        member = _require_member(session, conversation_id, user.user_id)
+        member.is_muted = payload.is_muted
+        _write_audit_log(
+            session,
+            actor_user_id=user.user_id,
+            action="conversation_muted" if payload.is_muted else "conversation_unmuted",
+            conversation_id=conversation_id,
+        )
+        session.refresh(member, attribute_names=["user"])
+        return ChatConversationMemberItem(
+            user_id=member.user_id,
+            display_name=member.user.display_name if member.user else "",
+            status=member.user.status if member.user else "",
+            joined_at=member.joined_at,
+            last_read_message_id=member.last_read_message_id,
+            last_read_at=member.last_read_at,
+            unread_count=member.unread_count,
+        )
+
+
+class ChatMessageRateLimiter:
+    def __init__(self) -> None:
+        self._events: dict[str, deque[float]] = defaultdict(deque)
+
+    def check(self, user_id: str) -> None:
+        settings = get_settings()
+        limit = settings.chat_message_rate_limit_count
+        window = settings.chat_message_rate_limit_window_seconds
+        if limit <= 0 or window <= 0:
+            return
+        now = datetime.now(UTC).timestamp()
+        bucket = self._events[user_id]
+        while bucket and now - bucket[0] > window:
+            bucket.popleft()
+        if len(bucket) >= limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"发送过于频繁，请在 {window} 秒后重试",
+            )
+        bucket.append(now)
+
+
+rate_limiter = ChatMessageRateLimiter()
 
 
 class ChatConnectionManager:

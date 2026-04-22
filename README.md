@@ -61,6 +61,7 @@ Implemented in this round:
 - backend chat models for conversations, members, messages, unread state, and online presence
 - REST APIs for user search, conversation creation, conversation list/detail, message send, read receipt, unread summary, and online status
 - `WebSocket` channel for connect, ping/pong, typing, new message, and read events
+- chat guardrails for blacklist, report, mute state, basic send-rate limiting, and audit logging
 - frontend chat center page at `#/chat/index`
 - lightweight anti-fraud detection in the chat flow for suspicious links, verification-code requests, transfer guidance, and impersonation wording
 - UI placeholders for future image, voice, video, file, and call-entry expansion
@@ -71,6 +72,7 @@ Current phase assumptions:
 - chat scope is any active user inside the same system
 - phase one supports direct 1:1 chat only
 - phase one supports text messages only, while the message schema reserves multi-modal extension fields
+- blacklist and report are stored at the backend layer, and muted state is reserved for reminder suppression
 
 ## Run Locally
 

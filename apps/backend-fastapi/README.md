@@ -148,3 +148,21 @@ cd apps/backend-fastapi
 ```
 
 默认通过 `APP_DATABASE_URL` 连接 PostgreSQL。首版已补齐 3.3 所需核心表结构，详见 [docs/database-design.md](/workspaces/vue-vben-admin/apps/backend-fastapi/docs/database-design.md)。
+
+## 聊天风控补充
+
+当前聊天最小闭环在原有实时能力上，额外补充了几项基础守卫：
+
+- 黑名单关系：被加入黑名单后，双方不能继续创建或发送聊天消息
+- 举报留痕：支持按目标用户提交举报原因，并写入聊天审计日志
+- 免打扰：会话成员可写入 `is_muted` 状态，供前端后续接入提醒开关
+- 基础限流：消息发送接口受 `CHAT_MESSAGE_RATE_LIMIT_COUNT / CHAT_MESSAGE_RATE_LIMIT_WINDOW_SECONDS` 控制
+- 审计日志：创建会话、发消息、已读、拉黑、取消拉黑、举报、免打扰切换都会写入 `chat_audit_logs`
+
+新增环境变量：
+
+```env
+CHAT_MESSAGE_RATE_LIMIT_COUNT="20"
+CHAT_MESSAGE_RATE_LIMIT_WINDOW_SECONDS="60"
+CHAT_AUDIT_ENABLED="true"
+```

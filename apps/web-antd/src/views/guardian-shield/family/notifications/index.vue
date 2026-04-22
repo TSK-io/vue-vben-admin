@@ -2,6 +2,7 @@
 import type { TableColumnsType } from 'ant-design-vue';
 
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import {
   Button,
@@ -15,12 +16,15 @@ import {
 } from 'ant-design-vue';
 
 import {
+  getBindingListApi,
   getFamilyNotificationListApi,
   markFamilyNotificationReadApi,
 } from '#/api';
 import type { FamilyNotificationItem } from '#/api';
 
 defineOptions({ name: 'FamilyNotifications' });
+
+const router = useRouter();
 
 const loading = ref(false);
 const rows = ref<FamilyNotificationItem[]>([]);
@@ -140,6 +144,21 @@ async function loadRows() {
 async function handleMarkRead(notificationId: string) {
   await markFamilyNotificationReadApi(notificationId);
   await loadRows();
+}
+
+async function handleOpenChat(record: FamilyNotificationItem) {
+  const bindings = await getBindingListApi();
+  const target = bindings.find((item) => item.elderName === record.elderName);
+  if (!target) {
+    return;
+  }
+  await router.push({
+    path: '/chat/index',
+    query: {
+      source: 'notification',
+      userId: target.elderUserId,
+    },
+  });
 }
 
 function handleSearch() {
@@ -273,14 +292,19 @@ onMounted(() => {
             <Tag color="purple">{{ getStatusLabel(record.status) }}</Tag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <Button
-              size="small"
-              type="link"
-              :disabled="record.readStatus === 'read'"
-              @click="handleMarkRead(record.id)"
-            >
-              {{ record.readStatus === 'read' ? '已读' : '标记已读' }}
-            </Button>
+            <Space wrap>
+              <Button size="small" type="link" @click="handleOpenChat(record)">
+                发起聊天
+              </Button>
+              <Button
+                size="small"
+                type="link"
+                :disabled="record.readStatus === 'read'"
+                @click="handleMarkRead(record.id)"
+              >
+                {{ record.readStatus === 'read' ? '已读' : '标记已读' }}
+              </Button>
+            </Space>
           </template>
         </template>
       </Table>

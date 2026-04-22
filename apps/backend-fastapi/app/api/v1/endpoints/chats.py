@@ -4,19 +4,33 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketException, status
 
 from app.core.deps import get_current_user, get_current_user_from_token
-from app.schemas.chat import ChatSendMessageRequest, CreateConversationRequest, MarkMessageReadRequest
+from app.schemas.chat import (
+    ChatSendMessageRequest,
+    CreateChatBlacklistRequest,
+    CreateChatReportRequest,
+    CreateConversationRequest,
+    MarkMessageReadRequest,
+    UpdateChatMuteRequest,
+)
 from app.schemas.common import ApiResponse, MetaPayload
 from app.schemas.user import UserProfile
 from app.services.chat import (
     create_or_get_conversation,
     get_conversation_detail,
     get_unread_summary,
+    list_relationships,
     list_conversations,
     list_online_states,
+    list_recommended_contacts,
     manager,
     mark_messages_read,
+    rate_limiter,
+    remove_blacklist_record,
     search_chat_users,
     send_message,
+    create_blacklist_record,
+    create_report_record,
+    update_conversation_mute,
     websocket_loop,
 )
 
@@ -39,6 +53,18 @@ async def search_users(
 ) -> ApiResponse:
     return ApiResponse(
         data=[item.model_dump() for item in search_chat_users(user, keyword, limit)],
+        meta=response_meta(request),
+    )
+
+
+@router.get("/users/recommendations", response_model=ApiResponse)
+async def get_recommendations(
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+    limit: int = Query(default=10, ge=1, le=20),
+) -> ApiResponse:
+    return ApiResponse(
+        data=[item.model_dump() for item in list_recommended_contacts(user, limit)],
         meta=response_meta(request),
     )
 
@@ -81,6 +107,7 @@ async def post_message(
     request: Request,
     user: Annotated[UserProfile, Depends(get_current_user)],
 ) -> ApiResponse:
+    rate_limiter.check(user.user_id)
     data = send_message(user, conversation_id, payload)
     await manager.broadcast_to_conversation(
         conversation_id,
@@ -89,6 +116,17 @@ async def post_message(
             "data": data.model_dump(),
         },
     )
+    return ApiResponse(data=data.model_dump(), meta=response_meta(request))
+
+
+@router.post("/conversations/{conversation_id}/mute", response_model=ApiResponse)
+async def mute_conversation(
+    conversation_id: str,
+    payload: UpdateChatMuteRequest,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    data = update_conversation_mute(user, conversation_id, payload)
     return ApiResponse(data=data.model_dump(), meta=response_meta(request))
 
 
@@ -133,6 +171,41 @@ async def online_states(
         data=[item.model_dump() for item in list_online_states(user, user_ids or None)],
         meta=response_meta(request),
     )
+
+
+@router.get("/relationships", response_model=ApiResponse)
+async def get_relationships(
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    return ApiResponse(data=[item.model_dump() for item in list_relationships(user)], meta=response_meta(request))
+
+
+@router.post("/blacklist", response_model=ApiResponse)
+async def add_blacklist(
+    payload: CreateChatBlacklistRequest,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    return ApiResponse(data=create_blacklist_record(user, payload).model_dump(), meta=response_meta(request))
+
+
+@router.delete("/blacklist/{target_user_id}", response_model=ApiResponse)
+async def remove_blacklist(
+    target_user_id: str,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    return ApiResponse(data=remove_blacklist_record(user, target_user_id).model_dump(), meta=response_meta(request))
+
+
+@router.post("/report", response_model=ApiResponse)
+async def create_report(
+    payload: CreateChatReportRequest,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    return ApiResponse(data=create_report_record(user, payload).model_dump(), meta=response_meta(request))
 
 
 @router.websocket("/ws")

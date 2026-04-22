@@ -6,8 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 os.environ["APP_DATABASE_URL"] = f"sqlite:///{tempfile.gettempdir()}/guard_silver_test.db"
+os.environ["CHAT_MESSAGE_RATE_LIMIT_COUNT"] = "2"
+os.environ["CHAT_MESSAGE_RATE_LIMIT_WINDOW_SECONDS"] = "60"
 
 from app.main import app
+from app.services.chat import rate_limiter
 
 
 @pytest.fixture
@@ -212,8 +215,14 @@ def test_elder_help_settings_and_family_reminder(client: TestClient) -> None:
 
 
 def test_chat_conversation_flow_and_unread_summary(client: TestClient) -> None:
+    rate_limiter._events.clear()
     family_headers = auth_headers(client, "family_demo", "111")
     elder_headers = auth_headers(client, "elder_demo", "111")
+
+    recommendation_response = client.get("/api/v1/chats/users/recommendations", headers=family_headers)
+    assert recommendation_response.status_code == 200
+    recommended = recommendation_response.json()["data"]
+    assert any(item["user_id"] == "u-elder-001" for item in recommended)
 
     search_response = client.get("/api/v1/chats/users/search?keyword=李阿姨", headers=family_headers)
     assert search_response.status_code == 200
@@ -251,6 +260,7 @@ def test_chat_conversation_flow_and_unread_summary(client: TestClient) -> None:
 
 
 def test_chat_websocket_ping_and_typing(client: TestClient) -> None:
+    rate_limiter._events.clear()
     headers = auth_headers(client, "family_demo", "111")
     token = headers["Authorization"].replace("Bearer ", "", 1)
 
@@ -261,3 +271,73 @@ def test_chat_websocket_ping_and_typing(client: TestClient) -> None:
         websocket.send_json({"event": "ping"})
         pong = websocket.receive_json()
         assert pong["event"] == "pong"
+
+
+def test_chat_blacklist_report_and_relationships(client: TestClient) -> None:
+    rate_limiter._events.clear()
+    family_headers = auth_headers(client, "family_demo", "111")
+    elder_headers = auth_headers(client, "elder_demo", "111")
+
+    blacklist_response = client.post(
+        "/api/v1/chats/blacklist",
+        headers=elder_headers,
+        json={"target_user_id": "u-family-001", "reason": "频繁发送可疑链接"},
+    )
+    assert blacklist_response.status_code == 200
+    assert blacklist_response.json()["data"]["is_blocked"] is True
+
+    relationships_response = client.get("/api/v1/chats/relationships", headers=elder_headers)
+    assert relationships_response.status_code == 200
+    assert any(item["target_user_id"] == "u-family-001" and item["is_blocked"] for item in relationships_response.json()["data"])
+
+    create_response = client.post(
+        "/api/v1/chats/conversations",
+        headers=family_headers,
+        json={"conversation_type": "direct", "participant_user_ids": ["u-elder-001"]},
+    )
+    assert create_response.status_code == 403
+
+    report_response = client.post(
+        "/api/v1/chats/report",
+        headers=elder_headers,
+        json={"target_user_id": "u-family-001", "reason": "疑似诱导转账"},
+    )
+    assert report_response.status_code == 200
+    assert report_response.json()["data"]["is_reported"] is True
+
+    unblacklist_response = client.delete("/api/v1/chats/blacklist/u-family-001", headers=elder_headers)
+    assert unblacklist_response.status_code == 200
+    assert unblacklist_response.json()["data"]["is_blocked"] is False
+
+
+def test_chat_rate_limit_rejects_burst_messages(client: TestClient) -> None:
+    rate_limiter._events.clear()
+    family_headers = auth_headers(client, "family_demo", "111")
+
+    create_response = client.post(
+        "/api/v1/chats/conversations",
+        headers=family_headers,
+        json={"conversation_type": "direct", "participant_user_ids": ["u-elder-002"]},
+    )
+    assert create_response.status_code == 200
+    conversation_id = create_response.json()["data"]["id"]
+
+    for content in ["第一条提醒", "第二条提醒"]:
+        response = client.post(
+            f"/api/v1/chats/conversations/{conversation_id}/messages",
+            headers=family_headers,
+            json={"message_type": "text", "content_text": content},
+        )
+        assert response.status_code == 200
+
+    limited_response = client.post(
+        f"/api/v1/chats/conversations/{conversation_id}/messages",
+        headers=family_headers,
+        json={"message_type": "text", "content_text": "第三条提醒"},
+    )
+    assert limited_response.status_code == 429
+
+
+def test_chat_requires_authentication(client: TestClient) -> None:
+    response = client.get("/api/v1/chats/conversations")
+    assert response.status_code == 401

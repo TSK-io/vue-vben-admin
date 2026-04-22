@@ -156,8 +156,48 @@ def ensure_chat_schema_compatibility() -> None:
             ("risk_suggestion", "TEXT"),
         ],
     }
+    expected_tables: dict[str, str] = {
+        "chat_user_relations": """
+            CREATE TABLE chat_user_relations (
+                owner_user_id VARCHAR(36) NOT NULL,
+                target_user_id VARCHAR(36) NOT NULL,
+                is_blocked BOOLEAN DEFAULT false NOT NULL,
+                is_reported BOOLEAN DEFAULT false NOT NULL,
+                report_reason TEXT,
+                blocked_at VARCHAR(40),
+                reported_at VARCHAR(40),
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                id VARCHAR(36) NOT NULL PRIMARY KEY,
+                FOREIGN KEY(owner_user_id) REFERENCES users (id) ON DELETE CASCADE,
+                FOREIGN KEY(target_user_id) REFERENCES users (id) ON DELETE CASCADE,
+                CONSTRAINT uq_chat_user_relations_owner_target UNIQUE (owner_user_id, target_user_id)
+            )
+        """,
+        "chat_audit_logs": """
+            CREATE TABLE chat_audit_logs (
+                actor_user_id VARCHAR(36),
+                target_user_id VARCHAR(36),
+                conversation_id VARCHAR(36),
+                message_id VARCHAR(36),
+                action VARCHAR(40) NOT NULL,
+                detail_json TEXT,
+                risk_level VARCHAR(20),
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                id VARCHAR(36) NOT NULL PRIMARY KEY,
+                FOREIGN KEY(actor_user_id) REFERENCES users (id) ON DELETE SET NULL,
+                FOREIGN KEY(target_user_id) REFERENCES users (id) ON DELETE SET NULL
+            )
+        """,
+    }
 
     with engine.begin() as connection:
+        current_tables = set(inspect(connection).get_table_names())
+        for table_name, ddl in expected_tables.items():
+            if table_name not in current_tables:
+                connection.execute(text(ddl))
+
         for table_name, columns in expected_columns.items():
             existing = {column["name"] for column in inspect(connection).get_columns(table_name)}
             for column_name, column_type in columns:

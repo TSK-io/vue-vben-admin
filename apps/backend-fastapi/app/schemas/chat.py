@@ -11,6 +11,13 @@ class ChatUserSearchItem(BaseModel):
     status: str
 
 
+class ChatRecommendedContactItem(ChatUserSearchItem):
+    relationship_type: str | None = None
+    is_emergency_contact: bool = False
+    source: str = "binding"
+    recommendation_reason: str
+
+
 class CreateConversationRequest(BaseModel):
     conversation_type: Literal["direct"] = "direct"
     participant_user_ids: list[str] = Field(min_length=1, max_length=1)
@@ -84,3 +91,28 @@ class OnlineStateItem(BaseModel):
     is_online: bool
     last_seen_at: str | None = None
     client_type: str | None = None
+
+
+class UpdateChatMuteRequest(BaseModel):
+    is_muted: bool
+
+
+class ChatRelationshipItem(BaseModel):
+    target_user_id: str
+    is_blocked: bool
+    is_reported: bool
+    report_reason: str | None = None
+    blocked_at: str | None = None
+    reported_at: str | None = None
+
+
+class CreateChatBlacklistRequest(BaseModel):
+    target_user_id: str
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class CreateChatReportRequest(BaseModel):
+    target_user_id: str
+    reason: str = Field(min_length=1, max_length=500)
+    conversation_id: str | None = None
+    message_id: str | None = None

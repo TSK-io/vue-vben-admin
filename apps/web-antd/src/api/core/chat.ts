@@ -8,6 +8,13 @@ export interface ChatUserSearchItem {
   status: string;
 }
 
+export interface ChatRecommendedContactItem extends ChatUserSearchItem {
+  is_emergency_contact: boolean;
+  recommendation_reason: string;
+  relationship_type?: null | string;
+  source: string;
+}
+
 export interface ChatConversationItem {
   id: string;
   conversation_type: string;
@@ -71,6 +78,15 @@ export async function searchChatUsersApi(keyword?: string) {
   return requestClient.get<ChatUserSearchItem[]>('/chats/users/search', {
     params: { keyword },
   });
+}
+
+export async function getChatRecommendedContactsApi(limit = 10) {
+  return requestClient.get<ChatRecommendedContactItem[]>(
+    '/chats/users/recommendations',
+    {
+      params: { limit },
+    },
+  );
 }
 
 export async function createChatConversationApi(participantUserId: string) {

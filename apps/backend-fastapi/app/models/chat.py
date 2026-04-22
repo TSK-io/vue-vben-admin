@@ -96,5 +96,46 @@ class ChatInstancePresence(TimestampMixin, UUIDPrimaryKeyMixin, Base):
     user: Mapped["User"] = relationship()
 
 
+class ChatUserRelation(TimestampMixin, UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "chat_user_relations"
+    __table_args__ = (
+        UniqueConstraint("owner_user_id", "target_user_id", name="uq_chat_user_relations_owner_target"),
+    )
+
+    owner_user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    target_user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    is_reported: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    report_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    blocked_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    reported_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+    owner: Mapped["User"] = relationship(foreign_keys=[owner_user_id])
+    target: Mapped["User"] = relationship(foreign_keys=[target_user_id])
+
+
+class ChatAuditLog(TimestampMixin, UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "chat_audit_logs"
+
+    actor_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    target_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    conversation_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    message_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    detail_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    risk_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    actor: Mapped["User"] = relationship(foreign_keys=[actor_user_id])
+    target: Mapped["User"] = relationship(foreign_keys=[target_user_id])
+
+
 if TYPE_CHECKING:
     from app.models.user import User

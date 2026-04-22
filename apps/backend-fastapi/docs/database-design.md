@@ -13,6 +13,7 @@
 - 工单与工单处置记录
 - 风险规则、风险词库、提示模板
 - 宣教内容
+- 聊天会话、消息、在线状态、黑名单/举报关系、聊天审计日志
 
 ## 2. 模型分层
 
@@ -26,6 +27,13 @@
   - `risk_alerts`
   - `sms_recognition_records`
   - `call_recognition_records`
+- `app/models/chat.py`
+  - `chat_conversations`
+  - `chat_conversation_members`
+  - `chat_messages`
+  - `chat_instance_presence`
+  - `chat_user_relations`
+  - `chat_audit_logs`
 - `app/models/notification.py`
   - `notification_records`
 - `app/models/workorder.py`
@@ -44,6 +52,9 @@
 - 一条风险告警归属一个老人，可由短信或通话识别记录触发。
 - 一条风险告警可扩散为多条通知记录，并在高风险场景下生成社区工单。
 - 一个工单可记录多次状态流转和处置动作，通过 `workorder_actions` 留痕。
+- 一个聊天会话可包含多条消息，并通过 `chat_conversation_members` 维护未读、已读、免打扰状态。
+- 用户之间的黑名单、举报等控制关系通过 `chat_user_relations` 管理。
+- 聊天关键操作通过 `chat_audit_logs` 留痕，便于后续审计导出与风控联动。
 
 ## 4. 字段设计原则
 
@@ -57,6 +68,8 @@
 - Alembic 配置文件：`apps/backend-fastapi/alembic.ini`
 - Alembic 环境入口：`apps/backend-fastapi/alembic/env.py`
 - 首个初始化迁移：`apps/backend-fastapi/alembic/versions/20260414_0001_init_core_schema.py`
+- 聊天兼容迁移：`apps/backend-fastapi/alembic/versions/20260420_0002_chat_schema_compat.py`
+- 聊天风控与审计迁移：`apps/backend-fastapi/alembic/versions/20260421_0003_chat_guardrails.py`
 
 执行方式：
 

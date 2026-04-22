@@ -37,6 +37,9 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://postgres:postgres@127.0.0.1:5432/guard_silver",
         alias="APP_DATABASE_URL",
     )
+    chat_message_rate_limit_count: int = Field(default=20, alias="CHAT_MESSAGE_RATE_LIMIT_COUNT")
+    chat_message_rate_limit_window_seconds: int = Field(default=60, alias="CHAT_MESSAGE_RATE_LIMIT_WINDOW_SECONDS")
+    chat_audit_enabled: bool = Field(default=True, alias="CHAT_AUDIT_ENABLED")
 
 
 @lru_cache

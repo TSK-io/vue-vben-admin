@@ -12,6 +12,7 @@ import {
   Space,
   Tag,
 } from 'ant-design-vue';
+import { useRoute } from 'vue-router';
 
 import { useUserStore } from '@vben/stores';
 
@@ -21,9 +22,11 @@ defineOptions({ name: 'ChatCenter' });
 
 const chatStore = useChatStore();
 const userStore = useUserStore();
+const route = useRoute();
 
 const keyword = ref('');
 const draft = ref('');
+const pendingRouteTarget = ref('');
 
 const currentMessages = computed(
   () => chatStore.currentConversation?.messages ?? [],
@@ -59,15 +62,42 @@ async function handleSend() {
   await chatStore.sendMessage(content);
 }
 
+async function syncRouteIntent() {
+  const conversationId =
+    typeof route.query.conversationId === 'string'
+      ? route.query.conversationId
+      : '';
+  const targetUserId = typeof route.query.userId === 'string' ? route.query.userId : '';
+  const routeKey = conversationId || targetUserId;
+  if (!routeKey || pendingRouteTarget.value === routeKey) {
+    return;
+  }
+  pendingRouteTarget.value = routeKey;
+  if (conversationId) {
+    await chatStore.openConversation(conversationId);
+    return;
+  }
+  await chatStore.startConversation(targetUserId);
+}
+
 watch(draft, (value) => {
   if (value.trim()) {
     chatStore.sendTyping();
   }
 });
 
+watch(
+  () => [route.query.conversationId, route.query.userId],
+  () => {
+    void syncRouteIntent();
+  },
+  { immediate: false },
+);
+
 onMounted(async () => {
   chatStore.connectWs();
   await chatStore.loadConversations();
+  await syncRouteIntent();
 });
 </script>
 
@@ -99,6 +129,28 @@ onMounted(async () => {
         </div>
 
         <div class="search-results">
+          <p class="section-title">推荐联系人</p>
+          <List
+            size="small"
+            :data-source="chatStore.recommendedContacts"
+            :locale="{ emptyText: '当前暂无绑定关系推荐联系人' }"
+          >
+            <template #renderItem="{ item }">
+              <List.Item class="user-item">
+                <div>
+                  <strong>
+                    {{ item.display_name }}
+                    <Tag v-if="item.is_emergency_contact" color="red">紧急联系人</Tag>
+                  </strong>
+                  <p>{{ item.recommendation_reason }}</p>
+                </div>
+                <Button size="small" @click="handleStartChat(item.user_id)">
+                  快速发起
+                </Button>
+              </List.Item>
+            </template>
+          </List>
+
           <p class="section-title">发起聊天</p>
           <List
             size="small"

@@ -8,6 +8,7 @@ import type {
   ChatConversationDetail,
   ChatConversationItem,
   ChatMessageItem,
+  ChatRecommendedContactItem,
   ChatUserSearchItem,
   OnlineStateItem,
 } from '#/api';
@@ -16,6 +17,7 @@ import {
   getChatConversationDetailApi,
   getChatConversationListApi,
   getChatOnlineStatesApi,
+  getChatRecommendedContactsApi,
   getChatUnreadSummaryApi,
   markChatReadApi,
   searchChatUsersApi,
@@ -37,6 +39,7 @@ export const useChatStore = defineStore('chat', () => {
 
   const conversations = ref<ChatConversationItem[]>([]);
   const currentConversation = ref<ChatConversationDetail | null>(null);
+  const recommendedContacts = ref<ChatRecommendedContactItem[]>([]);
   const searchResults = ref<ChatUserSearchItem[]>([]);
   const totalUnread = ref(0);
   const onlineStates = ref<Record<string, OnlineStateItem>>({});
@@ -46,8 +49,14 @@ export const useChatStore = defineStore('chat', () => {
   const socket = ref<null | WebSocket>(null);
 
   async function loadConversations() {
-    conversations.value = await getChatConversationListApi();
-    totalUnread.value = (await getChatUnreadSummaryApi()).total_unread;
+    const [conversationRows, unreadSummary, recommendations] = await Promise.all([
+      getChatConversationListApi(),
+      getChatUnreadSummaryApi(),
+      getChatRecommendedContactsApi(),
+    ]);
+    conversations.value = conversationRows;
+    totalUnread.value = unreadSummary.total_unread;
+    recommendedContacts.value = recommendations;
     await refreshOnlineStates();
   }
 
@@ -161,6 +170,7 @@ export const useChatStore = defineStore('chat', () => {
     loadConversations,
     onlineStates,
     openConversation,
+    recommendedContacts,
     refreshOnlineStates,
     searchResults,
     searchUsers,
