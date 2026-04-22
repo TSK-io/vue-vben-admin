@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     chat_message_rate_limit_count: int = Field(default=20, alias="CHAT_MESSAGE_RATE_LIMIT_COUNT")
     chat_message_rate_limit_window_seconds: int = Field(default=60, alias="CHAT_MESSAGE_RATE_LIMIT_WINDOW_SECONDS")
     chat_audit_enabled: bool = Field(default=True, alias="CHAT_AUDIT_ENABLED")
+    call_stun_servers: list[str] = Field(
+        default_factory=lambda: ["stun:stun.l.google.com:19302"],
+        alias="CALL_STUN_SERVERS",
+    )
+    call_turn_url: str | None = Field(default=None, alias="CALL_TURN_URL")
+    call_turn_username: str | None = Field(default=None, alias="CALL_TURN_USERNAME")
+    call_turn_password: str | None = Field(default=None, alias="CALL_TURN_PASSWORD")
 
 
 @lru_cache

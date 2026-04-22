@@ -190,6 +190,58 @@ def ensure_chat_schema_compatibility() -> None:
                 FOREIGN KEY(target_user_id) REFERENCES users (id) ON DELETE SET NULL
             )
         """,
+        "call_sessions": """
+            CREATE TABLE call_sessions (
+                conversation_id VARCHAR(36) NOT NULL,
+                initiator_user_id VARCHAR(36) NOT NULL,
+                receiver_user_id VARCHAR(36) NOT NULL,
+                call_type VARCHAR(20) DEFAULT 'audio' NOT NULL,
+                status VARCHAR(20) DEFAULT 'initiated' NOT NULL,
+                started_at VARCHAR(40),
+                answered_at VARCHAR(40),
+                ended_at VARCHAR(40),
+                ended_reason VARCHAR(40),
+                duration_seconds INTEGER DEFAULT 0 NOT NULL,
+                offer_sdp TEXT,
+                answer_sdp TEXT,
+                last_ice_candidate TEXT,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                id VARCHAR(36) NOT NULL PRIMARY KEY,
+                FOREIGN KEY(conversation_id) REFERENCES chat_conversations (id) ON DELETE CASCADE,
+                FOREIGN KEY(initiator_user_id) REFERENCES users (id) ON DELETE CASCADE,
+                FOREIGN KEY(receiver_user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        """,
+        "call_participants": """
+            CREATE TABLE call_participants (
+                call_session_id VARCHAR(36) NOT NULL,
+                user_id VARCHAR(36) NOT NULL,
+                role VARCHAR(20) DEFAULT 'participant' NOT NULL,
+                join_state VARCHAR(20) DEFAULT 'invited' NOT NULL,
+                joined_at VARCHAR(40),
+                left_at VARCHAR(40),
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                id VARCHAR(36) NOT NULL PRIMARY KEY,
+                FOREIGN KEY(call_session_id) REFERENCES call_sessions (id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
+                CONSTRAINT uq_call_participants_call_user UNIQUE (call_session_id, user_id)
+            )
+        """,
+        "call_events": """
+            CREATE TABLE call_events (
+                call_session_id VARCHAR(36) NOT NULL,
+                actor_user_id VARCHAR(36),
+                event_type VARCHAR(40) NOT NULL,
+                payload_json TEXT,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                id VARCHAR(36) NOT NULL PRIMARY KEY,
+                FOREIGN KEY(call_session_id) REFERENCES call_sessions (id) ON DELETE CASCADE,
+                FOREIGN KEY(actor_user_id) REFERENCES users (id) ON DELETE SET NULL
+            )
+        """,
     }
 
     with engine.begin() as connection:

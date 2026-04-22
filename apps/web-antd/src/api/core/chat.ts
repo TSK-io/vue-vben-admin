@@ -57,6 +57,40 @@ export interface ChatMessageItem {
   created_at: string;
 }
 
+export interface CallParticipantItem {
+  user_id: string;
+  display_name: string;
+  role: string;
+  join_state: string;
+  joined_at?: null | string;
+  left_at?: null | string;
+}
+
+export interface CallEventItem {
+  id: string;
+  call_session_id: string;
+  actor_user_id?: null | string;
+  event_type: string;
+  payload_json?: null | Record<string, any>;
+  created_at: string;
+}
+
+export interface CallSessionItem {
+  id: string;
+  conversation_id: string;
+  initiator_user_id: string;
+  receiver_user_id: string;
+  call_type: 'audio' | 'video' | string;
+  status: string;
+  started_at?: null | string;
+  answered_at?: null | string;
+  ended_at?: null | string;
+  ended_reason?: null | string;
+  duration_seconds: number;
+  participants: CallParticipantItem[];
+  events: CallEventItem[];
+}
+
 export interface ChatConversationDetail extends ChatConversationItem {
   members: ChatConversationMemberItem[];
   messages: ChatMessageItem[];
@@ -146,4 +180,60 @@ export async function getChatOnlineStatesApi(userIds: string[]) {
   return requestClient.get<OnlineStateItem[]>('/chats/online-states', {
     params: { user_ids: userIds },
   });
+}
+
+export async function createCallSessionApi(
+  conversationId: string,
+  callType: 'audio' | 'video',
+) {
+  return requestClient.post<CallSessionItem>('/chats/calls', {
+    conversation_id: conversationId,
+    call_type: callType,
+  });
+}
+
+export async function getCallSessionDetailApi(callSessionId: string) {
+  return requestClient.get<CallSessionItem>(`/chats/calls/${callSessionId}`);
+}
+
+export async function getCallHistoryApi(conversationId?: string) {
+  return requestClient.get<CallSessionItem[]>('/chats/calls', {
+    params: { conversation_id: conversationId },
+  });
+}
+
+export async function endCallSessionApi(
+  callSessionId: string,
+  reason: 'busy' | 'cancelled' | 'ended' | 'failed' | 'missed' | 'rejected' | 'timeout',
+) {
+  return requestClient.post<CallSessionItem>(`/chats/calls/${callSessionId}/end`, {
+    reason,
+  });
+}
+
+export async function sendCallSignalApi(
+  event: CallSignalEventRequest['event'],
+  callSessionId: string,
+  data?: Record<string, any>,
+) {
+  return requestClient.post<CallSessionItem>('/chats/calls/signal', {
+    event,
+    call_session_id: callSessionId,
+    data,
+  });
+}
+
+export interface CallSignalEventRequest {
+  event:
+    | 'call.accept'
+    | 'call.answer'
+    | 'call.busy'
+    | 'call.end'
+    | 'call.ice-candidate'
+    | 'call.offer'
+    | 'call.reject'
+    | 'call.ringing'
+    | 'call.timeout';
+  call_session_id: string;
+  data?: Record<string, any>;
 }

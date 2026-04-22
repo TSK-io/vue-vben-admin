@@ -14,6 +14,9 @@ from sqlalchemy.orm import selectinload
 from app.core.config import get_settings
 from app.db.session import session_scope
 from app.models import (
+    CallEvent,
+    CallParticipant,
+    CallSession,
     ChatAuditLog,
     ChatConversation,
     ChatConversationMember,
@@ -24,6 +27,10 @@ from app.models import (
     User,
 )
 from app.schemas.chat import (
+    CallEventItem,
+    CallParticipantItem,
+    CallSessionItem,
+    CallSignalEventRequest,
     ChatRelationshipItem,
     ChatConversationDetail,
     ChatConversationItem,
@@ -35,7 +42,9 @@ from app.schemas.chat import (
     ChatUserSearchItem,
     CreateChatBlacklistRequest,
     CreateChatReportRequest,
+    CreateCallSessionRequest,
     CreateConversationRequest,
+    EndCallSessionRequest,
     MarkMessageReadRequest,
     OnlineStateItem,
     UpdateChatMuteRequest,
@@ -178,6 +187,140 @@ def _require_member(session, conversation_id: str, user_id: str) -> ChatConversa
     if not member:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问")
     return member
+
+
+def _to_call_item(call: CallSession) -> CallSessionItem:
+    return CallSessionItem(
+        id=call.id,
+        conversation_id=call.conversation_id,
+        initiator_user_id=call.initiator_user_id,
+        receiver_user_id=call.receiver_user_id,
+        call_type=call.call_type,
+        status=call.status,
+        started_at=call.started_at,
+        answered_at=call.answered_at,
+        ended_at=call.ended_at,
+        ended_reason=call.ended_reason,
+        duration_seconds=call.duration_seconds,
+        participants=[
+            CallParticipantItem(
+                user_id=item.user_id,
+                display_name=item.user.display_name if item.user else "",
+                role=item.role,
+                join_state=item.join_state,
+                joined_at=item.joined_at,
+                left_at=item.left_at,
+            )
+            for item in call.participants
+        ],
+        events=[
+            CallEventItem(
+                id=item.id,
+                call_session_id=item.call_session_id,
+                actor_user_id=item.actor_user_id,
+                event_type=item.event_type,
+                payload_json=json.loads(item.payload_json) if item.payload_json else None,
+                created_at=item.created_at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+            )
+            for item in sorted(call.events, key=lambda event: event.created_at)
+        ],
+    )
+
+
+def _append_call_event(
+    session, call: CallSession, *, actor_user_id: str | None, event_type: str, data: dict[str, Any] | None = None
+) -> None:
+    session.add(
+        CallEvent(
+            call_session_id=call.id,
+            actor_user_id=actor_user_id,
+            event_type=event_type,
+            payload_json=json.dumps(data, ensure_ascii=False) if data else None,
+        )
+    )
+
+
+def _write_call_summary_message(session, call: CallSession) -> None:
+    if not call.ended_at:
+        return
+    summary_map = {
+        "cancelled": "已取消通话",
+        "rejected": "已拒接",
+        "missed": "未接来电",
+        "busy": "对方忙线中",
+        "timeout": "呼叫超时",
+        "failed": "通话失败",
+        "ended": f"通话 {call.duration_seconds // 60:02d}:{call.duration_seconds % 60:02d}",
+    }
+    content_text = f"[通话记录] {summary_map.get(call.ended_reason or '', '通话结束')}"
+    message = ChatMessage(
+        conversation_id=call.conversation_id,
+        sender_user_id=call.initiator_user_id,
+        receiver_user_id=call.receiver_user_id,
+        message_type="card",
+        content=content_text,
+        content_text=content_text,
+        content_json=json.dumps(
+            {
+                "card_type": "call_record",
+                "call_session_id": call.id,
+                "call_type": call.call_type,
+                "status": call.status,
+                "ended_reason": call.ended_reason,
+                "duration_seconds": call.duration_seconds,
+            },
+            ensure_ascii=False,
+        ),
+        status="sent",
+        delivered_at=call.ended_at,
+        risk_level="low",
+    )
+    session.add(message)
+    session.flush()
+    conversation = session.get(ChatConversation, call.conversation_id)
+    if conversation:
+        conversation.last_message_id = message.id
+        conversation.last_message_preview = content_text
+        conversation.last_message_at = call.ended_at
+        for member in conversation.members:
+            if member.user_id == call.initiator_user_id:
+                member.last_read_message_id = message.id
+                member.last_read_at = call.ended_at
+            else:
+                member.unread_count += 1
+
+
+def _to_online_state_item(
+    *,
+    user_id: str,
+    is_online: bool,
+    last_seen_at: str | None = None,
+    client_type: str | None = None,
+) -> OnlineStateItem:
+    return OnlineStateItem(
+        user_id=user_id,
+        is_online=is_online,
+        last_seen_at=last_seen_at,
+        client_type=client_type,
+    )
+
+
+def _list_presence_subscriber_ids(session, user_id: str) -> list[str]:
+    conversation_ids = select(ChatConversationMember.conversation_id).where(
+        ChatConversationMember.user_id == user_id
+    )
+    return (
+        session.execute(
+            select(ChatConversationMember.user_id)
+            .where(
+                ChatConversationMember.conversation_id.in_(conversation_ids),
+                ChatConversationMember.user_id != user_id,
+            )
+            .distinct()
+        )
+        .scalars()
+        .all()
+    )
 
 
 def search_chat_users(user: UserProfile, keyword: str | None = None, limit: int = 20) -> list[ChatUserSearchItem]:
@@ -492,10 +635,12 @@ def get_unread_summary(user: UserProfile) -> ChatUnreadSummary:
 def list_online_states(user: UserProfile, user_ids: list[str] | None = None) -> list[OnlineStateItem]:
     target_ids = user_ids or [user.user_id]
     with session_scope() as session:
-        rows = session.execute(select(ChatInstancePresence).where(ChatInstancePresence.user_id.in_(target_ids))).scalars().all()
+        rows = session.execute(
+            select(ChatInstancePresence).where(ChatInstancePresence.user_id.in_(target_ids))
+        ).scalars().all()
         row_map = {row.user_id: row for row in rows}
         return [
-            OnlineStateItem(
+            _to_online_state_item(
                 user_id=item,
                 is_online=item in row_map,
                 last_seen_at=row_map[item].last_seen_at if item in row_map else None,
@@ -625,6 +770,221 @@ def update_conversation_mute(
         )
 
 
+def create_call_session(user: UserProfile, payload: CreateCallSessionRequest) -> CallSessionItem:
+    with session_scope() as session:
+        member = _require_member(session, payload.conversation_id, user.user_id)
+        conversation = session.scalar(
+            select(ChatConversation)
+            .where(ChatConversation.id == payload.conversation_id)
+            .options(
+                selectinload(ChatConversation.members).selectinload(ChatConversationMember.user),
+                selectinload(ChatConversation.messages).selectinload(ChatMessage.sender),
+            )
+        )
+        assert conversation is not None
+        if conversation.conversation_type != "direct" or len(conversation.members) != 2:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="一期仅支持一对一通话")
+        peer_member = next((item for item in conversation.members if item.user_id != user.user_id), None)
+        if not peer_member:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="当前会话缺少被叫成员")
+        _ensure_chat_allowed(session, user.user_id, peer_member.user_id)
+
+        active_call = session.scalar(
+            select(CallSession).where(
+                CallSession.status.in_(["initiated", "ringing", "accepted"]),
+                or_(
+                    CallSession.initiator_user_id.in_([user.user_id, peer_member.user_id]),
+                    CallSession.receiver_user_id.in_([user.user_id, peer_member.user_id]),
+                ),
+            )
+        )
+        if active_call:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="当前存在进行中的通话")
+
+        now = _now()
+        call = CallSession(
+            conversation_id=conversation.id,
+            initiator_user_id=user.user_id,
+            receiver_user_id=peer_member.user_id,
+            call_type=payload.call_type,
+            status="initiated",
+            started_at=now,
+        )
+        session.add(call)
+        session.flush()
+        session.add_all(
+            [
+                CallParticipant(
+                    call_session_id=call.id,
+                    user_id=user.user_id,
+                    role="initiator",
+                    join_state="joined",
+                    joined_at=now,
+                ),
+                CallParticipant(
+                    call_session_id=call.id,
+                    user_id=peer_member.user_id,
+                    role="receiver",
+                    join_state="invited",
+                ),
+            ]
+        )
+        _append_call_event(
+            session,
+            call,
+            actor_user_id=user.user_id,
+            event_type="call.invite",
+            data={"conversation_id": conversation.id, "call_type": payload.call_type},
+        )
+        _write_audit_log(
+            session,
+            actor_user_id=user.user_id,
+            action="call_created",
+            target_user_id=peer_member.user_id,
+            conversation_id=conversation.id,
+            detail={"call_session_id": call.id, "call_type": payload.call_type},
+        )
+        session.flush()
+        call = session.scalar(
+            select(CallSession)
+            .where(CallSession.id == call.id)
+            .options(
+                selectinload(CallSession.participants).selectinload(CallParticipant.user),
+                selectinload(CallSession.events),
+            )
+        )
+        assert call is not None
+        return _to_call_item(call)
+
+
+def get_call_session_detail(user: UserProfile, call_session_id: str) -> CallSessionItem:
+    with session_scope() as session:
+        call = session.scalar(
+            select(CallSession)
+            .where(CallSession.id == call_session_id)
+            .options(
+                selectinload(CallSession.participants).selectinload(CallParticipant.user),
+                selectinload(CallSession.events),
+            )
+        )
+        if not call or user.user_id not in {call.initiator_user_id, call.receiver_user_id}:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通话不存在或无权访问")
+        return _to_call_item(call)
+
+
+def list_call_history(user: UserProfile, conversation_id: str | None = None) -> list[CallSessionItem]:
+    with session_scope() as session:
+        query = select(CallSession).where(
+            or_(CallSession.initiator_user_id == user.user_id, CallSession.receiver_user_id == user.user_id)
+        )
+        if conversation_id:
+            query = query.where(CallSession.conversation_id == conversation_id)
+        rows = (
+            session.execute(
+                query.options(
+                    selectinload(CallSession.participants).selectinload(CallParticipant.user),
+                    selectinload(CallSession.events),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        rows.sort(key=lambda item: item.created_at, reverse=True)
+        return [_to_call_item(item) for item in rows]
+
+
+def end_call_session(user: UserProfile, call_session_id: str, payload: EndCallSessionRequest) -> CallSessionItem:
+    with session_scope() as session:
+        call = session.scalar(
+            select(CallSession)
+            .where(CallSession.id == call_session_id)
+            .options(
+                selectinload(CallSession.participants).selectinload(CallParticipant.user),
+                selectinload(CallSession.events),
+                selectinload(CallSession.conversation).selectinload(ChatConversation.members),
+            )
+        )
+        if not call or user.user_id not in {call.initiator_user_id, call.receiver_user_id}:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通话不存在或无权访问")
+        if call.status in {"ended", "rejected", "missed", "failed"}:
+            return _to_call_item(call)
+        call.status = "ended" if payload.reason == "ended" else payload.reason
+        call.ended_reason = payload.reason
+        call.ended_at = _now()
+        if call.answered_at:
+            answered_dt = datetime.fromisoformat(call.answered_at.replace("Z", "+00:00"))
+            ended_dt = datetime.fromisoformat(call.ended_at.replace("Z", "+00:00"))
+            call.duration_seconds = max(int((ended_dt - answered_dt).total_seconds()), 0)
+        for participant in call.participants:
+            participant.left_at = call.ended_at
+            if participant.join_state in {"invited", "joined"}:
+                participant.join_state = "left"
+        _append_call_event(session, call, actor_user_id=user.user_id, event_type="call.end", data={"reason": payload.reason})
+        _write_call_summary_message(session, call)
+        session.flush()
+        return _to_call_item(call)
+
+
+def handle_call_signal(user: UserProfile, payload: CallSignalEventRequest) -> tuple[CallSessionItem, str]:
+    with session_scope() as session:
+        call = session.scalar(
+            select(CallSession)
+            .where(CallSession.id == payload.call_session_id)
+            .options(
+                selectinload(CallSession.participants).selectinload(CallParticipant.user),
+                selectinload(CallSession.events),
+                selectinload(CallSession.conversation).selectinload(ChatConversation.members),
+            )
+        )
+        if not call or user.user_id not in {call.initiator_user_id, call.receiver_user_id}:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通话不存在或无权访问")
+        now = _now()
+        data = payload.data or {}
+        if payload.event == "call.ringing":
+            call.status = "ringing"
+        elif payload.event == "call.accept":
+            call.status = "accepted"
+            call.answered_at = now
+        elif payload.event in {"call.reject", "call.busy", "call.timeout"}:
+            reason = payload.event.split(".")[1]
+            call.status = "rejected" if reason == "reject" else reason
+            call.ended_reason = "rejected" if reason == "reject" else reason
+            call.ended_at = now
+        elif payload.event == "call.end":
+            call.status = "ended"
+            call.ended_reason = data.get("reason", "ended")
+            call.ended_at = now
+            if call.answered_at:
+                answered_dt = datetime.fromisoformat(call.answered_at.replace("Z", "+00:00"))
+                ended_dt = datetime.fromisoformat(call.ended_at.replace("Z", "+00:00"))
+                call.duration_seconds = max(int((ended_dt - answered_dt).total_seconds()), 0)
+        elif payload.event == "call.offer":
+            call.offer_sdp = json.dumps(data, ensure_ascii=False)
+        elif payload.event == "call.answer":
+            call.answer_sdp = json.dumps(data, ensure_ascii=False)
+        elif payload.event == "call.ice-candidate":
+            call.last_ice_candidate = json.dumps(data, ensure_ascii=False)
+
+        for participant in call.participants:
+            if participant.user_id == user.user_id and payload.event in {"call.accept", "call.ringing"}:
+                participant.join_state = "joined" if payload.event == "call.accept" else "ringing"
+                participant.joined_at = participant.joined_at or now
+            elif participant.user_id == user.user_id and payload.event in {"call.reject", "call.end", "call.busy", "call.timeout"}:
+                participant.join_state = "left"
+                participant.left_at = now
+
+        _append_call_event(session, call, actor_user_id=user.user_id, event_type=payload.event, data=data)
+        if call.ended_at and not session.scalar(
+            select(ChatMessage.id).where(
+                ChatMessage.conversation_id == call.conversation_id,
+                ChatMessage.content_json.like(f'%\"call_session_id\": \"{call.id}\"%'),
+            )
+        ):
+            _write_call_summary_message(session, call)
+        session.flush()
+        return _to_call_item(call), call.conversation_id
+
+
 class ChatMessageRateLimiter:
     def __init__(self) -> None:
         self._events: dict[str, deque[float]] = defaultdict(deque)
@@ -652,46 +1012,56 @@ rate_limiter = ChatMessageRateLimiter()
 
 class ChatConnectionManager:
     def __init__(self) -> None:
-        self.active_connections: dict[str, list[WebSocket]] = {}
+        self.active_connections: dict[str, dict[str, WebSocket]] = {}
 
     async def connect(self, user: UserProfile, websocket: WebSocket) -> str:
-        await websocket.accept()
-        self.active_connections.setdefault(user.user_id, []).append(websocket)
         connection_id = str(uuid4())
+        await websocket.accept()
+        self.active_connections.setdefault(user.user_id, {})[connection_id] = websocket
+        now = _now()
         with session_scope() as session:
-            existing = session.scalar(select(ChatInstancePresence).where(ChatInstancePresence.user_id == user.user_id))
+            existing = session.scalar(
+                select(ChatInstancePresence).where(ChatInstancePresence.user_id == user.user_id)
+            )
             if existing:
                 existing.connection_id = connection_id
                 existing.status = "online"
-                existing.last_seen_at = _now()
+                existing.last_seen_at = now
+                existing.client_type = "web"
             else:
                 session.add(
                     ChatInstancePresence(
                         user_id=user.user_id,
                         connection_id=connection_id,
                         status="online",
-                        last_seen_at=_now(),
+                        last_seen_at=now,
                         client_type="web",
                     )
                 )
         return connection_id
 
-    def disconnect(self, user: UserProfile, websocket: WebSocket, connection_id: str) -> None:
-        sockets = self.active_connections.get(user.user_id, [])
-        self.active_connections[user.user_id] = [item for item in sockets if item is not websocket]
-        if not self.active_connections[user.user_id]:
+    def disconnect(self, user: UserProfile, connection_id: str) -> bool:
+        sockets = self.active_connections.get(user.user_id, {})
+        sockets.pop(connection_id, None)
+        has_remaining_connections = bool(sockets)
+        if not has_remaining_connections:
             self.active_connections.pop(user.user_id, None)
+        now = _now()
         with session_scope() as session:
-            presence = session.scalar(
-                select(ChatInstancePresence).where(
-                    and_(ChatInstancePresence.user_id == user.user_id, ChatInstancePresence.connection_id == connection_id)
-                )
-            )
+            presence = session.scalar(select(ChatInstancePresence).where(ChatInstancePresence.user_id == user.user_id))
             if presence:
-                session.delete(presence)
+                if has_remaining_connections:
+                    presence.connection_id = next(iter(sockets))
+                    presence.status = "online"
+                    presence.last_seen_at = now
+                    presence.client_type = "web"
+                else:
+                    presence.last_seen_at = now
+                    session.delete(presence)
+        return not has_remaining_connections
 
     async def send_to_user(self, user_id: str, payload: dict[str, Any]) -> None:
-        for websocket in self.active_connections.get(user_id, []):
+        for websocket in self.active_connections.get(user_id, {}).values():
             await websocket.send_json(payload)
 
     async def broadcast_to_conversation(self, conversation_id: str, payload: dict[str, Any]) -> None:
@@ -702,14 +1072,45 @@ class ChatConnectionManager:
         for user_id in member_ids:
             await self.send_to_user(user_id, payload)
 
+    async def broadcast_presence(
+        self,
+        user_id: str,
+        *,
+        is_online: bool,
+        last_seen_at: str | None = None,
+        client_type: str | None = None,
+    ) -> None:
+        with session_scope() as session:
+            subscriber_ids = _list_presence_subscriber_ids(session, user_id)
+        if not subscriber_ids:
+            return
+        payload = {
+            "event": "presence",
+            "data": _to_online_state_item(
+                user_id=user_id,
+                is_online=is_online,
+                last_seen_at=last_seen_at,
+                client_type=client_type,
+            ).model_dump(),
+        }
+        for subscriber_id in subscriber_ids:
+            await self.send_to_user(subscriber_id, payload)
+
 
 manager = ChatConnectionManager()
 
 
 async def websocket_loop(user: UserProfile, websocket: WebSocket) -> None:
     connection_id = await manager.connect(user, websocket)
+    connected_at = _now()
     await manager.send_to_user(
         user.user_id, {"event": "connected", "data": {"connection_id": connection_id, "user_id": user.user_id}}
+    )
+    await manager.broadcast_presence(
+        user.user_id,
+        is_online=True,
+        last_seen_at=connected_at,
+        client_type="web",
     )
     try:
         while True:
@@ -737,5 +1138,30 @@ async def websocket_loop(user: UserProfile, websocket: WebSocket) -> None:
                             },
                         },
                     )
+            elif event and event.startswith("call."):
+                call_state, conversation_id = handle_call_signal(
+                    user,
+                    CallSignalEventRequest(
+                        event=event,
+                        call_session_id=payload.get("data", {}).get("call_session_id", ""),
+                        data=payload.get("data"),
+                    ),
+                )
+                await manager.broadcast_to_conversation(
+                    conversation_id,
+                    {
+                        "event": event,
+                        "data": call_state.model_dump(),
+                    },
+                )
     except WebSocketDisconnect:
-        manager.disconnect(user, websocket, connection_id)
+        pass
+    finally:
+        disconnected_at = _now()
+        user_went_offline = manager.disconnect(user, connection_id)
+        if user_went_offline:
+            await manager.broadcast_presence(
+                user.user_id,
+                is_online=False,
+                last_seen_at=disconnected_at,
+            )

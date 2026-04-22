@@ -6,18 +6,28 @@ from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketExce
 from app.core.deps import get_current_user, get_current_user_from_token
 from app.schemas.chat import (
     ChatSendMessageRequest,
+    CallSignalEventRequest,
     CreateChatBlacklistRequest,
     CreateChatReportRequest,
+    CreateCallSessionRequest,
     CreateConversationRequest,
+    EndCallSessionRequest,
     MarkMessageReadRequest,
     UpdateChatMuteRequest,
 )
 from app.schemas.common import ApiResponse, MetaPayload
 from app.schemas.user import UserProfile
 from app.services.chat import (
+    create_blacklist_record,
+    create_call_session,
     create_or_get_conversation,
+    create_report_record,
+    end_call_session,
+    get_call_session_detail,
     get_conversation_detail,
     get_unread_summary,
+    handle_call_signal,
+    list_call_history,
     list_relationships,
     list_conversations,
     list_online_states,
@@ -28,8 +38,6 @@ from app.services.chat import (
     remove_blacklist_record,
     search_chat_users,
     send_message,
-    create_blacklist_record,
-    create_report_record,
     update_conversation_mute,
     websocket_loop,
 )
@@ -148,6 +156,79 @@ async def post_read(
                 "last_read_message_id": payload.last_read_message_id,
                 **data.model_dump(),
             },
+        },
+    )
+    return ApiResponse(data=data.model_dump(), meta=response_meta(request))
+
+
+@router.post("/calls", response_model=ApiResponse)
+async def post_call(
+    payload: CreateCallSessionRequest,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    data = create_call_session(user, payload)
+    await manager.broadcast_to_conversation(
+        payload.conversation_id,
+        {
+            "event": "call.invite",
+            "data": data.model_dump(),
+        },
+    )
+    return ApiResponse(data=data.model_dump(), meta=response_meta(request))
+
+
+@router.get("/calls/{call_session_id}", response_model=ApiResponse)
+async def get_call(
+    call_session_id: str,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    return ApiResponse(data=get_call_session_detail(user, call_session_id).model_dump(), meta=response_meta(request))
+
+
+@router.get("/calls", response_model=ApiResponse)
+async def get_calls(
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+    conversation_id: str | None = Query(default=None),
+) -> ApiResponse:
+    return ApiResponse(
+        data=[item.model_dump() for item in list_call_history(user, conversation_id)],
+        meta=response_meta(request),
+    )
+
+
+@router.post("/calls/{call_session_id}/end", response_model=ApiResponse)
+async def post_end_call(
+    call_session_id: str,
+    payload: EndCallSessionRequest,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    data = end_call_session(user, call_session_id, payload)
+    await manager.broadcast_to_conversation(
+        data.conversation_id,
+        {
+            "event": "call.end",
+            "data": data.model_dump(),
+        },
+    )
+    return ApiResponse(data=data.model_dump(), meta=response_meta(request))
+
+
+@router.post("/calls/signal", response_model=ApiResponse)
+async def post_call_signal(
+    payload: CallSignalEventRequest,
+    request: Request,
+    user: Annotated[UserProfile, Depends(get_current_user)],
+) -> ApiResponse:
+    data, conversation_id = handle_call_signal(user, payload)
+    await manager.broadcast_to_conversation(
+        conversation_id,
+        {
+            "event": payload.event,
+            "data": data.model_dump(),
         },
     )
     return ApiResponse(data=data.model_dump(), meta=response_meta(request))

@@ -1,10 +1,14 @@
 import time
+import logging
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.core.config import get_settings
 from app.schemas.common import ApiResponse, ErrorDetail, MetaPayload
+
+logger = logging.getLogger(__name__)
 
 
 def build_meta(request: Request) -> MetaPayload:
@@ -44,11 +48,15 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unexpected_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        settings = get_settings()
+        logger.exception("Unhandled server exception")
         response = ApiResponse(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="服务器内部异常",
-            data={"type": type(exc).__name__},
+            message=str(exc) if settings.app_debug else "服务器内部异常",
+            data={
+                "type": type(exc).__name__,
+                **({"detail": str(exc)} if settings.app_debug else {}),
+            },
             meta=build_meta(request),
         )
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=response.model_dump())
-

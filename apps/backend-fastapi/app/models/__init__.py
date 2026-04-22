@@ -1,5 +1,8 @@
 from app.models.binding import ElderFamilyBinding
 from app.models.chat import (
+    CallEvent,
+    CallParticipant,
+    CallSession,
     ChatAuditLog,
     ChatConversation,
     ChatConversationMember,
@@ -16,6 +19,9 @@ from app.models.workorder import Workorder, WorkorderAction
 
 __all__ = [
     "CallRecognitionRecord",
+    "CallEvent",
+    "CallParticipant",
+    "CallSession",
     "ChatAuditLog",
     "ChatConversation",
     "ChatConversationMember",

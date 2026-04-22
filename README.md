@@ -9,6 +9,7 @@ Silver Shield AI is a web project for anti-fraud protection of older adults. It 
 - Community portal: district overview, key elders, work orders, education management, reports
 - Admin portal: users, roles, risk rules, content management, system settings
 - Chat center: in-app real-time 1:1 chat across reachable users, with anti-fraud risk prompts during conversations
+- WebRTC calls: in-chat 1:1 audio/video calling over the existing chat WebSocket signaling channel
 
 ## Demo Flow
 
@@ -61,18 +62,40 @@ Implemented in this round:
 - backend chat models for conversations, members, messages, unread state, and online presence
 - REST APIs for user search, conversation creation, conversation list/detail, message send, read receipt, unread summary, and online status
 - `WebSocket` channel for connect, ping/pong, typing, new message, and read events
+- call session models, call history, signaling events, and in-chat call record cards
 - chat guardrails for blacklist, report, mute state, basic send-rate limiting, and audit logging
 - frontend chat center page at `#/chat/index`
 - lightweight anti-fraud detection in the chat flow for suspicious links, verification-code requests, transfer guidance, and impersonation wording
-- UI placeholders for future image, voice, video, file, and call-entry expansion
+- WebRTC voice/video calling from the chat page, including ringing, accept/reject, hangup, ICE exchange, and call record replay
 
 Current phase assumptions:
 
 - identity is carried by the existing logged-in user account
 - chat scope is any active user inside the same system
 - phase one supports direct 1:1 chat only
-- phase one supports text messages only, while the message schema reserves multi-modal extension fields
+- phase one call scope is direct 1:1 only and reuses the existing conversation as the call entry
+- phase one supports text messages plus direct audio/video calls inside the chat page
 - blacklist and report are stored at the backend layer, and muted state is reserved for reminder suppression
+
+## WebRTC Dev Config
+
+Frontend environment can provide:
+
+```bash
+VITE_CALL_STUN_SERVERS=stun:stun.l.google.com:19302
+VITE_CALL_TURN_URL=
+VITE_CALL_TURN_USERNAME=
+VITE_CALL_TURN_PASSWORD=
+```
+
+Backend environment can provide:
+
+```bash
+CALL_STUN_SERVERS='["stun:stun.l.google.com:19302"]'
+CALL_TURN_URL=""
+CALL_TURN_USERNAME=""
+CALL_TURN_PASSWORD=""
+```
 
 ## Run Locally
 

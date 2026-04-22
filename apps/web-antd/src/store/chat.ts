@@ -1,10 +1,5 @@
-import { ref } from 'vue';
-
-import { useAccessStore, useUserStore } from '@vben/stores';
-
-import { defineStore } from 'pinia';
-
 import type {
+  CallSessionItem,
   ChatConversationDetail,
   ChatConversationItem,
   ChatMessageItem,
@@ -12,8 +7,20 @@ import type {
   ChatUserSearchItem,
   OnlineStateItem,
 } from '#/api';
+
+import { computed, ref } from 'vue';
+
+import { useAppConfig } from '@vben/hooks';
+import { useAccessStore, useUserStore } from '@vben/stores';
+
+import { message } from 'ant-design-vue';
+import { defineStore } from 'pinia';
+
 import {
+  createCallSessionApi,
   createChatConversationApi,
+  endCallSessionApi,
+  getCallHistoryApi,
   getChatConversationDetailApi,
   getChatConversationListApi,
   getChatOnlineStatesApi,
@@ -21,17 +28,28 @@ import {
   getChatUnreadSummaryApi,
   markChatReadApi,
   searchChatUsersApi,
+  sendCallSignalApi,
   sendChatMessageApi,
 } from '#/api';
 
+const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
+
 function buildChatWsUrl(token: string) {
-  const apiBase = import.meta.env.VITE_GLOB_API_URL || window.location.origin;
-  const url = new URL(apiBase, window.location.origin);
+  const url = new URL(apiURL, window.location.origin);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  url.pathname = '/api/v1/chats/ws';
+  url.pathname = `${url.pathname.replace(/\/$/, '')}/chats/ws`;
   url.searchParams.set('token', token);
   return url.toString();
 }
+
+type CallPhase =
+  | 'accepting'
+  | 'calling'
+  | 'connected'
+  | 'ended'
+  | 'idle'
+  | 'incoming'
+  | 'reconnecting';
 
 export const useChatStore = defineStore('chat', () => {
   const accessStore = useAccessStore();
@@ -47,6 +65,41 @@ export const useChatStore = defineStore('chat', () => {
   const sending = ref(false);
   const connecting = ref(false);
   const socket = ref<null | WebSocket>(null);
+  const callHistory = ref<CallSessionItem[]>([]);
+  const activeCall = ref<CallSessionItem | null>(null);
+  const callPhase = ref<CallPhase>('idle');
+  const callError = ref('');
+  const localAudioEnabled = ref(true);
+  const localVideoEnabled = ref(false);
+  const permissionState = ref<'denied' | 'granted' | 'idle'>('idle');
+  const localStream = ref<MediaStream | null>(null);
+  const remoteStream = ref<MediaStream | null>(null);
+  const peerConnection = ref<null | RTCPeerConnection>(null);
+  const callSeconds = ref(0);
+  let callTimer: null | ReturnType<typeof setInterval> = null;
+  let heartbeatTimer: null | ReturnType<typeof setInterval> = null;
+  let reconnectTimer: null | ReturnType<typeof setTimeout> = null;
+  let manualDisconnect = false;
+
+  const rtcConfig = computed(() => {
+    const stunServers = (
+      import.meta.env.VITE_CALL_STUN_SERVERS || 'stun:stun.l.google.com:19302'
+    )
+      .split(',')
+      .map((item: string) => item.trim())
+      .filter(Boolean);
+    const iceServers: RTCIceServer[] = stunServers.length > 0
+      ? [{ urls: stunServers }]
+      : [];
+    if (import.meta.env.VITE_CALL_TURN_URL) {
+      iceServers.push({
+        urls: import.meta.env.VITE_CALL_TURN_URL,
+        username: import.meta.env.VITE_CALL_TURN_USERNAME,
+        credential: import.meta.env.VITE_CALL_TURN_PASSWORD,
+      });
+    }
+    return { iceServers };
+  });
 
   async function loadConversations() {
     const [conversationRows, unreadSummary, recommendations] = await Promise.all([
@@ -66,6 +119,7 @@ export const useChatStore = defineStore('chat', () => {
 
   async function openConversation(conversationId: string) {
     currentConversation.value = await getChatConversationDetailApi(conversationId);
+    callHistory.value = await getCallHistoryApi(conversationId);
     const lastMessage = currentConversation.value.messages.at(-1);
     if (lastMessage && !lastMessage.is_self) {
       const summary = await markChatReadApi(conversationId, lastMessage.id);
@@ -76,6 +130,7 @@ export const useChatStore = defineStore('chat', () => {
   async function startConversation(userId: string) {
     const detail = await createChatConversationApi(userId);
     currentConversation.value = detail;
+    callHistory.value = await getCallHistoryApi(detail.id);
     await loadConversations();
   }
 
@@ -83,54 +138,371 @@ export const useChatStore = defineStore('chat', () => {
     if (!currentConversation.value || !content.trim()) return;
     sending.value = true;
     try {
-      const message = await sendChatMessageApi(currentConversation.value.id, content);
-      mergeMessage(message);
+      const messageRow = await sendChatMessageApi(currentConversation.value.id, content);
+      mergeMessage(messageRow);
       await loadConversations();
     } finally {
       sending.value = false;
     }
   }
 
-  function mergeMessage(message: ChatMessageItem) {
-    if (currentConversation.value?.id !== message.conversation_id) return;
-    const exists = currentConversation.value.messages.some((item) => item.id === message.id);
+  function mergeMessage(messageRow: ChatMessageItem) {
+    if (currentConversation.value?.id !== messageRow.conversation_id) return;
+    const exists = currentConversation.value.messages.some((item) => item.id === messageRow.id);
     if (!exists) {
-      currentConversation.value.messages.push(message);
+      currentConversation.value.messages.push(messageRow);
     }
   }
 
   async function refreshOnlineStates() {
     const ids = conversations.value
       .map((item) => item.peer_user_id)
-      .filter((item): item is string => Boolean(item));
-    if (!ids.length) return;
+      .filter(
+        (item): item is string => typeof item === 'string' && item.length > 0,
+      );
+    if (ids.length === 0) return;
     const rows = await getChatOnlineStatesApi(ids);
     onlineStates.value = Object.fromEntries(rows.map((item) => [item.user_id, item]));
   }
 
+  function resetCallTimer() {
+    if (callTimer) clearInterval(callTimer);
+    callTimer = null;
+    callSeconds.value = 0;
+  }
+
+  function upsertOnlineState(state: OnlineStateItem) {
+    onlineStates.value = {
+      ...onlineStates.value,
+      [state.user_id]: state,
+    };
+  }
+
+  function clearHeartbeatTimer() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+
+  function startHeartbeat(ws: WebSocket) {
+    clearHeartbeatTimer();
+    heartbeatTimer = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ event: 'ping' }));
+      }
+    }, 25_000);
+  }
+
+  function clearReconnectTimer() {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  function clearMediaResources() {
+    peerConnection.value?.close();
+    peerConnection.value = null;
+    localStream.value?.getTracks().forEach((track) => track.stop());
+    remoteStream.value?.getTracks().forEach((track) => track.stop());
+    localStream.value = null;
+    remoteStream.value = null;
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectWs();
+    }, 2000);
+  }
+
+  function startCallTimer(answeredAt?: null | string) {
+    resetCallTimer();
+    const base = answeredAt ? new Date(answeredAt).getTime() : Date.now();
+    callTimer = setInterval(() => {
+      callSeconds.value = Math.max(Math.floor((Date.now() - base) / 1000), 0);
+    }, 1000);
+  }
+
+  async function ensureLocalStream(withVideo: boolean) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: withVideo,
+      });
+      permissionState.value = 'granted';
+      localStream.value?.getTracks().forEach((track) => track.stop());
+      localStream.value = stream;
+      localAudioEnabled.value = true;
+      localVideoEnabled.value = withVideo;
+      return stream;
+    } catch (error) {
+      permissionState.value = 'denied';
+      callError.value = '未获取到麦克风/摄像头权限，请检查浏览器设置。';
+      throw error;
+    }
+  }
+
+  function createPeerConnection() {
+    if (peerConnection.value) {
+      peerConnection.value.close();
+    }
+    const pc = new RTCPeerConnection(rtcConfig.value);
+    const remote = new MediaStream();
+    remoteStream.value = remote;
+    pc.ontrack = (event) => {
+      event.streams[0]?.getTracks().forEach((track) => remote.addTrack(track));
+    };
+    pc.onicecandidate = (event) => {
+      if (event.candidate && activeCall.value) {
+        void sendSignal('call.ice-candidate', {
+          call_session_id: activeCall.value.id,
+          candidate: event.candidate.toJSON(),
+        });
+      }
+    };
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'connected') {
+        callPhase.value = 'connected';
+        startCallTimer(activeCall.value?.answered_at);
+      }
+      if (['disconnected', 'failed'].includes(pc.connectionState)) {
+        callPhase.value = 'reconnecting';
+      }
+    };
+    peerConnection.value = pc;
+    return pc;
+  }
+
+  async function preparePeer(withVideo: boolean) {
+    const stream = await ensureLocalStream(withVideo);
+    const pc = createPeerConnection();
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    return pc;
+  }
+
+  async function startCall(callType: 'audio' | 'video') {
+    if (!currentConversation.value) return;
+    if (activeCall.value && ['calling', 'connected', 'incoming'].includes(callPhase.value)) {
+      message.warning('当前已有进行中的通话，请先结束后再试。');
+      return;
+    }
+    callError.value = '';
+    callPhase.value = 'calling';
+    const call = await createCallSessionApi(currentConversation.value.id, callType);
+    activeCall.value = call;
+    await preparePeer(callType === 'video');
+    const offer = await peerConnection.value!.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: callType === 'video',
+    });
+    await peerConnection.value!.setLocalDescription(offer);
+    await sendSignal('call.offer', {
+      call_session_id: call.id,
+      type: offer.type,
+      sdp: offer.sdp,
+    });
+    await loadConversations();
+  }
+
+  async function sendSignal(
+    event:
+      | 'call.accept'
+      | 'call.answer'
+      | 'call.busy'
+      | 'call.end'
+      | 'call.ice-candidate'
+      | 'call.offer'
+      | 'call.reject'
+      | 'call.ringing'
+      | 'call.timeout',
+    data?: Record<string, any>,
+  ) {
+    if (!activeCall.value) return;
+    await sendCallSignalApi(event, activeCall.value.id, data);
+  }
+
+  async function acceptIncomingCall() {
+    if (!activeCall.value) return;
+    callError.value = '';
+    callPhase.value = 'accepting';
+    const withVideo = activeCall.value.call_type === 'video';
+    await preparePeer(withVideo);
+    const offerPayload = activeCall.value.events
+      .findLast((item) => item.event_type === 'call.offer')?.payload_json;
+    if (offerPayload?.sdp) {
+      await peerConnection.value!.setRemoteDescription(
+        new RTCSessionDescription({
+          type: 'offer',
+          sdp: offerPayload.sdp,
+        }),
+      );
+    }
+    await sendSignal('call.accept', {
+      call_session_id: activeCall.value.id,
+    });
+    const answer = await peerConnection.value!.createAnswer();
+    await peerConnection.value!.setLocalDescription(answer);
+    await sendSignal('call.answer', {
+      call_session_id: activeCall.value.id,
+      type: answer.type,
+      sdp: answer.sdp,
+    });
+    callPhase.value = 'connected';
+    startCallTimer();
+  }
+
+  async function rejectIncomingCall(reason: 'busy' | 'rejected' = 'rejected') {
+    if (!activeCall.value) return;
+    await sendSignal(reason === 'busy' ? 'call.busy' : 'call.reject', {
+      call_session_id: activeCall.value.id,
+    });
+    await endCurrentCall(reason);
+  }
+
+  async function endCurrentCall(reason: 'busy' | 'cancelled' | 'ended' | 'failed' | 'rejected' | 'timeout' = 'ended') {
+    const callId = activeCall.value?.id;
+    if (callId) {
+      try {
+        await endCallSessionApi(callId, reason);
+      } catch {}
+    }
+    clearMediaResources();
+    callPhase.value = 'ended';
+    setTimeout(() => {
+      callPhase.value = 'idle';
+      activeCall.value = null;
+    }, 1200);
+    resetCallTimer();
+    if (currentConversation.value) {
+      currentConversation.value = await getChatConversationDetailApi(currentConversation.value.id);
+      callHistory.value = await getCallHistoryApi(currentConversation.value.id);
+      await loadConversations();
+    }
+  }
+
+  function toggleAudio() {
+    const enabled = !localAudioEnabled.value;
+    localStream.value?.getAudioTracks().forEach((track) => {
+      track.enabled = enabled;
+    });
+    localAudioEnabled.value = enabled;
+  }
+
+  async function toggleVideo() {
+    if (!activeCall.value) return;
+    if (localVideoEnabled.value) {
+      localStream.value?.getVideoTracks().forEach((track) => {
+        track.enabled = false;
+        track.stop();
+      });
+      localVideoEnabled.value = false;
+      return;
+    }
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const videoTrack = videoStream.getVideoTracks()[0];
+    if (!videoTrack || !peerConnection.value) return;
+    const sender = peerConnection.value
+      .getSenders()
+      .find((item) => item.track?.kind === 'video');
+    if (sender) {
+      await sender.replaceTrack(videoTrack);
+    } else if (localStream.value) {
+      localStream.value.addTrack(videoTrack);
+      peerConnection.value.addTrack(videoTrack, localStream.value);
+    }
+    localVideoEnabled.value = true;
+  }
+
+  function hydrateCallState(call: CallSessionItem) {
+    activeCall.value = call;
+    if (call.status === 'accepted') {
+      callPhase.value = 'connected';
+      startCallTimer(call.answered_at);
+    } else if (
+      call.receiver_user_id === userStore.userInfo?.userId &&
+      ['initiated', 'ringing'].includes(call.status)
+    ) {
+      callPhase.value = 'incoming';
+    } else if (['initiated', 'ringing'].includes(call.status)) {
+      callPhase.value = 'calling';
+    } else if (['busy', 'failed', 'missed', 'rejected'].includes(call.status)) {
+      callPhase.value = 'ended';
+    }
+  }
+
+  async function handleCallEvent(event: string, payload: CallSessionItem) {
+    hydrateCallState(payload);
+    if (event === 'call.invite' && payload.receiver_user_id === userStore.userInfo?.userId) {
+      message.info(`${currentConversation.value?.peer_name || '对方'} 发起了${payload.call_type === 'video' ? '视频' : '语音'}通话`);
+    }
+    if (event === 'call.offer' && payload.receiver_user_id === userStore.userInfo?.userId) {
+      callPhase.value = 'incoming';
+    }
+    if (event === 'call.answer') {
+      const answerPayload = payload.events
+        .findLast((item) => item.event_type === 'call.answer')?.payload_json;
+      if (answerPayload?.sdp && peerConnection.value) {
+        await peerConnection.value.setRemoteDescription(
+          new RTCSessionDescription({
+            type: 'answer',
+            sdp: answerPayload.sdp,
+          }),
+        );
+      }
+      callPhase.value = 'connected';
+      startCallTimer(payload.answered_at);
+    }
+    if (event === 'call.ice-candidate') {
+      const candidatePayload = payload.events
+        .findLast((item) => item.event_type === 'call.ice-candidate')?.payload_json;
+      const candidate = candidatePayload?.candidate;
+      if (candidate && peerConnection.value) {
+        await peerConnection.value.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+    }
+    if (['call.busy', 'call.end', 'call.reject', 'call.timeout'].includes(event)) {
+      const endReasonMap = {
+        'call.busy': 'busy',
+        'call.end': 'ended',
+        'call.reject': 'rejected',
+        'call.timeout': 'timeout',
+      } as const;
+      await endCurrentCall(
+        endReasonMap[event as keyof typeof endReasonMap],
+      );
+    }
+  }
+
   function connectWs() {
     const token = accessStore.accessToken;
-    if (!token || socket.value) return;
+    if (!token || socket.value || connecting.value) return;
+    manualDisconnect = false;
     connecting.value = true;
     const ws = new WebSocket(buildChatWsUrl(token));
-    ws.onopen = () => {
+    ws.addEventListener('open', () => {
+      clearReconnectTimer();
       connecting.value = false;
       socket.value = ws;
+      startHeartbeat(ws);
       ws.send(JSON.stringify({ event: 'ping' }));
-    };
-    ws.onmessage = async (event) => {
+      void refreshOnlineStates();
+    });
+    ws.addEventListener('message', async (event) => {
       const payload = JSON.parse(event.data);
+      if (payload.event === 'connected') {
+        await refreshOnlineStates();
+      }
+      if (payload.event === 'presence') {
+        upsertOnlineState(payload.data as OnlineStateItem);
+      }
       if (payload.event === 'message') {
         mergeMessage(payload.data as ChatMessageItem);
         await loadConversations();
       }
-      if (payload.event === 'typing') {
-        if (payload.data.user_id !== userStore.userInfo?.userId) {
-          typingText.value = `${payload.data.display_name} 正在输入...`;
-          setTimeout(() => {
-            typingText.value = '';
-          }, 1500);
-        }
+      if (payload.event === 'typing' && payload.data.user_id !== userStore.userInfo?.userId) {
+        typingText.value = `${payload.data.display_name} 正在输入...`;
+        setTimeout(() => {
+          typingText.value = '';
+        }, 1500);
       }
       if (payload.event === 'read' && currentConversation.value) {
         currentConversation.value.messages = currentConversation.value.messages.map((item) =>
@@ -140,14 +512,59 @@ export const useChatStore = defineStore('chat', () => {
         );
         totalUnread.value = payload.data.total_unread ?? totalUnread.value;
       }
-    };
-    ws.onclose = () => {
-      socket.value = null;
+      if (typeof payload.event === 'string' && payload.event.startsWith('call.')) {
+        await handleCallEvent(payload.event, payload.data as CallSessionItem);
+      }
+    });
+    ws.addEventListener('error', () => {
+      ws.close();
+    });
+    ws.addEventListener('close', () => {
+      clearHeartbeatTimer();
+      if (socket.value === ws) {
+        socket.value = null;
+      }
       connecting.value = false;
-      setTimeout(() => {
-        connectWs();
-      }, 2000);
-    };
+      if (manualDisconnect) return;
+      scheduleReconnect();
+    });
+  }
+
+  function disconnectWs() {
+    manualDisconnect = true;
+    clearReconnectTimer();
+    clearHeartbeatTimer();
+    connecting.value = false;
+    const ws = socket.value;
+    socket.value = null;
+    if (
+      ws &&
+      (ws.readyState === WebSocket.CONNECTING ||
+        ws.readyState === WebSocket.OPEN)
+    ) {
+      ws.close();
+    }
+  }
+
+  function $reset() {
+    disconnectWs();
+    clearMediaResources();
+    resetCallTimer();
+    conversations.value = [];
+    currentConversation.value = null;
+    recommendedContacts.value = [];
+    searchResults.value = [];
+    totalUnread.value = 0;
+    onlineStates.value = {};
+    typingText.value = '';
+    sending.value = false;
+    callHistory.value = [];
+    activeCall.value = null;
+    callPhase.value = 'idle';
+    callError.value = '';
+    localAudioEnabled.value = true;
+    localVideoEnabled.value = false;
+    permissionState.value = 'idle';
   }
 
   function sendTyping() {
@@ -163,21 +580,40 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   return {
+    $reset,
+    acceptIncomingCall,
+    activeCall,
+    callError,
+    callHistory,
+    callPhase,
+    callSeconds,
     connectWs,
     connecting,
     conversations,
     currentConversation,
+    disconnectWs,
+    endCurrentCall,
     loadConversations,
+    localAudioEnabled,
+    localStream,
+    localVideoEnabled,
     onlineStates,
     openConversation,
+    permissionState,
     recommendedContacts,
     refreshOnlineStates,
+    rejectIncomingCall,
+    remoteStream,
     searchResults,
     searchUsers,
     sendMessage,
     sendTyping,
     sending,
+    socket,
+    startCall,
     startConversation,
+    toggleAudio,
+    toggleVideo,
     totalUnread,
     typingText,
   };

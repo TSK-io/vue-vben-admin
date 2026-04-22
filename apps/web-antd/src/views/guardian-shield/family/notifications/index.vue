@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import type { TableColumnsType } from 'ant-design-vue';
 
+import type { FamilyNotificationItem } from '#/api';
+
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -20,7 +22,6 @@ import {
   getFamilyNotificationListApi,
   markFamilyNotificationReadApi,
 } from '#/api';
-import type { FamilyNotificationItem } from '#/api';
 
 defineOptions({ name: 'FamilyNotifications' });
 
@@ -161,6 +162,10 @@ async function handleOpenChat(record: FamilyNotificationItem) {
   });
 }
 
+async function handleOpenChatFromRow(record: Record<string, any>) {
+  await handleOpenChat(record as FamilyNotificationItem);
+}
+
 function handleSearch() {
   filters.page = 1;
   void loadRows();
@@ -276,9 +281,11 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'riskLevel'">
             <Space wrap>
-              <Tag :color="getRiskMeta(record.riskLevel).color">{{
+              <Tag :color="getRiskMeta(record.riskLevel).color">
+{{
                 getRiskMeta(record.riskLevel).text
-              }}</Tag>
+              }}
+</Tag>
               <Tag>{{ getReadLabel(record.readStatus) }}</Tag>
             </Space>
           </template>
@@ -293,7 +300,11 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <Space wrap>
-              <Button size="small" type="link" @click="handleOpenChat(record)">
+              <Button
+                size="small"
+                type="link"
+                @click="handleOpenChatFromRow(record)"
+              >
                 发起聊天
               </Button>
               <Button

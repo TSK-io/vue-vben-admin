@@ -116,3 +116,62 @@ class CreateChatReportRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
     conversation_id: str | None = None
     message_id: str | None = None
+
+
+class CreateCallSessionRequest(BaseModel):
+    conversation_id: str
+    call_type: Literal["audio", "video"] = "audio"
+
+
+class EndCallSessionRequest(BaseModel):
+    reason: Literal["cancelled", "ended", "failed", "rejected", "missed", "busy", "timeout"] = "ended"
+
+
+class CallSignalEventRequest(BaseModel):
+    event: Literal[
+        "call.ringing",
+        "call.accept",
+        "call.reject",
+        "call.end",
+        "call.offer",
+        "call.answer",
+        "call.ice-candidate",
+        "call.busy",
+        "call.timeout",
+    ]
+    call_session_id: str
+    data: dict[str, Any] | None = None
+
+
+class CallParticipantItem(BaseModel):
+    user_id: str
+    display_name: str
+    role: str
+    join_state: str
+    joined_at: str | None = None
+    left_at: str | None = None
+
+
+class CallEventItem(BaseModel):
+    id: str
+    call_session_id: str
+    actor_user_id: str | None = None
+    event_type: str
+    payload_json: dict[str, Any] | None = None
+    created_at: str
+
+
+class CallSessionItem(BaseModel):
+    id: str
+    conversation_id: str
+    initiator_user_id: str
+    receiver_user_id: str
+    call_type: str
+    status: str
+    started_at: str | None = None
+    answered_at: str | None = None
+    ended_at: str | None = None
+    ended_reason: str | None = None
+    duration_seconds: int
+    participants: list[CallParticipantItem]
+    events: list[CallEventItem] = []

@@ -137,5 +137,74 @@ class ChatAuditLog(TimestampMixin, UUIDPrimaryKeyMixin, Base):
     target: Mapped["User"] = relationship(foreign_keys=[target_user_id])
 
 
+class CallSession(TimestampMixin, UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "call_sessions"
+
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("chat_conversations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    initiator_user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    receiver_user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    call_type: Mapped[str] = mapped_column(String(20), nullable=False, default="audio", server_default="audio")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="initiated", server_default="initiated")
+    started_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    answered_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    ended_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    ended_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    offer_sdp: Mapped[str | None] = mapped_column(Text, nullable=True)
+    answer_sdp: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_ice_candidate: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    conversation: Mapped["ChatConversation"] = relationship()
+    initiator: Mapped["User"] = relationship(foreign_keys=[initiator_user_id])
+    receiver: Mapped["User"] = relationship(foreign_keys=[receiver_user_id])
+    participants: Mapped[list["CallParticipant"]] = relationship(
+        back_populates="call_session", cascade="all, delete-orphan"
+    )
+    events: Mapped[list["CallEvent"]] = relationship(
+        back_populates="call_session", cascade="all, delete-orphan"
+    )
+
+
+class CallParticipant(TimestampMixin, UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "call_participants"
+    __table_args__ = (UniqueConstraint("call_session_id", "user_id", name="uq_call_participants_call_user"),)
+
+    call_session_id: Mapped[str] = mapped_column(
+        ForeignKey("call_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="participant", server_default="participant")
+    join_state: Mapped[str] = mapped_column(String(20), nullable=False, default="invited", server_default="invited")
+    joined_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    left_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+    call_session: Mapped["CallSession"] = relationship(back_populates="participants")
+    user: Mapped["User"] = relationship()
+
+
+class CallEvent(TimestampMixin, UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "call_events"
+
+    call_session_id: Mapped[str] = mapped_column(
+        ForeignKey("call_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    actor_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    call_session: Mapped["CallSession"] = relationship(back_populates="events")
+    actor: Mapped["User"] = relationship(foreign_keys=[actor_user_id])
+
+
 if TYPE_CHECKING:
     from app.models.user import User

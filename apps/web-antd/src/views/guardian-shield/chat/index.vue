@@ -1,5 +1,8 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+
+import { useUserStore } from '@vben/stores';
 
 import {
   Avatar,
@@ -12,9 +15,6 @@ import {
   Space,
   Tag,
 } from 'ant-design-vue';
-import { useRoute } from 'vue-router';
-
-import { useUserStore } from '@vben/stores';
 
 import { useChatStore } from '#/store';
 
@@ -27,6 +27,8 @@ const route = useRoute();
 const keyword = ref('');
 const draft = ref('');
 const pendingRouteTarget = ref('');
+const localVideoRef = ref<HTMLVideoElement | null>(null);
+const remoteVideoRef = ref<HTMLVideoElement | null>(null);
 
 const currentMessages = computed(
   () => chatStore.currentConversation?.messages ?? [],
@@ -37,10 +39,55 @@ const currentPeerOnline = computed(() => {
   return peerId ? chatStore.onlineStates[peerId]?.is_online : false;
 });
 
+const isInCall = computed(() =>
+  ['accepting', 'calling', 'connected', 'incoming', 'reconnecting'].includes(
+    chatStore.callPhase,
+  ),
+);
+const callDurationText = computed(() => {
+  const minutes = Math.floor(chatStore.callSeconds / 60)
+    .toString()
+    .padStart(2, '0');
+  const seconds = (chatStore.callSeconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${seconds}`;
+});
+
 function getRiskMeta(level: string) {
   if (level === 'high') return { color: 'red', text: '高风险提醒' };
   if (level === 'medium') return { color: 'orange', text: '谨慎提醒' };
   return { color: 'green', text: '正常' };
+}
+
+function getCallStatusText() {
+  const typeText = chatStore.activeCall?.call_type === 'video' ? '视频' : '语音';
+  if (chatStore.callPhase === 'incoming') return `来电响铃中 · ${typeText}通话`;
+  if (chatStore.callPhase === 'calling') return `正在呼叫对方 · ${typeText}通话`;
+  if (chatStore.callPhase === 'accepting') return '正在接听，建立媒体协商...';
+  if (chatStore.callPhase === 'connected') return `通话中 ${callDurationText.value}`;
+  if (chatStore.callPhase === 'reconnecting') return '网络波动，正在重连...';
+  return '通话已结束';
+}
+
+function getCallCardText(message: any) {
+  const payload = message.content_json || {};
+  const reasonMap: Record<string, string> = {
+    busy: '对方忙线',
+    cancelled: '已取消',
+    ended: `通话 ${formatDuration(payload.duration_seconds || 0)}`,
+    failed: '通话失败',
+    missed: '未接来电',
+    rejected: '已拒接',
+    timeout: '呼叫超时',
+  };
+  return reasonMap[payload.ended_reason || payload.status] || message.content_text;
+}
+
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, '0');
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${seconds}`;
 }
 
 async function handleSearch() {
@@ -60,6 +107,15 @@ async function handleSend() {
   if (!content) return;
   draft.value = '';
   await chatStore.sendMessage(content);
+}
+
+async function handleStartCall(callType: 'audio' | 'video') {
+  await chatStore.startCall(callType);
+}
+
+async function handleRedialFromCard(message: any) {
+  const callType = message.content_json?.call_type === 'video' ? 'video' : 'audio';
+  await chatStore.startCall(callType);
 }
 
 async function syncRouteIntent() {
@@ -94,6 +150,26 @@ watch(
   { immediate: false },
 );
 
+watch(
+  () => chatStore.localStream,
+  async (stream) => {
+    await nextTick();
+    if (localVideoRef.value) {
+      localVideoRef.value.srcObject = stream || null;
+    }
+  },
+);
+
+watch(
+  () => chatStore.remoteStream,
+  async (stream) => {
+    await nextTick();
+    if (remoteVideoRef.value) {
+      remoteVideoRef.value.srcObject = stream || null;
+    }
+  },
+);
+
 onMounted(async () => {
   chatStore.connectWs();
   await chatStore.loadConversations();
@@ -105,15 +181,18 @@ onMounted(async () => {
   <div class="chat-page">
     <section class="hero-panel">
       <div>
-        <p class="eyebrow">站内 IM / 反诈协同</p>
-        <h1>实时聊天中心</h1>
+        <p class="eyebrow">站内 IM / 反诈协同 / WebRTC</p>
+        <h1>实时聊天与电话中心</h1>
         <p class="description">
-          支持系统内任意可达用户发起点对点聊天，文本消息会实时同步，并对高风险话术、链接和转账诱导进行即时提醒。
+          支持站内实时聊天、通话信令和一对一音视频协同，在风险对话中可以快速切换到语音或视频确认。
         </p>
       </div>
-      <Space>
+      <Space wrap>
         <Tag color="processing">当前用户：{{ userStore.userInfo?.realName }}</Tag>
         <Tag color="blue">总未读 {{ chatStore.totalUnread }}</Tag>
+        <Tag color="geekblue">
+          {{ isInCall ? getCallStatusText() : '当前无进行中通话' }}
+        </Tag>
       </Space>
     </section>
 
@@ -213,19 +292,101 @@ onMounted(async () => {
                 <span v-if="chatStore.typingText"> · {{ chatStore.typingText }}</span>
               </p>
             </div>
-            <Space>
-              <Tag color="gold">图片/语音/文件位</Tag>
-              <Tag color="cyan">通话入口预留</Tag>
+            <Space wrap>
+              <Button
+                :disabled="!currentPeerOnline && !chatStore.currentConversation.peer_user_id"
+                @click="handleStartCall('audio')"
+              >
+                语音呼叫
+              </Button>
+              <Button type="primary" @click="handleStartCall('video')">
+                视频呼叫
+              </Button>
             </Space>
+          </div>
+
+          <div v-if="isInCall" class="call-panel">
+            <div class="call-stage">
+              <div class="call-meta">
+                <p class="call-title">
+                  {{ chatStore.currentConversation.peer_name }}
+                </p>
+                <p class="call-status">{{ getCallStatusText() }}</p>
+                <p v-if="chatStore.callError" class="call-error">{{ chatStore.callError }}</p>
+                <p
+                  v-if="chatStore.permissionState === 'denied'"
+                  class="call-error"
+                >
+                  浏览器已拒绝设备权限，当前无法建立音视频通话。
+                </p>
+              </div>
+              <div
+                v-if="chatStore.activeCall?.call_type === 'video'"
+                class="video-grid"
+              >
+                <video
+                  ref="remoteVideoRef"
+                  autoplay
+                  playsinline
+                  class="remote-video"
+                ></video>
+                <video
+                  ref="localVideoRef"
+                  autoplay
+                  muted
+                  playsinline
+                  class="local-video"
+                ></video>
+              </div>
+              <div v-else class="audio-visual">
+                <Avatar :size="84">
+                  {{ (chatStore.currentConversation.peer_name || '').slice(0, 1) }}
+                </Avatar>
+                <div>
+                  <strong>语音通话中</strong>
+                  <p>可随时切换到视频，或保持纯语音沟通。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="call-actions">
+              <Button @click="chatStore.toggleAudio()">
+                {{ chatStore.localAudioEnabled ? '静音' : '取消静音' }}
+              </Button>
+              <Button @click="chatStore.toggleVideo()">
+                {{ chatStore.localVideoEnabled ? '关闭视频' : '打开视频' }}
+              </Button>
+              <Button danger @click="chatStore.endCurrentCall('ended')">挂断</Button>
+            </div>
           </div>
 
           <div class="message-list">
             <div
               v-for="item in currentMessages"
               :key="item.id"
-              :class="['message-row', item.is_self ? 'self' : 'peer']"
+              class="message-row" :class="[item.is_self ? 'self' : 'peer']"
             >
-              <div class="message-bubble">
+              <div
+                v-if="item.message_type === 'card' && item.content_json?.card_type === 'call_record'"
+                class="message-bubble call-record-card"
+              >
+                <p class="meta">
+                  {{ item.sender_name }} ·
+                  {{ new Date(item.created_at).toLocaleString() }}
+                </p>
+                <strong>
+                  {{ item.content_json.call_type === 'video' ? '视频通话' : '语音通话' }}
+                </strong>
+                <p class="text">{{ getCallCardText(item) }}</p>
+                <div class="bubble-footer">
+                  <Tag color="blue">通话记录</Tag>
+                  <Button size="small" @click="handleRedialFromCard(item)">
+                    重新拨打
+                  </Button>
+                </div>
+              </div>
+
+              <div v-else class="message-bubble">
                 <p class="meta">
                   {{ item.sender_name }} ·
                   {{ new Date(item.created_at).toLocaleString() }}
@@ -261,7 +422,9 @@ onMounted(async () => {
               placeholder="输入消息内容，若包含链接、验证码或转账话术会触发风险提醒"
             />
             <div class="composer-actions">
-              <span>一期仅支持文字消息，已为多模态与通话入口预留交互位。</span>
+              <span>
+                文本消息、语音/视频通话、通话记录回拨已接入当前聊天页。
+              </span>
               <Button
                 type="primary"
                 :loading="chatStore.sending"
@@ -279,7 +442,7 @@ onMounted(async () => {
         />
       </Card>
     </div>
-  </div>
+</div>
 </template>
 
 <style scoped>
@@ -296,8 +459,9 @@ onMounted(async () => {
   padding: 24px;
   border-radius: 24px;
   background:
-    radial-gradient(circle at top left, rgba(245, 158, 11, 0.22), transparent 35%),
-    linear-gradient(135deg, #0f172a, #1d4ed8 55%, #0f766e);
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.18), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.18), transparent 34%),
+    linear-gradient(135deg, #0f172a, #0f766e 55%, #0f172a);
   color: #fff;
 }
 
@@ -363,7 +527,8 @@ onMounted(async () => {
 .conversation-main p,
 .user-item p,
 .chat-header p,
-.meta {
+.meta,
+.call-status {
   margin: 0;
   color: #64748b;
 }
@@ -376,6 +541,73 @@ onMounted(async () => {
   margin-bottom: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.call-panel {
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid #dbeafe;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(219, 234, 254, 0.9), rgba(240, 249, 255, 0.92));
+}
+
+.call-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.call-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.call-error {
+  color: #b91c1c;
+}
+
+.video-grid {
+  position: relative;
+  min-height: 280px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+}
+
+.remote-video,
+.local-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #0f172a;
+}
+
+.local-video {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 160px;
+  height: 120px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
+}
+
+.audio-visual {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.call-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .message-list {
@@ -405,6 +637,10 @@ onMounted(async () => {
 
 .message-row.self .message-bubble {
   background: linear-gradient(135deg, #dbeafe, #eff6ff);
+}
+
+.call-record-card {
+  border: 1px solid #bfdbfe;
 }
 
 .text {
@@ -455,7 +691,9 @@ onMounted(async () => {
   .hero-panel,
   .chat-layout,
   .chat-header,
-  .composer-actions {
+  .composer-actions,
+  .call-actions,
+  .audio-visual {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
@@ -464,6 +702,13 @@ onMounted(async () => {
   .chat-layout {
     display: flex;
     flex-direction: column;
+  }
+
+  .local-video {
+    width: 108px;
+    height: 144px;
+    right: 12px;
+    bottom: 12px;
   }
 }
 </style>
