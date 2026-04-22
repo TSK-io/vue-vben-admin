@@ -16,6 +16,25 @@ const chatStore = useChatStore();
 const route = useRoute();
 const router = useRouter();
 
+function decodeJwtPayload(token: null | string) {
+  if (!token) return null;
+  try {
+    const [, payload = ''] = token.split('.');
+    if (!payload) return null;
+    const normalized = payload
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(payload.length / 4) * 4, '=');
+    return JSON.parse(window.atob(normalized)) as { sub?: string };
+  } catch {
+    return null;
+  }
+}
+
+function getCurrentUserId() {
+  return userStore.userInfo?.userId || decodeJwtPayload(accessStore.accessToken)?.sub || '';
+}
+
 const isIncoming = computed(() => chatStore.callPhase === 'incoming');
 const isChatRoute = computed(
   () => route.name === 'ChatCenter' || route.path === '/chat/index',
@@ -40,7 +59,7 @@ const callPeerName = computed(() => {
   ) {
     return chatStore.currentConversation.peer_name || '对方';
   }
-  const selfId = userStore.userInfo?.userId;
+  const selfId = getCurrentUserId();
   const peer = chatStore.activeCall?.participants.find(
     (item) => item.user_id !== selfId,
   );

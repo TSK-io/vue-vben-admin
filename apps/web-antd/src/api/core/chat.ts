@@ -179,6 +179,7 @@ export async function getChatUnreadSummaryApi() {
 export async function getChatOnlineStatesApi(userIds: string[]) {
   return requestClient.get<OnlineStateItem[]>('/chats/online-states', {
     params: { user_ids: userIds },
+    paramsSerializer: 'repeat',
   });
 }
 

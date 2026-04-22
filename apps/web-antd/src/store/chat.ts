@@ -20,6 +20,7 @@ import {
   createCallSessionApi,
   createChatConversationApi,
   endCallSessionApi,
+  getCallSessionDetailApi,
   getCallHistoryApi,
   getChatConversationDetailApi,
   getChatConversationListApi,
@@ -50,6 +51,10 @@ type CallPhase =
   | 'idle'
   | 'incoming'
   | 'reconnecting';
+
+type JwtPayload = {
+  sub?: string;
+};
 
 export const useChatStore = defineStore('chat', () => {
   const accessStore = useAccessStore();
@@ -111,6 +116,47 @@ export const useChatStore = defineStore('chat', () => {
     totalUnread.value = unreadSummary.total_unread;
     recommendedContacts.value = recommendations;
     await refreshOnlineStates();
+  }
+
+  function decodeJwtPayload(token: null | string) {
+    if (!token) return null;
+    try {
+      const [, payload = ''] = token.split('.');
+      if (!payload) return null;
+      const normalized = payload
+        .replace(/-/g, '+')
+        .replace(/_/g, '/')
+        .padEnd(Math.ceil(payload.length / 4) * 4, '=');
+      return JSON.parse(window.atob(normalized)) as JwtPayload;
+    } catch {
+      return null;
+    }
+  }
+
+  function getCurrentUserId() {
+    return userStore.userInfo?.userId || decodeJwtPayload(accessStore.accessToken)?.sub || '';
+  }
+
+  function isCurrentUserParticipant(call: CallSessionItem) {
+    const selfId = getCurrentUserId();
+    return !!selfId && [call.initiator_user_id, call.receiver_user_id].includes(selfId);
+  }
+
+  function isCurrentUserReceiver(call: CallSessionItem) {
+    const selfId = getCurrentUserId();
+    return isCurrentUserParticipant(call) && call.initiator_user_id !== selfId;
+  }
+
+  async function ensureCallEventPayload(
+    call: CallSessionItem,
+    eventType: 'call.answer' | 'call.ice-candidate' | 'call.offer',
+  ) {
+    if (call.events.some((item) => item.event_type === eventType)) {
+      return call;
+    }
+    const refreshed = await getCallSessionDetailApi(call.id);
+    activeCall.value = refreshed;
+    return refreshed;
   }
 
   async function searchUsers(keyword: string) {
@@ -287,20 +333,27 @@ export const useChatStore = defineStore('chat', () => {
     }
     callError.value = '';
     callPhase.value = 'calling';
-    const call = await createCallSessionApi(currentConversation.value.id, callType);
-    activeCall.value = call;
-    await preparePeer(callType === 'video');
-    const offer = await peerConnection.value!.createOffer({
-      offerToReceiveAudio: true,
-      offerToReceiveVideo: callType === 'video',
-    });
-    await peerConnection.value!.setLocalDescription(offer);
-    await sendSignal('call.offer', {
-      call_session_id: call.id,
-      type: offer.type,
-      sdp: offer.sdp,
-    });
-    await loadConversations();
+    try {
+      const call = await createCallSessionApi(currentConversation.value.id, callType);
+      activeCall.value = call;
+      await preparePeer(callType === 'video');
+      const offer = await peerConnection.value!.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: callType === 'video',
+      });
+      await peerConnection.value!.setLocalDescription(offer);
+      await sendSignal('call.offer', {
+        call_session_id: call.id,
+        type: offer.type,
+        sdp: offer.sdp,
+      });
+      await loadConversations();
+    } catch (error: any) {
+      clearMediaResources();
+      activeCall.value = null;
+      callPhase.value = 'idle';
+      callError.value = error?.message || '发起通话失败，请稍后重试。';
+    }
   }
 
   async function sendSignal(
@@ -326,8 +379,24 @@ export const useChatStore = defineStore('chat', () => {
     callPhase.value = 'accepting';
     const withVideo = activeCall.value.call_type === 'video';
     await preparePeer(withVideo);
-    const offerPayload = activeCall.value.events
+    let latestCall = activeCall.value;
+    let offerPayload = latestCall.events
       .findLast((item) => item.event_type === 'call.offer')?.payload_json;
+    if (!offerPayload?.sdp) {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        latestCall = await getCallSessionDetailApi(latestCall.id);
+        activeCall.value = latestCall;
+        offerPayload = latestCall.events
+          .findLast((item) => item.event_type === 'call.offer')?.payload_json;
+        if (offerPayload?.sdp) break;
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+      }
+    }
+    if (!offerPayload?.sdp) {
+      callPhase.value = 'incoming';
+      callError.value = '主叫端邀请尚未准备完成，请稍后再试。';
+      return;
+    }
     if (offerPayload?.sdp) {
       await peerConnection.value!.setRemoteDescription(
         new RTCSessionDescription({
@@ -418,7 +487,7 @@ export const useChatStore = defineStore('chat', () => {
       callPhase.value = 'connected';
       startCallTimer(call.answered_at);
     } else if (
-      call.receiver_user_id === userStore.userInfo?.userId &&
+      isCurrentUserReceiver(call) &&
       ['initiated', 'ringing'].includes(call.status)
     ) {
       callPhase.value = 'incoming';
@@ -430,15 +499,23 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function handleCallEvent(event: string, payload: CallSessionItem) {
-    hydrateCallState(payload);
-    if (event === 'call.invite' && payload.receiver_user_id === userStore.userInfo?.userId) {
+    let nextPayload = payload;
+    if (
+      event === 'call.answer' ||
+      event === 'call.ice-candidate' ||
+      event === 'call.offer'
+    ) {
+      nextPayload = await ensureCallEventPayload(nextPayload, event);
+    }
+    hydrateCallState(nextPayload);
+    if (event === 'call.invite' && isCurrentUserReceiver(nextPayload)) {
       message.info(`${currentConversation.value?.peer_name || '对方'} 发起了${payload.call_type === 'video' ? '视频' : '语音'}通话`);
     }
-    if (event === 'call.offer' && payload.receiver_user_id === userStore.userInfo?.userId) {
+    if (event === 'call.offer' && isCurrentUserReceiver(nextPayload)) {
       callPhase.value = 'incoming';
     }
     if (event === 'call.answer') {
-      const answerPayload = payload.events
+      const answerPayload = nextPayload.events
         .findLast((item) => item.event_type === 'call.answer')?.payload_json;
       if (answerPayload?.sdp && peerConnection.value) {
         await peerConnection.value.setRemoteDescription(
@@ -449,10 +526,10 @@ export const useChatStore = defineStore('chat', () => {
         );
       }
       callPhase.value = 'connected';
-      startCallTimer(payload.answered_at);
+      startCallTimer(nextPayload.answered_at);
     }
     if (event === 'call.ice-candidate') {
-      const candidatePayload = payload.events
+      const candidatePayload = nextPayload.events
         .findLast((item) => item.event_type === 'call.ice-candidate')?.payload_json;
       const candidate = candidatePayload?.candidate;
       if (candidate && peerConnection.value) {
@@ -498,7 +575,7 @@ export const useChatStore = defineStore('chat', () => {
         mergeMessage(payload.data as ChatMessageItem);
         await loadConversations();
       }
-      if (payload.event === 'typing' && payload.data.user_id !== userStore.userInfo?.userId) {
+      if (payload.event === 'typing' && payload.data.user_id !== getCurrentUserId()) {
         typingText.value = `${payload.data.display_name} 正在输入...`;
         setTimeout(() => {
           typingText.value = '';

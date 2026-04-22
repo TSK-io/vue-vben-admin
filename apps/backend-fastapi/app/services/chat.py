@@ -56,6 +56,12 @@ def _now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
+def _parse_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
 def _message_preview(text: str) -> str:
     return " ".join(text.split())[:80]
 
@@ -227,6 +233,19 @@ def _to_call_item(call: CallSession) -> CallSessionItem:
     )
 
 
+def _load_call_session(session, call_session_id: str) -> CallSession | None:
+    return session.scalar(
+        select(CallSession)
+        .where(CallSession.id == call_session_id)
+        .execution_options(populate_existing=True)
+        .options(
+            selectinload(CallSession.participants).selectinload(CallParticipant.user),
+            selectinload(CallSession.events),
+            selectinload(CallSession.conversation).selectinload(ChatConversation.members),
+        )
+    )
+
+
 def _append_call_event(
     session, call: CallSession, *, actor_user_id: str | None, event_type: str, data: dict[str, Any] | None = None
 ) -> None:
@@ -290,6 +309,17 @@ def _write_call_summary_message(session, call: CallSession) -> None:
                 member.unread_count += 1
 
 
+def _has_call_summary_message(session, call: CallSession) -> bool:
+    return bool(
+        session.scalar(
+            select(ChatMessage.id).where(
+                ChatMessage.conversation_id == call.conversation_id,
+                ChatMessage.content_json.like(f'%\"call_session_id\": \"{call.id}\"%'),
+            )
+        )
+    )
+
+
 def _to_online_state_item(
     *,
     user_id: str,
@@ -321,6 +351,58 @@ def _list_presence_subscriber_ids(session, user_id: str) -> list[str]:
         .scalars()
         .all()
     )
+
+
+def _expire_stale_pending_calls(session, participant_user_ids: list[str]) -> None:
+    settings = get_settings()
+    timeout_seconds = max(settings.call_session_invite_timeout_seconds, 0)
+    if timeout_seconds <= 0:
+        return
+
+    now = _now()
+    now_dt = _parse_datetime(now)
+    assert now_dt is not None
+    calls = (
+        session.execute(
+            select(CallSession)
+            .where(
+                CallSession.status.in_(["initiated", "ringing"]),
+                or_(
+                    CallSession.initiator_user_id.in_(participant_user_ids),
+                    CallSession.receiver_user_id.in_(participant_user_ids),
+                ),
+            )
+            .options(
+                selectinload(CallSession.participants),
+                selectinload(CallSession.conversation).selectinload(ChatConversation.members),
+                selectinload(CallSession.events),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    for call in calls:
+        started_at = _parse_datetime(call.started_at) or call.created_at.astimezone(UTC)
+        if (now_dt - started_at).total_seconds() < timeout_seconds:
+            continue
+        call.status = "timeout"
+        call.ended_reason = "timeout"
+        call.ended_at = now
+        for participant in call.participants:
+            participant.left_at = now
+            if participant.join_state in {"invited", "joined", "ringing"}:
+                participant.join_state = "left"
+        _append_call_event(
+            session,
+            call,
+            actor_user_id=None,
+            event_type="call.timeout",
+            data={"reason": "stale_timeout", "timeout_seconds": timeout_seconds},
+        )
+        if not _has_call_summary_message(session, call):
+            _write_call_summary_message(session, call)
+    session.flush()
 
 
 def search_chat_users(user: UserProfile, keyword: str | None = None, limit: int = 20) -> list[ChatUserSearchItem]:
@@ -788,6 +870,7 @@ def create_call_session(user: UserProfile, payload: CreateCallSessionRequest) ->
         if not peer_member:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="当前会话缺少被叫成员")
         _ensure_chat_allowed(session, user.user_id, peer_member.user_id)
+        _expire_stale_pending_calls(session, [user.user_id, peer_member.user_id])
 
         active_call = session.scalar(
             select(CallSession).where(
@@ -859,14 +942,7 @@ def create_call_session(user: UserProfile, payload: CreateCallSessionRequest) ->
 
 def get_call_session_detail(user: UserProfile, call_session_id: str) -> CallSessionItem:
     with session_scope() as session:
-        call = session.scalar(
-            select(CallSession)
-            .where(CallSession.id == call_session_id)
-            .options(
-                selectinload(CallSession.participants).selectinload(CallParticipant.user),
-                selectinload(CallSession.events),
-            )
-        )
+        call = _load_call_session(session, call_session_id)
         if not call or user.user_id not in {call.initiator_user_id, call.receiver_user_id}:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通话不存在或无权访问")
         return _to_call_item(call)
@@ -895,18 +971,10 @@ def list_call_history(user: UserProfile, conversation_id: str | None = None) -> 
 
 def end_call_session(user: UserProfile, call_session_id: str, payload: EndCallSessionRequest) -> CallSessionItem:
     with session_scope() as session:
-        call = session.scalar(
-            select(CallSession)
-            .where(CallSession.id == call_session_id)
-            .options(
-                selectinload(CallSession.participants).selectinload(CallParticipant.user),
-                selectinload(CallSession.events),
-                selectinload(CallSession.conversation).selectinload(ChatConversation.members),
-            )
-        )
+        call = _load_call_session(session, call_session_id)
         if not call or user.user_id not in {call.initiator_user_id, call.receiver_user_id}:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通话不存在或无权访问")
-        if call.status in {"ended", "rejected", "missed", "failed"}:
+        if call.status not in {"accepted", "initiated", "ringing"}:
             return _to_call_item(call)
         call.status = "ended" if payload.reason == "ended" else payload.reason
         call.ended_reason = payload.reason
@@ -922,20 +990,15 @@ def end_call_session(user: UserProfile, call_session_id: str, payload: EndCallSe
         _append_call_event(session, call, actor_user_id=user.user_id, event_type="call.end", data={"reason": payload.reason})
         _write_call_summary_message(session, call)
         session.flush()
-        return _to_call_item(call)
+        session.expire(call, ["conversation", "events", "participants"])
+        refreshed_call = _load_call_session(session, call.id)
+        assert refreshed_call is not None
+        return _to_call_item(refreshed_call)
 
 
 def handle_call_signal(user: UserProfile, payload: CallSignalEventRequest) -> tuple[CallSessionItem, str]:
     with session_scope() as session:
-        call = session.scalar(
-            select(CallSession)
-            .where(CallSession.id == payload.call_session_id)
-            .options(
-                selectinload(CallSession.participants).selectinload(CallParticipant.user),
-                selectinload(CallSession.events),
-                selectinload(CallSession.conversation).selectinload(ChatConversation.members),
-            )
-        )
+        call = _load_call_session(session, payload.call_session_id)
         if not call or user.user_id not in {call.initiator_user_id, call.receiver_user_id}:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通话不存在或无权访问")
         now = _now()
@@ -982,7 +1045,10 @@ def handle_call_signal(user: UserProfile, payload: CallSignalEventRequest) -> tu
         ):
             _write_call_summary_message(session, call)
         session.flush()
-        return _to_call_item(call), call.conversation_id
+        session.expire(call, ["conversation", "events", "participants"])
+        refreshed_call = _load_call_session(session, call.id)
+        assert refreshed_call is not None
+        return _to_call_item(refreshed_call), call.conversation_id
 
 
 class ChatMessageRateLimiter:

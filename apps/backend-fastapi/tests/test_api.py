@@ -1,6 +1,7 @@
 import os
 import tempfile
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +11,8 @@ os.environ["CHAT_MESSAGE_RATE_LIMIT_COUNT"] = "2"
 os.environ["CHAT_MESSAGE_RATE_LIMIT_WINDOW_SECONDS"] = "60"
 
 from app.main import app
+from app.db.session import session_scope
+from app.models.chat import CallSession
 from app.services.chat import rate_limiter
 
 
@@ -248,7 +251,8 @@ def test_chat_conversation_flow_and_unread_summary(client: TestClient) -> None:
 
     unread_response = client.get("/api/v1/chats/unread-summary", headers=elder_headers)
     assert unread_response.status_code == 200
-    assert unread_response.json()["data"]["total_unread"] >= 1
+    unread_before = unread_response.json()["data"]["total_unread"]
+    assert unread_before >= 1
 
     read_response = client.post(
         f"/api/v1/chats/conversations/{conversation['id']}/read",
@@ -256,7 +260,19 @@ def test_chat_conversation_flow_and_unread_summary(client: TestClient) -> None:
         json={"last_read_message_id": message["id"]},
     )
     assert read_response.status_code == 200
-    assert read_response.json()["data"]["total_unread"] == 0
+    assert read_response.json()["data"]["total_unread"] <= unread_before - 1
+
+    detail_response = client.get(
+        f"/api/v1/chats/conversations/{conversation['id']}",
+        headers=elder_headers,
+    )
+    assert detail_response.status_code == 200
+    elder_member = next(
+        item
+        for item in detail_response.json()["data"]["members"]
+        if item["user_id"] == "u-elder-001"
+    )
+    assert elder_member["unread_count"] == 0
 
 
 def test_chat_websocket_ping_and_typing(client: TestClient) -> None:
@@ -271,6 +287,116 @@ def test_chat_websocket_ping_and_typing(client: TestClient) -> None:
         websocket.send_json({"event": "ping"})
         pong = websocket.receive_json()
         assert pong["event"] == "pong"
+
+
+def test_chat_call_signal_response_includes_offer_event(client: TestClient) -> None:
+    rate_limiter._events.clear()
+    admin_headers = auth_headers(client, "admin_demo", "111")
+
+    conversation_response = client.post(
+        "/api/v1/chats/conversations",
+        headers=admin_headers,
+        json={"conversation_type": "direct", "participant_user_ids": ["u-elder-001"]},
+    )
+    assert conversation_response.status_code == 200
+    conversation_id = conversation_response.json()["data"]["id"]
+    existing_calls_response = client.get(
+        "/api/v1/chats/calls",
+        headers=admin_headers,
+        params={"conversation_id": conversation_id},
+    )
+    assert existing_calls_response.status_code == 200
+    for item in existing_calls_response.json()["data"]:
+        if item["status"] in {"accepted", "initiated", "ringing"}:
+            end_response = client.post(
+                f"/api/v1/chats/calls/{item['id']}/end",
+                headers=admin_headers,
+                json={"reason": "ended"},
+            )
+            assert end_response.status_code == 200
+
+    create_call_response = client.post(
+        "/api/v1/chats/calls",
+        headers=admin_headers,
+        json={"conversation_id": conversation_id, "call_type": "audio"},
+    )
+    assert create_call_response.status_code == 200
+    call_session = create_call_response.json()["data"]
+    assert call_session["receiver_user_id"] == "u-elder-001"
+    assert any(item["event_type"] == "call.invite" for item in call_session["events"])
+
+    offer_response = client.post(
+        "/api/v1/chats/calls/signal",
+        headers=admin_headers,
+        json={
+            "event": "call.offer",
+            "call_session_id": call_session["id"],
+            "data": {
+                "call_session_id": call_session["id"],
+                "type": "offer",
+                "sdp": "fake-offer-sdp",
+            },
+        },
+    )
+    assert offer_response.status_code == 200
+    offer_call = offer_response.json()["data"]
+    assert any(item["event_type"] == "call.offer" for item in offer_call["events"])
+
+
+def test_chat_call_can_recover_from_stale_pending_session(client: TestClient) -> None:
+    rate_limiter._events.clear()
+    elder_headers = auth_headers(client, "elder_demo", "111")
+
+    conversation_response = client.post(
+        "/api/v1/chats/conversations",
+        headers=elder_headers,
+        json={"conversation_type": "direct", "participant_user_ids": ["u-admin-001"]},
+    )
+    assert conversation_response.status_code == 200
+    conversation_id = conversation_response.json()["data"]["id"]
+
+    with session_scope() as session:
+        existing_calls = (
+            session.query(CallSession)
+            .filter(
+                CallSession.conversation_id == conversation_id,
+                CallSession.status.in_(["initiated", "ringing", "accepted"]),
+            )
+            .all()
+        )
+        for call in existing_calls:
+            call.status = "ended"
+            call.ended_reason = "ended"
+            call.ended_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+    first_call_response = client.post(
+        "/api/v1/chats/calls",
+        headers=elder_headers,
+        json={"conversation_id": conversation_id, "call_type": "audio"},
+    )
+    assert first_call_response.status_code == 200
+    first_call_id = first_call_response.json()["data"]["id"]
+
+    stale_started_at = (datetime.now(UTC) - timedelta(minutes=5)).isoformat().replace("+00:00", "Z")
+    with session_scope() as session:
+        first_call = session.get(CallSession, first_call_id)
+        assert first_call is not None
+        first_call.started_at = stale_started_at
+
+    second_call_response = client.post(
+        "/api/v1/chats/calls",
+        headers=elder_headers,
+        json={"conversation_id": conversation_id, "call_type": "audio"},
+    )
+    assert second_call_response.status_code == 200
+    assert second_call_response.json()["data"]["id"] != first_call_id
+
+    with session_scope() as session:
+        expired_call = session.get(CallSession, first_call_id)
+        assert expired_call is not None
+        assert expired_call.status == "timeout"
+        assert expired_call.ended_reason == "timeout"
+        assert expired_call.ended_at is not None
 
 
 def test_chat_blacklist_report_and_relationships(client: TestClient) -> None:
