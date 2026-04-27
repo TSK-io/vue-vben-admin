@@ -16,6 +16,7 @@ pyproject.toml
 ./app/api/v1/endpoints/family.py
 ./app/api/v1/endpoints/health.py
 ./app/api/v1/endpoints/notifications.py
+./app/api/v1/endpoints/phone_directory.py
 ./app/api/v1/endpoints/risk_alerts.py
 ./app/api/v1/endpoints/risk_recognition.py
 ./app/constants/roles.py
@@ -48,6 +49,7 @@ pyproject.toml
 ./app/services/business.py
 ./app/services/chat.py
 ./app/services/db_init.py
+./app/services/phone_directory.py
 ./app/services/risk_recognition.py
 app/__init__.py
 app/main.py

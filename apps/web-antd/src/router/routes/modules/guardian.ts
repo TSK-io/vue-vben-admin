@@ -56,13 +56,57 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'ElderPhone',
+        path: '/elder/phone',
+        component: () => import('#/views/guardian-shield/elder/phone/index.vue'),
+        meta: {
+          authority: ['elder'],
+          icon: 'lucide:phone',
+          title: '电话',
+        },
+      },
+      {
+        name: 'ElderMessages',
+        path: '/elder/messages',
+        component: () =>
+          import('#/views/guardian-shield/elder/messages/index.vue'),
+        meta: {
+          authority: ['elder'],
+          icon: 'lucide:message-square-text',
+          title: '短信',
+        },
+      },
+      {
+        name: 'ElderContacts',
+        path: '/elder/contacts',
+        component: () =>
+          import('#/views/guardian-shield/elder/contacts/index.vue'),
+        meta: {
+          authority: ['elder'],
+          icon: 'lucide:contact-round',
+          title: '联系人',
+        },
+      },
+      {
         name: 'ElderHelp',
         path: '/elder/help',
         component: () => import('#/views/guardian-shield/elder/help/index.vue'),
         meta: {
           authority: ['elder'],
+          hideInMenu: true,
           icon: 'lucide:siren',
           title: '一键求助',
+        },
+      },
+      {
+        name: 'ElderBindings',
+        path: '/elder/bindings',
+        component: () =>
+          import('#/views/guardian-shield/elder/family-binding/index.vue'),
+        meta: {
+          authority: ['elder'],
+          icon: 'lucide:users',
+          title: '家人绑定',
         },
       },
       {
@@ -72,6 +116,7 @@ const routes: RouteRecordRaw[] = [
           import('#/views/guardian-shield/elder/family-binding/index.vue'),
         meta: {
           authority: ['elder'],
+          hideInMenu: true,
           icon: 'lucide:users',
           title: '亲属绑定',
         },
@@ -96,6 +141,40 @@ const routes: RouteRecordRaw[] = [
           authority: ['elder'],
           icon: 'lucide:settings',
           title: '适老设置',
+        },
+      },
+    ],
+  },
+  {
+    meta: {
+      icon: 'lucide:radio-tower',
+      title: '输入端',
+      authority: ['input'],
+    },
+    name: 'InputPortal',
+    path: '/input',
+    redirect: '/input/phone',
+    children: [
+      {
+        name: 'InputPhone',
+        path: '/input/phone',
+        component: () => import('#/views/guardian-shield/input/phone/index.vue'),
+        meta: {
+          affixTab: true,
+          authority: ['input'],
+          icon: 'lucide:phone-call',
+          title: '电话输入',
+        },
+      },
+      {
+        name: 'InputMessages',
+        path: '/input/messages',
+        component: () =>
+          import('#/views/guardian-shield/input/messages/index.vue'),
+        meta: {
+          authority: ['input'],
+          icon: 'lucide:send',
+          title: '短信输入',
         },
       },
     ],

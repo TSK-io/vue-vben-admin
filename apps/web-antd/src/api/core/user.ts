@@ -21,6 +21,7 @@ export async function getUserInfoApi() {
     community: '/community/workorders',
     elder: '/elder/home',
     family: '/family/notifications',
+    input: '/input/phone',
   };
 
   return {

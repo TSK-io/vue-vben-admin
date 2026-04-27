@@ -16,6 +16,7 @@ const loading = ref(false);
 
 const roleOptions = [
   { label: '老年用户', value: 'elder' },
+  { label: '输入端操作员', value: 'input' },
   { label: '子女用户', value: 'family' },
   { label: '社区工作人员', value: 'community' },
   { label: '系统管理员', value: 'admin' },

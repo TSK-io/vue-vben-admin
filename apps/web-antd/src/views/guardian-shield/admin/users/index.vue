@@ -39,6 +39,7 @@ const roleTextMap: Record<AdminUserListItem['role'], string> = {
   community: '社区工作人员',
   elder: '老年用户',
   family: '子女用户',
+  input: '输入端操作员',
 };
 
 const riskColorMap: Record<AdminUserListItem['riskLevel'], string> = {

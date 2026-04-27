@@ -13,7 +13,7 @@ export interface AdminUserListItem {
   name: string;
   username: string;
   phone: string;
-  role: 'admin' | 'community' | 'elder' | 'family';
+  role: 'admin' | 'community' | 'elder' | 'family' | 'input';
   riskLevel: 'high' | 'low' | 'medium';
   bindCount: number;
   communityName: string;

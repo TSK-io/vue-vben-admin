@@ -156,9 +156,11 @@ onMounted(() => {
         <Col :lg="9" :span="24">
           <Card class="action-card" :bordered="false" title="马上操作">
             <Space direction="vertical" style="width: 100%">
+              <Button block size="large" type="primary" @click="goTo('/elder/phone')">打开电话</Button>
+              <Button block size="large" @click="goTo('/elder/messages')">打开短信</Button>
+              <Button block size="large" @click="goTo('/elder/contacts')">联系人和黑名单</Button>
               <Button block size="large" type="primary" @click="goTo('/elder/alerts')">查看风险提醒</Button>
-              <Button block size="large" danger @click="goTo('/elder/help')">一键求助</Button>
-              <Button block size="large" @click="goTo('/elder/family-binding')">联系家人</Button>
+              <Button block size="large" @click="goTo('/elder/bindings')">绑定家人</Button>
               <Button block size="large" @click="goTo('/elder/settings')">调整适老设置</Button>
             </Space>
           </Card>
